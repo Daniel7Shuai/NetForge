@@ -33,10 +33,13 @@ final class Starter
     public static function placeFixtures(int $userId, string $location): void
     {
         foreach (Layout::location($location)['fixtures'] ?? [] as $f) {
+            if (Db::one('SELECT 1 FROM devices WHERE user_id = ? AND location = ? AND tile_x = ? AND tile_y = ? AND fixed = 1', [$userId, $location, $f['x'], $f['y']])) {
+                continue; // already there
+            }
             $prefix = Db::one('SELECT label_prefix FROM item_types WHERE code = ?', [$f['item']])['label_prefix'] ?? 'Fixed';
             Db::exec(
-                'INSERT IGNORE INTO devices (user_id, item_code, label, location, tile_x, tile_y, fixed) VALUES (?, ?, ?, ?, ?, ?, 1)',
-                [$userId, $f['item'], $prefix . '-1', $location, $f['x'], $f['y']]
+                'INSERT INTO devices (user_id, item_code, label, location, tile_x, tile_y, fixed) VALUES (?, ?, ?, ?, ?, ?, 1)',
+                [$userId, $f['item'], Rules::nextLabel($userId, $prefix), $location, $f['x'], $f['y']]
             );
         }
     }

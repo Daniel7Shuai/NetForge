@@ -281,7 +281,7 @@ final class Rules
     }
 
     /** "PC-3" when PC-1 and PC-2 exist; reuses no numbers so cables in logs stay unambiguous. */
-    private static function nextLabel(int $userId, string $prefix): string
+    public static function nextLabel(int $userId, string $prefix): string
     {
         $rows = Db::all('SELECT label FROM devices WHERE user_id = ? AND label LIKE ?', [$userId, $prefix . '-%']);
         $max = 0;
@@ -289,6 +289,147 @@ final class Rules
             $max = max($max, (int) substr($r['label'], strlen($prefix) + 1));
         }
         return $prefix . '-' . ($max + 1);
+    }
+
+    /* ---------- upgrades (FR-4.3) ---------- */
+
+    /**
+     * What upgrading a device to its next tier costs and needs. Based on the item's shop
+     * price and unlock level: tier 2 costs 60% of the price and needs 2 more levels;
+     * tier 3 costs 120% and needs 4 more. Returns null when it's already at max tier.
+     * @return array{tier:int, cost:int, level:int}|null
+     */
+    public static function upgradeInfo(string $itemCode, int $tier, int $maxTier): ?array
+    {
+        if ($tier >= $maxTier) {
+            return null;
+        }
+        $shop = Db::one('SELECT price, unlock_level FROM shop_items WHERE item_code = ? ORDER BY quantity LIMIT 1', [$itemCode]);
+        $price = $shop ? (int) $shop['price'] : 250;   // the laptop isn't sold; treat it as a 250-credit device
+        $level = $shop ? (int) $shop['unlock_level'] : 1;
+        return ['tier' => $tier + 1, 'cost' => (int) round($price * 0.6 * $tier), 'level' => $level + 2 * $tier];
+    }
+
+    /** Income multiplier for a tier: x1, x1.5, x2. */
+    public static function tierIncome(int $tier): float
+    {
+        return 1 + 0.5 * ($tier - 1);
+    }
+
+    public static function upgrade(int $userId, int $deviceId): string
+    {
+        return Db::transaction(function () use ($userId, $deviceId): string {
+            $d = Db::one(
+                'SELECT d.id, d.label, d.tier, d.fixed, d.item_code, t.max_tier FROM devices d JOIN item_types t ON t.code = d.item_code
+                  WHERE d.id = ? AND d.user_id = ? FOR UPDATE',
+                [$deviceId, $userId]
+            );
+            if ($d === null) {
+                throw new GameError('That device isn’t on your map.');
+            }
+            $up = self::upgradeInfo($d['item_code'], (int) $d['tier'], (int) $d['max_tier']);
+            if ($d['fixed'] || $up === null) {
+                throw new GameError($d['fixed'] ? $d['label'] . ' is part of the building.' : $d['label'] . ' is already at its top tier.');
+            }
+            $me = Db::one('SELECT credits, level FROM users WHERE id = ? FOR UPDATE', [$userId]);
+            if ((int) $me['level'] < $up['level']) {
+                throw new GameError(sprintf('Reach level %d to upgrade %s to tier %d. Answer questions in Learn for XP.', $up['level'], $d['label'], $up['tier']));
+            }
+            if ((int) $me['credits'] < $up['cost']) {
+                throw new GameError(sprintf('You need %d more credits to upgrade %s.', $up['cost'] - (int) $me['credits'], $d['label']));
+            }
+            Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$up['cost'], $userId]);
+            Db::exec('UPDATE devices SET tier = ? WHERE id = ?', [$up['tier'], $deviceId]);
+            $msg = sprintf('Upgraded %s to tier %d for %d credits.', $d['label'], $up['tier'], $up['cost']);
+            self::log($userId, 'ok', $msg);
+            return $msg;
+        });
+    }
+
+    /** Moves a placed device to another free spot in the same location. Its cables stay plugged in. */
+    public static function move(int $userId, int $deviceId, int $x, int $y): void
+    {
+        Db::transaction(function () use ($userId, $deviceId, $x, $y): void {
+            $d = Db::one(
+                'SELECT d.id, d.label, d.location, d.fixed, t.slot_kinds FROM devices d JOIN item_types t ON t.code = d.item_code
+                  WHERE d.id = ? AND d.user_id = ? FOR UPDATE',
+                [$deviceId, $userId]
+            );
+            if ($d === null) {
+                throw new GameError('That device isn’t on your map.');
+            }
+            if ($d['fixed']) {
+                throw new GameError($d['label'] . ' is part of the building. It stays where it is.');
+            }
+            $kinds = Layout::kinds($d['slot_kinds']);
+            $slot = Layout::slotAnchoredAt($d['location'], $kinds, $x, $y);
+            if ($slot === null) {
+                throw new GameError(Layout::KIND_HINTS[$kinds[0]] ?? 'That spot doesn’t fit this device.');
+            }
+            $taken = Db::one(
+                'SELECT d.label FROM devices d JOIN item_types t ON t.code = d.item_code
+                  WHERE d.user_id = ? AND d.location = ? AND d.id <> ? AND d.tile_x = ? AND d.tile_y < ? AND d.tile_y + t.height > ?',
+                [$userId, $d['location'], $deviceId, $x, $y + $slot['h'], $y]
+            );
+            if ($taken !== null) {
+                throw new GameError($taken['label'] . ' is already there. Pick a free spot.');
+            }
+            Db::exec('UPDATE devices SET tile_x = ?, tile_y = ? WHERE id = ?', [$x, $y, $deviceId]);
+            self::log($userId, 'info', 'Moved ' . $d['label'] . '. Its cables came with it.');
+        });
+    }
+
+    /* ---------- locations (FR-4.3: three datacentre levels) ---------- */
+
+    /** Every location with whether this student has leased it, can lease it, and what it takes. */
+    public static function locations(int $userId): array
+    {
+        $u = Db::one('SELECT location, level, credits FROM users WHERE id = ?', [$userId]);
+        $leased = array_column(Db::all('SELECT location FROM user_locations WHERE user_id = ?', [$userId]), 'location');
+        $out = [];
+        foreach (Layout::data()['locations'] as $code => $l) {
+            $own = ($l['leaseCost'] ?? 0) === 0 || in_array($code, $leased, true);
+            $out[] = [
+                'code' => $code, 'name' => $l['name'], 'tier' => (int) $l['tier'], 'pitch' => $l['pitch'] ?? '',
+                'unlockLevel' => (int) $l['unlockLevel'], 'leaseCost' => (int) ($l['leaseCost'] ?? 0),
+                'leased' => $own, 'current' => $code === $u['location'],
+                'canLease' => !$own && (int) $u['level'] >= (int) $l['unlockLevel'] && (int) $u['credits'] >= (int) ($l['leaseCost'] ?? 0),
+            ];
+        }
+        return $out;
+    }
+
+    /** Goes to a location, leasing it first if needed. Devices stay where they were placed. */
+    public static function travel(int $userId, string $code): string
+    {
+        return Db::transaction(function () use ($userId, $code): string {
+            $l = Layout::data()['locations'][$code] ?? null;
+            if ($l === null) {
+                throw new GameError('That place doesn’t exist.');
+            }
+            $u = Db::one('SELECT location, level, credits FROM users WHERE id = ? FOR UPDATE', [$userId]);
+            if ($u['location'] === $code) {
+                throw new GameError('You’re already here.');
+            }
+            $cost = (int) ($l['leaseCost'] ?? 0);
+            $own = $cost === 0 || Db::one('SELECT 1 FROM user_locations WHERE user_id = ? AND location = ?', [$userId, $code]) !== null;
+            $msg = 'You went to the ' . strtolower($l['name']) . '.';
+            if (!$own) {
+                if ((int) $u['level'] < (int) $l['unlockLevel']) {
+                    throw new GameError(sprintf('Reach level %d to lease the %s.', $l['unlockLevel'], strtolower($l['name'])));
+                }
+                if ((int) $u['credits'] < $cost) {
+                    throw new GameError(sprintf('Leasing the %s costs %d credits. You need %d more.', strtolower($l['name']), $cost, $cost - (int) $u['credits']));
+                }
+                Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$cost, $userId]);
+                Db::exec('INSERT INTO user_locations (user_id, location) VALUES (?, ?)', [$userId, $code]);
+                Starter::placeFixtures($userId, $code);
+                $msg = sprintf('You leased the %s for %d credits. Wire its ISP connection to start earning here.', strtolower($l['name']), $cost);
+            }
+            Db::exec('UPDATE users SET location = ?, pos_x = ?, pos_y = ? WHERE id = ?', [$code, $l['spawn']['x'], $l['spawn']['y'], $userId]);
+            self::log($userId, 'ok', $msg);
+            return $msg;
+        });
     }
 
     /* ---------- objectives ---------- */

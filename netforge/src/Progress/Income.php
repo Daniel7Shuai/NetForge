@@ -14,11 +14,14 @@ use NetForge\Rules;
  */
 final class Income
 {
-    /** Devices reachable from the ISP box over up links (the ISP box itself excluded). */
+    /** The building's internet connections: income flows out from these. */
+    public const ISP = ['isp_box', 'isp_fiber'];
+
+    /** Devices reachable from an ISP box over up links (the ISP box itself excluded). */
     public static function online(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, t.income_per_hour FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ?', [$userId]) as $d) {
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_hour, t.shield_pct FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
         }
         $adj = [];
@@ -26,7 +29,7 @@ final class Income
             $adj[(int) $c['a']][] = (int) $c['b'];
             $adj[(int) $c['b']][] = (int) $c['a'];
         }
-        $queue = array_keys(array_filter($devices, fn ($d) => $d['item_code'] === 'isp_box'));
+        $queue = array_keys(array_filter($devices, fn ($d) => in_array($d['item_code'], self::ISP, true)));
         $seen = array_fill_keys($queue, true);
         while ($queue) {
             $id = array_shift($queue);
@@ -39,7 +42,7 @@ final class Income
         }
         return array_values(array_filter(
             array_intersect_key($devices, $seen),
-            fn ($d) => $d['item_code'] !== 'isp_box'
+            fn ($d) => !in_array($d['item_code'], self::ISP, true)
         ));
     }
 
@@ -65,12 +68,19 @@ final class Income
         return $grant;
     }
 
+    /** Percent of a breach blocked by firewalls that are online: shield_pct x tier each, at most 75. */
+    public static function shield(int $userId): int
+    {
+        $pct = array_sum(array_map(fn ($d) => (int) $d['shield_pct'] * (int) $d['tier'], self::online($userId)));
+        return min(75, $pct);
+    }
+
     /** @return array{rate:int, devices:list<string>} */
     public static function summary(int $userId): array
     {
         $online = self::online($userId);
         return [
-            'rate' => array_sum(array_map(fn ($d) => (int) $d['income_per_hour'], $online)),
+            'rate' => (int) round(array_sum(array_map(fn ($d) => (int) $d['income_per_hour'] * Rules::tierIncome((int) $d['tier']), $online))),
             'devices' => array_column($online, 'label'),
         ];
     }

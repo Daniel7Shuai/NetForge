@@ -36,6 +36,23 @@ export function mountHud(store) {
   });
   document.addEventListener('click', (e) => { if (!menu.contains(e.target)) closeMenu(); });
 
+  /* places: travel to, or lease, another location */
+  const placeBtn = $('place-btn'), places = $('places');
+  const closePlaces = () => { places.hidden = true; placeBtn.setAttribute('aria-expanded', 'false'); };
+  placeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    places.hidden = !places.hidden;
+    placeBtn.setAttribute('aria-expanded', String(!places.hidden));
+  });
+  document.addEventListener('click', (e) => { if (!places.contains(e.target) && e.target !== placeBtn) closePlaces(); });
+  places.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-go]');
+    if (!b) return;
+    if (b.getAttribute('aria-disabled') === 'true') { if (b.title) store.log('warn', b.title); return; }
+    closePlaces();
+    store.travel(b.dataset.go);
+  });
+
   /* keyboard shortcuts (ignored while typing in a field) */
   addEventListener('keydown', (e) => {
     if ((e.target instanceof Element && e.target.closest('input, textarea, select')) || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -45,7 +62,7 @@ export function mountHud(store) {
       g: () => document.querySelector('[data-open-social]').click(),
       v: () => store.setTool('select'), c: () => store.setTool('cable'), x: () => store.setTool('inspect'),
       delete: () => store.setTool('remove'), i: () => store.setTab('inv'), b: () => store.setTab('shop'),
-      escape: () => { closeMenu(); store.cancel(); } };
+      escape: () => { closeMenu(); closePlaces(); store.cancel(); } };
     if (map[k]) { map[k](); }
   });
 
@@ -68,6 +85,11 @@ export function mountHud(store) {
     if (b.dataset.port) store.pickPort(b.dataset.port);
     else if (b.dataset.unplug) store.unplug(Number(b.dataset.unplug));
     else if (b.dataset.pickup) store.pickUp(Number(b.dataset.pickup));
+    else if (b.dataset.move) store.startMove(Number(b.dataset.move));
+    else if (b.dataset.upgrade) {
+      if (b.getAttribute('aria-disabled') === 'true') { store.log('warn', b.title); return; }
+      store.upgrade(Number(b.dataset.upgrade));
+    }
     else if (b.dataset.closePicker) store.set({ picker: null });
   });
 
@@ -172,6 +194,7 @@ export function mountHud(store) {
     renderShop(s);
     renderTags(s);
     renderPicker(s);
+    renderPlaces(s);
     const logSig = s.log.map((l) => l.time + l.message).join('\n');
     if (logSig !== lastLog) { renderConsole(s); lastLog = logSig; }
   }
@@ -238,7 +261,8 @@ export function mountHud(store) {
       tag.className = 'tag ' + cls;
       tag.style.left = `${((px.x + px.w / 2) / (COLS * TILE)) * 100}%`;
       tag.style.top = `${((px.y - 4) / (ROWS * TILE)) * 100}%`;
-      tag.innerHTML = `<b></b>${esc(d.label)}`;
+      tag.innerHTML = `<b></b>${esc(d.label)}${d.tier > 1 ? ` <span class="t">T${d.tier}</span>` : ''}`;
+      if (d.id === s.moving) tag.classList.add('act');
       box.append(tag);
     }
   }
@@ -314,10 +338,51 @@ export function mountHud(store) {
         return `<div class="port ${c ? c.status : 'free'}"><span class="led"></span><span class="pname">${esc(p.name)}</span><span class="to">${esc(what)}</span></div>`;
       }).join('');
       foot = 'C to cable, Del to unplug';
+      if (!dev.fixed) rows = tierLine(dev) + rows + deviceActions(s, dev);
     }
     el.innerHTML = `<h3>${esc(dev.label)} <span>${sub}</span>
       <button class="x" data-close-picker="1" aria-label="Close"><i class="ti ti-x"></i></button></h3>${rows}<p class="foot">${foot}</p>`;
     el.hidden = false;
+  }
+
+  /** "Tier 2 of 3" plus what the tier gives: more income, or a bigger firewall shield. */
+  function tierLine(dev) {
+    const perk = dev.shield ? `shield ${dev.shield}%` : dev.tier > 1 ? `income x${1 + 0.5 * (dev.tier - 1)}` : 'base income';
+    const tip = dev.shield ? `While online, blocks ${dev.shield}% of the credits a breach would take.` : 'Higher tiers earn more while online.';
+    return `<p class="tierline" title="${esc(tip)}"><span>Tier <b>${dev.tier}</b> of ${dev.maxTier}</span><span>${esc(perk)}</span></p>`;
+  }
+
+  function deviceActions(s, dev) {
+    const up = dev.upgrade;
+    let upBtn;
+    if (!up) {
+      upBtn = '<button class="act" aria-disabled="true" title="Already at its top tier."><i class="ti ti-check" aria-hidden="true"></i>Top tier</button>';
+    } else {
+      const why = s.user.level < up.level
+        ? `Reach level ${up.level} to upgrade to tier ${up.tier}. Answer questions in Learn (L) for XP.`
+        : s.user.credits < up.cost ? `Upgrading to tier ${up.tier} costs ${fmt(up.cost)} credits. You need ${fmt(up.cost - s.user.credits)} more.` : '';
+      upBtn = why
+        ? `<button class="act" data-upgrade="${dev.id}" aria-disabled="true" title="${esc(why)}"><i class="ti ti-lock" aria-hidden="true"></i>${s.user.level < up.level ? `Lv ${up.level}` : fmt(up.cost)}</button>`
+        : `<button class="act up" data-upgrade="${dev.id}" aria-label="Upgrade to tier ${up.tier} for ${up.cost} credits"><i class="ti ti-arrow-big-up-lines" aria-hidden="true"></i>T${up.tier}, ${fmt(up.cost)}</button>`;
+    }
+    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}"><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>`;
+  }
+
+  function renderPlaces(s) {
+    const el = $('places');
+    const icons = { garage: 'ti-home', office: 'ti-building', datacentre: 'ti-server-2' };
+    el.innerHTML = '<h4>Your places</h4>' + s.locations.map((l) => {
+      let what, why = '';
+      if (l.current) what = 'You’re here';
+      else if (l.leased) what = 'Go';
+      else if (s.user.level < l.unlockLevel) { what = `Lv ${l.unlockLevel}`; why = `Reach level ${l.unlockLevel} to lease the ${l.name.toLowerCase()}.`; }
+      else if (s.user.credits < l.leaseCost) { what = `${fmt(l.leaseCost)} cr`; why = `Leasing the ${l.name.toLowerCase()} costs ${fmt(l.leaseCost)} credits. You need ${fmt(l.leaseCost - s.user.credits)} more.`; }
+      else what = `Lease, ${fmt(l.leaseCost)}`;
+      const off = l.current || !!why;
+      return `<button type="button" data-go="${esc(l.code)}" class="${l.current ? 'here' : ''}" aria-disabled="${off}" ${why ? `title="${esc(why)}"` : ''}>
+        <i class="ti ${icons[l.code] || 'ti-map-pin'}" aria-hidden="true"></i><strong>${esc(l.name)}</strong><span class="what">${esc(what)}</span>
+        <small>${esc(l.pitch)}</small></button>`;
+    }).join('');
   }
 
   function renderConsole(s) {

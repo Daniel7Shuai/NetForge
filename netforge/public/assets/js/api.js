@@ -21,6 +21,8 @@ export const api = {
   connect: (cable, a, b) => call('connect.php', { method: 'POST', body: JSON.stringify({ cable, a, b }) }),
   unplug: (cableId) => call('unplug.php', { method: 'POST', body: JSON.stringify({ cable: cableId }) }),
   pickUp: (deviceId) => call('pickup.php', { method: 'POST', body: JSON.stringify({ device: deviceId }) }),
+  upgrade: (deviceId) => call('upgrade.php', { method: 'POST', body: JSON.stringify({ device: deviceId }) }),
+  travel: (code) => call('travel.php', { method: 'POST', body: JSON.stringify({ location: code }) }),
   buy: (shopId) => call('buy.php', { method: 'POST', body: JSON.stringify({ id: shopId }) }),
   learn: {
     roadmap: () => call('learn/roadmap.php'),

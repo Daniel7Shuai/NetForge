@@ -235,9 +235,14 @@ final class Defence
     private static function charge(int $userId): int
     {
         $credits = (int) Db::one('SELECT credits FROM users WHERE id = ? FOR UPDATE', [$userId])['credits'];
-        $take = min($credits, self::settings()['penalty']);
+        $penalty = self::settings()['penalty'];
+        $shield = \NetForge\Progress\Income::shield($userId);
+        $take = min($credits, (int) round($penalty * (100 - $shield) / 100));
         if ($take > 0) {
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$take, $userId]);
+        }
+        if ($shield > 0) {
+            \NetForge\Rules::log($userId, 'info', sprintf('Your firewall blocked %d%% of the breach.', $shield));
         }
         return $take;
     }

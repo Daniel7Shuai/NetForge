@@ -18,7 +18,7 @@ export function createStore() {
     state: {
       user: null, inventory: [], shop: [], objective: null, devices: [], cables: [], log: [],
       tool: 'select', tab: 'inv', cable: 'copper', selectedItem: null, uiFocus: false,
-      playerTile: null, busy: false, lastEvent: null, learnOpen: false,
+      playerTile: null, busy: false, lastEvent: null, learnOpen: false, locations: [], moving: null, // moving: id of the device being moved
       picker: null,        // {deviceId, mode: 'cable' | 'remove' | 'inspect'}: the port popover
       cableDraft: null,    // {kind, from: {deviceId, port}}: one end plugged in, other in hand
       freshCables: {},     // cable id -> time it was plugged in (shows "negotiating" briefly)
@@ -48,7 +48,7 @@ export function createStore() {
       store.serverLog = data.log;
       store.set({
         user: data.user, inventory: data.inventory, shop: data.shop, objective: data.objective,
-        devices: data.devices, cables: data.cables, log: store.mergedLog(), progress: data.progress,
+        devices: data.devices, cables: data.cables, log: store.mergedLog(), progress: data.progress, locations: data.locations || [],
       });
     },
 
@@ -59,7 +59,7 @@ export function createStore() {
     },
 
     setTool(tool) {
-      store.set({ tool, selectedItem: tool === 'select' ? store.state.selectedItem : null, picker: null, cableDraft: null });
+      store.set({ tool, selectedItem: tool === 'select' ? store.state.selectedItem : null, picker: null, cableDraft: null, moving: null });
       if (tool === 'cable') store.cableHint();
     },
     setTab(tab) { store.set({ tab }); },
@@ -68,13 +68,14 @@ export function createStore() {
       const next = !keep && store.state.selectedItem === code ? null : code;
       const item = store.state.inventory.find((i) => i.code === next);
       if (item && item.category === 'cable') { store.set({ cable: code }); store.setTool('cable'); return; }
-      store.set({ selectedItem: next, tool: 'select', picker: null, cableDraft: null });
+      store.set({ selectedItem: next, tool: 'select', picker: null, cableDraft: null, moving: null });
     },
     /** Esc: back out one step (popover, then cable in hand, then the tool). */
     cancel() {
       const s = store.state;
       if (s.picker) return store.set({ picker: null });
       if (s.cableDraft) { store.log('info', 'Cable dropped.'); return store.set({ cableDraft: null }); }
+      if (s.moving) { store.log('info', 'Move cancelled.'); return store.set({ moving: null }); }
       store.set({ selectedItem: null, tool: 'select' });
     },
 
@@ -151,16 +152,20 @@ export function createStore() {
       }
     },
 
-    /** The device the player is about to place, if any. */
+    /** The device the player is about to place (or move), if any. */
     placingItem() {
       const s = store.state;
+      if (s.moving) {
+        const d = s.devices.find((x) => x.id === s.moving);
+        if (d) return { code: d.item_code, name: d.label, sprite: d.sprite, slotKinds: d.slotKinds, category: 'device', quantity: 1, moveId: d.id };
+      }
       const item = s.inventory.find((i) => i.code === s.selectedItem);
       return item && item.category === 'device' && item.quantity > 0 ? item : null;
     },
 
     /** Device covering any tile of a slot, or null. */
     occupant(slot) {
-      return store.state.devices.find((d) => d.tile_x === slot.x && d.tile_y < slot.y + slot.h && d.tile_y + d.height > slot.y) || null;
+      return store.state.devices.find((d) => d.id !== store.state.moving && d.tile_x === slot.x && d.tile_y < slot.y + slot.h && d.tile_y + d.height > slot.y) || null;
     },
 
     /** Why the item can't go on this tile (null if it can), plus the slot it would use. */
@@ -183,6 +188,17 @@ export function createStore() {
       const { slot, problem } = store.placementCheck(item, tile);
       if (problem) { store.log('error', problem); return; }
       store.set({ busy: true });
+      if (item.moveId) {
+        try {
+          store.applyServerState((await api.move(item.moveId, { x: slot.x, y: slot.y })).state);
+          store.set({ moving: null });
+        } catch (err) {
+          store.log('error', err.message);
+        } finally {
+          store.set({ busy: false });
+        }
+        return;
+      }
       try {
         const res = await api.place(item.code, { x: slot.x, y: slot.y });
         store.applyServerState(res.state);
@@ -196,6 +212,41 @@ export function createStore() {
       } catch (err) {
         store.log('error', err.message);
       } finally {
+        store.set({ busy: false });
+      }
+    },
+
+    /** Picks a device up off its spot so the next map click puts it somewhere else. */
+    startMove(deviceId) {
+      const d = store.state.devices.find((x) => x.id === deviceId);
+      if (!d || d.fixed) return;
+      store.set({ picker: null, cableDraft: null, selectedItem: null, tool: 'select', moving: deviceId });
+      store.log('you', `Moving ${d.label}. Click a free spot. Its cables come along. Esc to cancel.`);
+    },
+
+    async upgrade(deviceId) {
+      if (store.state.busy) return;
+      store.set({ busy: true });
+      try {
+        const res = await api.upgrade(deviceId);
+        store.applyServerState(res.state);
+        store.set({ lastEvent: { type: 'upgraded', at: Date.now() } });
+      } catch (err) {
+        store.log('error', err.message);
+      } finally {
+        store.set({ busy: false });
+      }
+    },
+
+    /** Goes to (or leases) another location. The room changes, so the page reloads. */
+    async travel(code) {
+      if (store.state.busy) return;
+      store.set({ busy: true });
+      try {
+        await api.travel(code);
+        location.reload();
+      } catch (err) {
+        store.log('error', err.message);
         store.set({ busy: false });
       }
     },

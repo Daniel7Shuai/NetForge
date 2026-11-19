@@ -18,6 +18,8 @@
       "name": "Garage",
       "tier": 1,
       "unlockLevel": 1,
+      "leaseCost": 0,
+      "pitch": "Where it all starts: a workbench, a shelf and a fibre box on the wall.",
       "spawn": { "x": 6, "y": 6 },
       "wallRows": 2,
       "bottomWall": true,
@@ -40,9 +42,11 @@
       ]
     },
     "office": {
-      "name": "Office and server room",
+      "name": "Office",
       "tier": 2,
-      "unlockLevel": 5,
+      "unlockLevel": 4,
+      "leaseCost": 800,
+      "pitch": "Four desks and a server room behind glass: six rack slots.",
       "spawn": { "x": 10, "y": 6 },
       "wallRows": 2,
       "partition": { "col": 12, "doorRows": [6, 7] },
@@ -66,7 +70,38 @@
         { "kind": "rack", "x": 15, "y": 7, "h": 2 },
         { "kind": "rack", "x": 16, "y": 7, "h": 2 }
       ],
-      "fixtures": []
+      "fixtures": [
+        { "item": "isp_box", "x": 10, "y": 1 }
+      ]
+    },
+    "datacentre": {
+      "name": "Datacentre",
+      "tier": 3,
+      "unlockLevel": 7,
+      "leaseCost": 3000,
+      "pitch": "Two long rack rows on a raised floor, fibre straight from the provider.",
+      "spawn": { "x": 10, "y": 10 },
+      "wallRows": 2,
+      "furniture": [
+        { "type": "cooling", "x": 17, "y": 3 },
+        { "type": "cooling", "x": 17, "y": 7 },
+        { "type": "desk", "x": 1, "y": 9 }
+      ],
+      "slots": [
+        { "kind": "desk", "x": 4, "y": 9, "h": 1 },
+        { "kind": "rack", "x": 2, "y": 3, "h": 2 }, { "kind": "rack", "x": 3, "y": 3, "h": 2 }, { "kind": "rack", "x": 4, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 5, "y": 3, "h": 2 }, { "kind": "rack", "x": 6, "y": 3, "h": 2 }, { "kind": "rack", "x": 7, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 8, "y": 3, "h": 2 }, { "kind": "rack", "x": 9, "y": 3, "h": 2 }, { "kind": "rack", "x": 10, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 11, "y": 3, "h": 2 }, { "kind": "rack", "x": 12, "y": 3, "h": 2 }, { "kind": "rack", "x": 13, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 14, "y": 3, "h": 2 }, { "kind": "rack", "x": 15, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 6, "y": 7, "h": 2 }, { "kind": "rack", "x": 7, "y": 7, "h": 2 }, { "kind": "rack", "x": 8, "y": 7, "h": 2 },
+        { "kind": "rack", "x": 9, "y": 7, "h": 2 }, { "kind": "rack", "x": 10, "y": 7, "h": 2 }, { "kind": "rack", "x": 11, "y": 7, "h": 2 },
+        { "kind": "rack", "x": 12, "y": 7, "h": 2 }, { "kind": "rack", "x": 13, "y": 7, "h": 2 }, { "kind": "rack", "x": 14, "y": 7, "h": 2 },
+        { "kind": "rack", "x": 15, "y": 7, "h": 2 }
+      ],
+      "fixtures": [
+        { "item": "isp_fiber", "x": 10, "y": 1 }
+      ]
     }
   }
 }

@@ -13,6 +13,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_social.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_defence.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_progress.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_upgrades.sql
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
 3. Copy `config/config.example.php` to `config/config.php` and set the DB password if you have one.
@@ -50,7 +51,18 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
 
 Framework done: accounts, sessions, CSRF, database, state API, HUD, drawer, console, pixel-art map, player movement, LEDs, objective tracking and rewards.
 
-Locations: players start in the **garage** (tier 1) with only a busted laptop and 0 credits; the ISP fibre box on the wall is a fixed device. The **office and server room** (tier 2) is defined and drawn but not yet reachable. More tiers are added as entries in `layout.json` plus a room function in `art.js`.
+Locations (FR-4.3, three datacentre levels): click the place name in the top bar to travel.
+- **Garage** (tier 1): where every player starts, with only a busted laptop. Bench and shelf spots, and the ISP box on the wall.
+- **Office and server room** (tier 2): lease at level 4 for 800 credits. Four desks and six rack slots.
+- **Datacentre** (tier 3): lease at level 7 for 3,000 credits. 25 rack slots on a raised floor and an ISP fibre panel (copper and fibre).
+- Leasing is paid once (`user_locations`); after that you travel freely. Devices stay where you placed them and keep earning while you're elsewhere. Each place has its own ISP connection to wire up. Level, price and layout are in `public/assets/data/layout.json`; `Rules::travel`, `api/travel.php`.
+
+Upgrades (FR-4.3): select a device to see its tier and an **Upgrade** button.
+- Tiers 1 to 3 (`item_types.max_tier`; building fixtures have one tier). Tier 2 costs 60% of the item's shop price and needs its unlock level + 2; tier 3 costs 120% and needs + 4. So credits pay for it, but XP decides when. `Rules::upgradeInfo`, `Rules::upgrade`, `api/upgrade.php`.
+- Higher tiers earn more while online: income x1, x1.5, x2.
+- The **firewall** (shop, level 4, 500 credits; fits a shelf or rack): while online it blocks 25% of every breach penalty per tier, at most 75% (`item_types.shield_pct`, `Income::shield`, applied in `Defence::charge`).
+- **Move** (same popover): click a free spot to move the device there. Its cables stay plugged in and re-route. `Rules::move`, `api/move.php`.
+- Tests: `php tests/UpgradeTest.php`.
 
 Placing devices done: select a device in the inventory (or drag it) and click a glowing spot. The server re-checks everything (`Rules::place`), names devices (Laptop-1, PC-1…) and completes objectives.
 
@@ -110,17 +122,18 @@ Cyber attack and defence (module 5.0) done:
 
 ## The economy (read this before changing prices or rewards)
 
-- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to the ISP box by a chain of working links, earns its `item_types.income_per_hour` (laptop 10, home router 15, PC 25, switch 40, router 60, server 120). The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
+- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to an ISP box or fibre panel by a chain of working links, earns its `item_types.income_per_hour` times its tier bonus (laptop 10, home router 15, PC 25, switch 40, router 60, server 120). The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
 - **XP comes from learning**: correct answers in lessons, exams and the Daily Security Audit pay XP from Elo rating gains (5 XP per point, so repeating easy questions pays almost nothing), plus weekly raid rewards. Questions pay **no credits** (`Elo::CREDITS_PER_POINT = 0`).
 - **XP unlocks what credits can buy**: every 1000 XP is a level, and `shop_items.unlock_level` decides what each level may buy (`unlock_world` can add a world-mastery requirement). Levelling up announces the newly buyable gear (`Rules::addXp`). Lecturers tune levels, prices and pack sizes on **Unlocks and prices**.
 - New players start with 300 credits, enough for a home router and cables to get online. If a player ever has nothing online, no cable and under 40 credits, the ISP sends just enough for a pack of copper once a day, so nobody gets stuck.
-- Breaches from cyber attacks cost credits, so defending protects your income.
+- Breaches from cyber attacks cost credits, so defending protects your income. An online firewall blocks part of each breach.
+- Credits are spent on gear, on upgrades (tier 2 and 3) and on leasing the office and datacentre; each is gated by level, so learning sets the pace.
 
 ## Badges and streak
 
 - **Daily learning streak** (FR-4.5): days in a row with at least one correct answer; shown in the top bar (lit once you’ve learned today).
 - **15 badges** (FR-4.5), each checked against what the student actually did (`src/Progress/Badges.php`), awarded whenever the game state loads, with a pop-up and a console line. Browse them in Social (**G**) → Badges; share them with the guild (FR-6.4).
 
-Not built yet: moving a placed device (`api/move.php` returns 501; pick up and re-place works), admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4). Not started: mock exams across worlds (FR-3.5), equipment upgrades and datacentre tiers beyond the garage (FR-4.3).
+Not built yet: admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4). Not started: mock exams across worlds (FR-3.5).
 
 The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.
