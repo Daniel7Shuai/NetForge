@@ -29,6 +29,7 @@ export const api = {
     lesson: (levelId) => call(`learn/lesson.php?id=${encodeURIComponent(levelId)}`),
     startLevel: (levelId) => call('learn/start.php', { method: 'POST', body: JSON.stringify({ level: levelId }) }),
     startExam: (worldId) => call('learn/start.php', { method: 'POST', body: JSON.stringify({ exam: worldId }) }),
+    startMock: (worlds, length) => call('learn/start.php', { method: 'POST', body: JSON.stringify({ mock: { worlds, length } }) }),
     startAudit: () => call('learn/start.php', { method: 'POST', body: JSON.stringify({ audit: true }) }),
     answer: (answer) => call('learn/answer.php', { method: 'POST', body: JSON.stringify({ answer }) }),
     quit: () => call('learn/quit.php', { method: 'POST', body: '{}' }),

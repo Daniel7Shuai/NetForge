@@ -60,6 +60,20 @@ final class Challenge
         ]);
     }
 
+    /** Timed mock exam across the worlds the student picked (FR-3.5). */
+    public static function startMock(int $userId, array $worldIds, int $length): array
+    {
+        $paper = Mock::build($userId, $worldIds, $length);
+        $names = array_map(fn ($n) => "W$n", array_values($paper['worlds']));
+        sort($names, SORT_NATURAL);
+        return self::begin($userId, [
+            'mode' => 'mock', 'worldId' => null, 'worldNumber' => null, 'levelId' => null,
+            'title' => 'Mock exam, ' . implode(' ', $names), 'total' => $paper['total'], 'passPct' => Mock::READY_PCT,
+            'deadline' => time() + $paper['minutes'] * 60, 'queue' => $paper['queue'],
+            'worldNumbers' => $paper['worlds'], 'startedAt' => time(), 'byWorld' => [], 'missed' => [],
+        ]);
+    }
+
     private const AUDIT_MAX = 10;
     /** Days until the next review after a correct answer at each step; past step 3 the question is cleared. */
     private const AUDIT_NEXT = [1 => [2, 3], 2 => [3, 7]];
@@ -154,6 +168,14 @@ final class Challenge
         $run['rating'] = $outcome['after'];
         $t = $q['topic'];
         $run['topics'][$t] = [($run['topics'][$t][0] ?? 0) + (int) $correct, ($run['topics'][$t][1] ?? 0) + 1];
+        if ($run['mode'] === 'mock') {
+            $n = $run['worldNumbers'][$worldId] ?? 0;
+            $run['byWorld'][$n] = [($run['byWorld'][$n][0] ?? 0) + (int) $correct, ($run['byWorld'][$n][1] ?? 0) + 1];
+            if (!$correct) {
+                $run['missed'][] = ['prompt' => (string) ($served['view']['prompt'] ?? ''), 'topic' => $t, 'world' => $n,
+                    'answer' => $graded['answerText'], 'why' => (string) $q['explanation'], 'late' => $late];
+            }
+        }
         $run['served'] = null;
 
         $result = [
@@ -176,13 +198,13 @@ final class Challenge
         return ['result' => $result, 'run' => self::publicRun($run), 'question' => $next];
     }
 
-    /** Next audit question in due order, with the student's rating in that question's world. */
-    private static function serveAudit(array &$run, int $userId): array
+    /** Next question from a fixed queue (audit or mock exam), with the student's rating in that question's world. */
+    private static function serveQueued(array &$run, int $userId): array
     {
         $qid = $run['queue'][$run['index']] ?? null;
         $q = $qid === null ? null : Db::one('SELECT * FROM questions WHERE id = ?', [$qid]);
         if ($q === null) {
-            throw new GameError('That review question is no longer available.');
+            throw new GameError('That question is no longer available.');
         }
         $run['rating'] = (int) Db::transaction(fn () => Learning::lockProgress($userId, (int) $q['world_id']))['rating'];
         $run['ratingStart'] ??= $run['rating'];
@@ -192,8 +214,8 @@ final class Challenge
     /** Picks the unasked question rated closest to the student (top 3, random), and remembers its key. */
     private static function serveNext(array &$run, int $userId): array
     {
-        if ($run['mode'] === 'audit') {
-            return self::serveQuestion($run, self::serveAudit($run, $userId));
+        if ($run['mode'] === 'audit' || $run['mode'] === 'mock') {
+            return self::serveQuestion($run, self::serveQueued($run, $userId));
         }
         $where = $run['mode'] === 'practice' ? 'level_id = ?' : 'world_id = ?';
         $pool = Db::all("SELECT * FROM questions WHERE $where AND archived = 0", [$run['mode'] === 'practice' ? $run['levelId'] : $run['worldId']]);
@@ -238,7 +260,20 @@ final class Challenge
         $unlocked = [];
         $newlyMastered = false;
 
-        Db::transaction(function () use ($userId, $run, $pct, $passed, &$unlocked, &$newlyMastered): void {
+        $topics = [];
+        foreach ($run['topics'] as $name => [$right, $asked]) {
+            $topics[] = ['topic' => (string) $name, 'correct' => $right, 'total' => $asked];
+        }
+        usort($topics, fn ($a, $b) => $a['correct'] / $a['total'] <=> $b['correct'] / $b['total']); // weakest first
+
+        Db::transaction(function () use ($userId, $run, $pct, $passed, $timedOut, $topics, &$unlocked, &$newlyMastered): void {
+            if ($run['mode'] === 'mock') {
+                Mock::record($userId, $run, $pct, $timedOut, $topics);
+                $weak = array_values(array_filter($topics, fn ($t) => $t['correct'] / $t['total'] < 0.6));
+                Rules::log($userId, $passed ? 'ok' : 'warn', sprintf('%s: %d%%%s.%s', $run['title'], $pct, $timedOut ? ', time ran out' : '',
+                    $weak ? ' Work on: ' . implode(', ', array_column(array_slice($weak, 0, 3), 'topic')) . '.' : ''));
+                return;
+            }
             if ($run['mode'] === 'audit') {
                 $parts = array_filter([
                     $run['cleared'] ? "{$run['cleared']} cleared for good" : null,
@@ -277,10 +312,11 @@ final class Challenge
         });
         Rules::checkObjective($userId);
 
-        $topics = [];
-        foreach ($run['topics'] as $name => [$right, $asked]) {
-            $topics[] = ['topic' => $name, 'correct' => $right, 'total' => $asked];
+        $byWorld = [];
+        foreach ($run['byWorld'] ?? [] as $n => [$right, $asked]) {
+            $byWorld[] = ['world' => (int) $n, 'correct' => $right, 'total' => $asked];
         }
+        usort($byWorld, fn ($a, $b) => $a['world'] <=> $b['world']);
         return [
             'mode' => $run['mode'], 'title' => $run['title'], 'pct' => $pct, 'passed' => $passed, 'passPct' => $run['passPct'],
             'correct' => $run['correct'], 'total' => $run['total'], 'timedOut' => $timedOut,
@@ -288,6 +324,8 @@ final class Challenge
             'credits' => $run['credits'], 'xp' => $run['xp'], 'topics' => $topics,
             'mastered' => $newlyMastered, 'unlocked' => $unlocked,
             'cleared' => $run['cleared'] ?? 0, 'advanced' => $run['advanced'] ?? 0,
+            'unanswered' => $run['total'] - $run['index'], 'byWorld' => $byWorld, 'missed' => $run['missed'] ?? [],
+            'seconds' => isset($run['startedAt']) ? time() - $run['startedAt'] : null,
         ];
     }
 }

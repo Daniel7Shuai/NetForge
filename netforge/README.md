@@ -14,6 +14,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_defence.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_progress.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_upgrades.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_mock.sql
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
 3. Copy `config/config.example.php` to `config/config.php` and set the DB password if you have one.
@@ -73,6 +74,7 @@ Learning (module 3.0) done: press **L** or click the objective bar.
 - Elo (`src/Learning/Elo.php`): per-world student rating, question ratings, K shrinks with rating, tiers Bronze/Silver/Gold/Platinum. Credits and XP are paid only from rating gains (2 credits and 5 XP per point).
 - **Daily Security Audit** (FR-3.4): every wrong answer goes into `audit_queue`, due after 1 day. In the review (top of Learn, up to 10 per round), a right answer moves it to 3 days, then 7 days, then clears it; a wrong one sends it back to 1 day. Reviews update Elo and pay from rating gains like lessons. The Learn button shows a badge with the number due. Intervals live in `Challenge::AUDIT_NEXT`.
   To demo it without waiting a day: `UPDATE audit_queue SET due_on = CURDATE();`
+- **Mock exams** (FR-3.5): the Mock exam row in Learn. Pick any open worlds and 10, 20 or 30 questions; questions are drawn up front, shared evenly across the worlds, on one clock (1 minute per question). No answers are shown until the end, like a real exam. The result gives the score, a breakdown by topic (weakest first) and by world against a 70% exam-ready line, and every miss with its answer and explanation. Answers still update Elo, earn XP and feed the Daily Security Audit. Results are kept in `mock_exams` and listed as past attempts. Settings are constants in `src/Learning/Mock.php`; the run is played by `Challenge` in mode `mock`.
 - Content seeded: World 0 (3 levels, 18 questions), World 2 (Binary Blitz), World 5 (Subnet Calculator). Add more rows to `levels` and `questions`; the payload shapes are documented in `src/Learning/Grader.php`.
 - Unit tests: `php tests/EloTest.php` (26 hand-calculated cases for Elo and subnetting).
 
@@ -134,6 +136,6 @@ Cyber attack and defence (module 5.0) done:
 - **Daily learning streak** (FR-4.5): days in a row with at least one correct answer; shown in the top bar (lit once you’ve learned today).
 - **15 badges** (FR-4.5), each checked against what the student actually did (`src/Progress/Badges.php`), awarded whenever the game state loads, with a pop-up and a console line. Browse them in Social (**G**) → Badges; share them with the guild (FR-6.4).
 
-Not built yet: admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4). Not started: mock exams across worlds (FR-3.5).
+Not built yet: admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4).
 
 The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.
