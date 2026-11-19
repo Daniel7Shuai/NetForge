@@ -163,3 +163,24 @@ INSERT INTO questions (world_id, level_id, type, prompt, payload, answer, explan
 (6, 5, 'subnet', 'Network address, /24 to /30', '{"mode":"network","minPrefix":24,"maxPrefix":30}',   NULL, 'Find the block size (256 − last mask octet) and round the host down to a multiple of it.', 'Subnetting', 1050),
 (6, 5, 'subnet', 'Broadcast address, /24 to /30','{"mode":"broadcast","minPrefix":24,"maxPrefix":30}', NULL, 'The broadcast is the next network address minus one.', 'Subnetting', 1150),
 (6, 5, 'subnet', 'Network address, /16 to /23', '{"mode":"network","minPrefix":16,"maxPrefix":23}',   NULL, 'Here the interesting octet is the third one: find its block size and round down.', 'Subnetting', 1300);
+
+-- The OSI and TCP/IP models (Network Fundamentals). Created in old World 1; schema_content.sql moves it into the Garage.
+INSERT INTO levels (id, world_id, sort_order, title, lesson, questions_per_run, pass_pct) VALUES
+(6, 2, 1, 'The OSI model', 'Networks are easier to understand in **layers**. Each layer does one job and only talks to the layers directly above and below it.\n\nThe **OSI model** has seven layers. From the bottom:\n\n1. **Physical**: bits on the wire, light or radio.\n2. **Data link**: frames between devices on the same network, using **MAC addresses**. Switches work here.\n3. **Network**: packets between networks, using **IP addresses**. Routers work here.\n4. **Transport**: segments between applications, using **port numbers** (TCP and UDP).\n5. **Session**, 6. **Presentation**, 7. **Application**: what the user''s program sees.\n\nThe **TCP/IP model** is the one the internet actually uses. It folds those seven into four: Network access (OSI 1 and 2), Internet (3), Transport (4) and Application (5 to 7).\n\nAs data goes down the stack, each layer wraps it in its own header. This is **encapsulation**, and the result has a different name at each layer, its **PDU**: a **segment** at Transport, a **packet** at Network, a **frame** at Data link, and **bits** at Physical. The receiver unwraps it on the way back up.', 4, 70);
+
+INSERT INTO questions (world_id, level_id, type, prompt, payload, answer, explanation, topic, rating) VALUES
+(2, 6, 'mcq', 'At which OSI layer do routers work?',
+ '{"options":["Layer 3","Layer 2","Layer 1","Layer 7"]}', '{"correct":0}',
+ 'Routers forward packets between networks by IP address, which is Layer 3 (Network). Switches work at Layer 2.', 'OSI model', 850),
+(2, 6, 'mcq', 'Which layer adds MAC addresses?',
+ '{"options":["Data link","Network","Transport"]}', '{"correct":0}',
+ 'The data link layer (Layer 2) builds frames with source and destination MAC addresses. The network layer adds IP addresses.', 'OSI model', 900),
+(2, 6, 'ordering', 'Order the layers from 1 to 4.',
+ '{"items":["Physical","Data link","Network","Transport"]}', NULL,
+ 'From the bottom: Physical (1), Data link (2), Network (3), Transport (4).', 'OSI model', 900),
+(2, 6, 'matching', 'Match each layer to its PDU.',
+ '{"left":["Transport","Network","Data link"],"right":["Segment","Packet","Frame"]}', NULL,
+ 'Each layer names its unit of data: segments at Transport, packets at Network, frames at Data link.', 'PDUs', 1000),
+(2, 6, 'fill', 'Adding headers as data moves down the stack is called ___.',
+ '{"text":"Adding headers as data moves down the stack is called ___."}', '{"blanks":[["encapsulation"]]}',
+ 'Each layer wraps the data in its own header on the way down; the receiver removes them on the way up (de-encapsulation).', 'Encapsulation', 950);

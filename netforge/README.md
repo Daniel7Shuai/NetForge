@@ -27,7 +27,8 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    ```
    C:\xampp\php\php.exe -S 127.0.0.1:8080 -t public
    ```
-5. Open http://127.0.0.1:8080 and create an account (public sign-up makes students).
+   **Or with XAMPP's Apache:** copy the project folder into `C:\xampp\htdocs` (for example as `htdocs\NetForge`), start Apache in the XAMPP Control Panel and open http://localhost/NetForge/netforge/public/. The `.htaccess` files in `config/`, `database/`, `src/`, `storage/`, `tools/` and `tests/` block those folders from the browser, so only `public/` is reachable.
+5. Open http://127.0.0.1:8080 (or the Apache address) and create an account (public sign-up makes students).
 6. Create a lecturer (or admin) from the command line:
    ```
    C:\xampp\php\php.exe tools/create-user.php <username> <password> lecturer [email]
@@ -41,7 +42,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
 - Serve it over HTTPS. The session cookie is marked secure automatically when HTTPS is on.
 - **Set `app.base_url`.** Password reset emails refuse to send without it, because a link built from the request could be pointed at another site.
 - Create the first admin with `tools/create-user.php` and a strong password. Don't run `tools/seed-demo-data.php` there.
-- Keep `config/config.php` and `storage/` out of the web root's reach: only `public/` should be served.
+- Serve only `public/`: point the web server's document root at it. If you can't, keep the `.htaccess` files (Apache) so `config/`, `storage/` and the rest stay blocked.
 
 ## Security
 

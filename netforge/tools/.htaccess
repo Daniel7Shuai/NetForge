@@ -1,0 +1,2 @@
+# Only public/ should be reachable from a browser. Apache (XAMPP) reads this file.
+Require all denied

@@ -8,7 +8,8 @@ desktop.ini
 .DS_Store
 
 # emails saved by the 'log' mail transport (password reset links)
-netforge/storage/
+netforge/storage/*
+!netforge/storage/.htaccess
 
 # Local dev account passwords: never commit
 netforge/database/dev-test-account.txt
