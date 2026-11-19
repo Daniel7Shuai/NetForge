@@ -13,6 +13,7 @@ require __DIR__ . '/../src/views/head.php';
 ?>
 <body>
 <header class="top">
+  <div class="top-left">
   <div class="brand"><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</div>
   <div class="place-wrap">
     <button type="button" class="place" id="place-btn" title="Where you are. Click to travel." aria-expanded="false" aria-controls="places">
@@ -20,20 +21,20 @@ require __DIR__ . '/../src/views/head.php';
     </button>
     <div class="places" id="places" hidden></div>
   </div>
-  <button class="objective" title="Current objective. Opens Learn." data-open-learn>
-    <i class="ti ti-target-arrow" aria-hidden="true"></i>
-    <span class="what" id="obj-title">Loading your shift…</span>
-    <span class="steps" id="obj-steps"></span>
-  </button>
-  <button class="security g-none" id="security" title="Security rating. Click for attack history."><i class="ti ti-shield-half" aria-hidden="true"></i><span class="grade mono">–</span><span class="pct">no attacks yet</span></button>
-  <div class="stat streak mono" id="streak" title="Daily learning streak"><i class="ti ti-flame" aria-hidden="true"></i><span>0</span></div>
-  <div class="stat income mono" id="income" title="Passive income from devices online"><i class="ti ti-trending-up" aria-hidden="true"></i><span>+0/h</span></div>
-  <div class="stat money mono" title="Credits"><i class="ti ti-coins" aria-hidden="true"></i><span id="credits">0</span></div>
-  <div class="stat xp" title="Level and XP">
+  </div>
+  <div class="wallet" id="wallet" data-tip="Your credits">
+    <i class="ti ti-coins" aria-hidden="true"></i>
+    <span class="amount mono" id="credits">0</span>
+    <span class="rate mono" id="income"><i class="ti ti-trending-up" aria-hidden="true"></i><span>+0/s</span></span>
+  </div>
+  <div class="top-right">
+  <button class="security g-none" id="security" title="Security rating from your recent cyber attacks. Click for the attack history."><i class="ti ti-shield-half" aria-hidden="true"></i><span class="grade mono">–</span><span class="pct">no attacks yet</span></button>
+  <div class="stat streak mono" id="streak" title="Daily learning streak: days in a row you’ve answered a question correctly."><i class="ti ti-flame" aria-hidden="true"></i><span>0</span></div>
+  <div class="stat xp" title="Your level and XP. Answer questions in Learn (L) for XP; each level unlocks more gear in the shop.">
     <span id="level">Lv 1</span><span class="bar"><span id="xp-fill"></span></span><small class="mono" id="xp-text">0/1000</small>
   </div>
   <div class="menu-wrap">
-    <button class="iconbtn" id="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><i class="ti ti-menu-2"></i></button>
+    <button class="iconbtn" id="menu-btn" aria-label="Menu: profile and sign out" aria-expanded="false" aria-controls="menu"><i class="ti ti-menu-2"></i></button>
     <div class="menu" id="menu" hidden>
       <p class="who mono" id="who"></p>
       <a href="profile.php"><i class="ti ti-user-circle" aria-hidden="true"></i>Profile</a>
@@ -43,31 +44,38 @@ require __DIR__ . '/../src/views/head.php';
       </form>
     </div>
   </div>
+  </div>
 </header>
+<button class="objective" title="Your current objective. Click to open Learn." data-open-learn>
+  <i class="ti ti-target-arrow" aria-hidden="true"></i>
+  <span class="what" id="obj-title">Loading your shift…</span>
+  <span class="steps" id="obj-steps"></span>
+</button>
 
 <div class="main">
   <nav class="rail" aria-label="Tools">
-    <button class="tool on" data-tool="select" aria-label="Select and move (V)"><i class="ti ti-pointer"></i><kbd>V</kbd></button>
-    <button class="tool" data-tool="cable" aria-label="Cable (C)"><i class="ti ti-plug-connected"></i><kbd>C</kbd></button>
-    <button class="tool" data-tool="inspect" aria-label="Inspect (X)"><i class="ti ti-zoom-scan"></i><kbd>X</kbd></button>
-    <button class="tool" data-tool="remove" aria-label="Remove (Del)"><i class="ti ti-trash"></i></button>
+    <button class="tool on" data-tool="select" aria-label="Select and move (V)" data-tip="Select (V): click a device to see its ports, upgrade it or move it. Pick an item in your inventory, then click a glowing spot to place it."><i class="ti ti-pointer"></i><kbd>V</kbd></button>
+    <button class="tool" data-tool="cable" aria-label="Cable (C)" data-tip="Cable (C): choose a cable type at the bottom of the map, click a device and a port, then the second device and its port."><i class="ti ti-plug-connected"></i><kbd>C</kbd></button>
+    <button class="tool" data-tool="inspect" aria-label="Inspect (X)" data-tip="Inspect (X): click a device to see every port, its role and what it’s plugged into."><i class="ti ti-zoom-scan"></i><kbd>X</kbd></button>
+    <button class="tool" data-tool="remove" aria-label="Remove (Del)" data-tip="Remove (Del): click a device to unplug its cables (they go back to your inventory) or pick it up."><i class="ti ti-trash"></i></button>
     <span class="sep"></span>
-    <button class="tool learn-tool" data-open-learn aria-label="Learn (L)"><i class="ti ti-book-2"></i><kbd>L</kbd></button>
-    <button class="tool social-tool" data-open-social aria-label="Guild and friends (G)"><i class="ti ti-users-group"></i><kbd>G</kbd></button>
-    <button class="tool on" data-tab="inv" aria-label="Inventory (I)"><i class="ti ti-backpack"></i><kbd>I</kbd></button>
-    <button class="tool" data-tab="shop" aria-label="Shop (B)"><i class="ti ti-building-store"></i><kbd>B</kbd></button>
+    <button class="tool learn-tool" data-open-learn aria-label="Learn (L)" data-tip="Learn (L): lessons, challenges and exams. Correct answers earn XP, and your level unlocks new gear."><i class="ti ti-book-2"></i><kbd>L</kbd></button>
+    <button class="tool social-tool" data-open-social aria-label="Guild and friends (G)" data-tip="Social (G): your guild and its weekly raid, leaderboards, friends and badges."><i class="ti ti-users-group"></i><kbd>G</kbd></button>
+    <button class="tool on" data-tab="inv" aria-label="Inventory (I)" data-tip="Inventory (I): the gear you own. Click a device, or drag it onto a glowing spot on the map."><i class="ti ti-backpack"></i><kbd>I</kbd></button>
+    <button class="tool" data-tab="shop" aria-label="Shop (B)" data-tip="Shop (B): spend credits on gear. Your level decides what’s for sale."><i class="ti ti-building-store"></i><kbd>B</kbd></button>
   </nav>
 
   <section class="stage grid-floor">
     <div class="map" id="map">
       <div id="game"></div>
       <div class="cablebar" id="cablebar" role="radiogroup" aria-label="Cable type" hidden>
-        <button class="on" role="radio" aria-checked="true" data-cable="copper"><span class="sw sw-copper"></span>Copper</button>
-        <button role="radio" aria-checked="false" data-cable="crossover"><span class="sw sw-crossover"></span>Crossover</button>
-        <button role="radio" aria-checked="false" data-cable="fiber"><span class="sw sw-fiber"></span>Fiber</button>
-        <button role="radio" aria-checked="false" data-cable="console"><span class="sw sw-console"></span>Console</button>
+        <button class="on" role="radio" aria-checked="true" data-cable="copper" data-tip="Copper (straight-through): joins unlike devices, like a laptop or router to a switch, or a router to the ISP box."><span class="sw sw-copper"></span>Copper</button>
+        <button role="radio" aria-checked="false" data-cable="crossover" data-tip="Crossover: joins like devices, like switch to switch or PC to PC."><span class="sw sw-crossover"></span>Crossover</button>
+        <button role="radio" aria-checked="false" data-cable="fiber" data-tip="Fiber: fast links between fibre ports, like the datacentre’s ISP panel and its racks."><span class="sw sw-fiber"></span>Fiber</button>
+        <button role="radio" aria-checked="false" data-cable="console" data-tip="Console: plugs into a device’s console port to manage it. It carries no network traffic."><span class="sw sw-console"></span>Console</button>
       </div>
       <div id="tags"></div>
+      <div id="coins" aria-hidden="true"></div>
       <div class="picker" id="picker" role="dialog" aria-label="Ports" hidden></div>
     </div>
   </section>

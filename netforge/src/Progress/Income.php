@@ -7,7 +7,7 @@ use NetForge\Db;
 use NetForge\Rules;
 
 /**
- * Passive income (FR-4.4). A device earns its item type's income_per_hour only while
+ * Passive income (FR-4.4). A device earns its item type's income_per_sec (credits per second) only while
  * it is online: joined to the ISP box by a chain of working (up) links. So income
  * rewards a network that actually works, not just equipment on shelves.
  * Income builds up for at most income_cap_hours while the student is away.
@@ -21,7 +21,7 @@ final class Income
     public static function online(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_hour, t.shield_pct FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ?', [$userId]) as $d) {
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_sec, t.shield_pct FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
         }
         $adj = [];
@@ -47,7 +47,7 @@ final class Income
     }
 
     /** Enough credits for a pack of copper, so the laptop can be linked straight to the ISP box. */
-    public const RESCUE_CREDITS = 40;
+    public const RESCUE_CREDITS = 300;
 
     /**
      * Safety net: money only comes from devices online, so a player with nothing online,
@@ -75,14 +75,27 @@ final class Income
         return min(75, $pct);
     }
 
-    /** @return array{rate:int, devices:list<string>} */
+    /** What one online device earns per second: its rate times its tier bonus. */
+    public static function deviceRate(array $d): float
+    {
+        return (int) $d['income_per_sec'] * Rules::tierIncome((int) $d['tier']);
+    }
+
+    /**
+     * Credits per second from everything online, with each earning device's share
+     * (so the map can show coins popping out of the right ones).
+     * @return array{perSec:float, devices:list<string>, byDevice:array<int,float>}
+     */
     public static function summary(int $userId): array
     {
         $online = self::online($userId);
-        return [
-            'rate' => (int) round(array_sum(array_map(fn ($d) => (int) $d['income_per_hour'] * Rules::tierIncome((int) $d['tier']), $online))),
-            'devices' => array_column($online, 'label'),
-        ];
+        $by = [];
+        foreach ($online as $d) {
+            if (self::deviceRate($d) > 0) {
+                $by[(int) $d['id']] = self::deviceRate($d);
+            }
+        }
+        return ['perSec' => array_sum($by), 'devices' => array_column($online, 'label'), 'byDevice' => $by];
     }
 
     /**
@@ -101,28 +114,28 @@ final class Income
                 Db::exec('UPDATE users SET income_at = NOW() WHERE id = ?', [$userId]);
                 return 0;
             }
-            $rate = self::summary($userId)['rate'];
+            $rate = self::summary($userId)['perSec'];
             $secs = max(0, (int) $u['secs']);
             $capSecs = max(1, Db::configInt('income_cap_hours', 8)) * 3600;
-            if ($rate === 0) {
+            if ($rate <= 0) {
                 Db::exec('UPDATE users SET income_at = NOW() WHERE id = ?', [$userId]);
                 return self::rescue($userId);
             }
             $counted = min($secs, $capSecs);
-            $earned = intdiv($rate * $counted, 3600);
+            $earned = (int) floor($rate * $counted);
             if ($earned === 0) {
-                return 0; // keep income_at so part-hours keep building
+                return 0; // keep income_at so part-seconds keep building
             }
             Db::exec('UPDATE users SET credits = credits + ? WHERE id = ?', [$earned, $userId]);
             if ($secs > $capSecs) {
                 Db::exec('UPDATE users SET income_at = NOW() WHERE id = ?', [$userId]);
             } else {
                 // move the clock forward only by the time actually paid for, so fractions aren't lost
-                Db::exec('UPDATE users SET income_at = income_at + INTERVAL ? SECOND WHERE id = ?', [intdiv($earned * 3600, $rate), $userId]);
+                Db::exec('UPDATE users SET income_at = income_at + INTERVAL ? SECOND WHERE id = ?', [(int) floor($earned / $rate), $userId]);
             }
             if ($secs >= 900) { // only mention it after time away, not every few seconds of play
-                Rules::log($userId, 'ok', sprintf('Your network earned %d credits while you were away (%d/h)%s.',
-                    $earned, $rate, $secs > $capSecs ? ', the most it can save up' : ''));
+                Rules::log($userId, 'ok', sprintf('Your network earned %s credits while you were away (%s/s)%s.',
+                    number_format($earned), rtrim(rtrim(number_format($rate, 1), '0'), '.'), $secs > $capSecs ? ', the most it can save up' : ''));
             }
             return $earned;
         });

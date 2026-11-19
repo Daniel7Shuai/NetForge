@@ -6,7 +6,9 @@ import { TILE, COLS, ROWS } from './game/layout.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const fmt = (n) => Number(n).toLocaleString('en-US');
+import { fmt, rate } from './money.js';
+/** A control's explanation, whether it's still in title or already moved to data-tip by the tooltips. */
+const tipOf = (el) => el.dataset.tip || el.title || '';
 
 function icon(item) {
   const c = document.createElement('canvas');
@@ -48,7 +50,7 @@ export function mountHud(store) {
   places.addEventListener('click', (e) => {
     const b = e.target.closest('[data-go]');
     if (!b) return;
-    if (b.getAttribute('aria-disabled') === 'true') { if (b.title) store.log('warn', b.title); return; }
+    if (b.getAttribute('aria-disabled') === 'true') { if (tipOf(b)) store.log('warn', tipOf(b)); return; }
     closePlaces();
     store.travel(b.dataset.go);
   });
@@ -74,7 +76,7 @@ export function mountHud(store) {
   $('pane-shop').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-buy]');
     if (!btn) return;
-    if (btn.getAttribute('aria-disabled') === 'true') { store.log('warn', btn.title); return; }
+    if (btn.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(btn)); return; }
     store.buy(Number(btn.dataset.buy));
   });
 
@@ -87,7 +89,7 @@ export function mountHud(store) {
     else if (b.dataset.pickup) store.pickUp(Number(b.dataset.pickup));
     else if (b.dataset.move) store.startMove(Number(b.dataset.move));
     else if (b.dataset.upgrade) {
-      if (b.getAttribute('aria-disabled') === 'true') { store.log('warn', b.title); return; }
+      if (b.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(b)); return; }
       store.upgrade(Number(b.dataset.upgrade));
     }
     else if (b.dataset.closePicker) store.set({ picker: null });
@@ -129,7 +131,6 @@ export function mountHud(store) {
   function render(s) {
     if (!s.user) return;
     /* top bar */
-    $('credits').textContent = fmt(s.user.credits);
     $('level').textContent = `Lv ${s.user.level}`;
     const into = s.user.xp % s.user.xpPerLevel;
     $('xp-fill').style.width = `${(into / s.user.xpPerLevel) * 100}%`;
@@ -138,14 +139,10 @@ export function mountHud(store) {
     $('loc-name').textContent = s.user.locationName;
     if (s.progress?.newBadges?.length) showBadges(s.progress.newBadges);
     if (s.progress) {
-      const st = s.progress.streak, inc = s.progress.income;
+      const st = s.progress.streak;
       $('streak').querySelector('span').textContent = st.current;
       $('streak').classList.toggle('lit', st.today);
       $('streak').title = `Learning streak: ${st.current} day${st.current === 1 ? '' : 's'} (best ${st.best}).${st.today ? '' : ' Answer a question today to keep it.'}`;
-      $('income').querySelector('span').textContent = `+${inc.rate}/h`;
-      $('income').title = inc.devices.length
-        ? `Renting out your network: ${inc.devices.join(', ')} online, ${inc.rate} credits an hour.`
-        : 'No devices online, so nothing to rent out. Link them to the ISP box to start earning.';
     }
     const learnBtn = document.querySelector('.learn-tool');
     let badge = learnBtn.querySelector('.badge');
@@ -215,6 +212,7 @@ export function mountHud(store) {
         b.dataset.category = item.category;
         b.draggable = item.category === 'device';
         b.setAttribute('aria-label', `${item.name}, ${item.quantity}`);
+        b.dataset.tip = `${item.name} ×${item.quantity}. ${item.description || ''} ${item.category === 'device' ? 'Click it, then a glowing spot on the map (or drag it there).' : 'Use it with the cable tool (C).'}`;
         b.setAttribute('aria-pressed', String(s.selectedItem === item.code));
         b.append(icon(item));
         b.insertAdjacentHTML('beforeend', `<span class="n">${item.quantity}</span>`);
@@ -242,10 +240,13 @@ export function mountHud(store) {
       const needLevel = row.unlockLevel > s.user.level;
       const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock` : `Master World ${row.unlockWorld} to unlock`;
       const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master World ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
-      div.insertAdjacentHTML('beforeend', `<div><strong>${esc(row.name)}${qty}</strong><small>${row.locked ? lockText : esc(row.description || '')}</small></div>`
+      const have = store.liveCredits ? store.liveCredits() : s.user.credits;
+      const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.` : '';
+      const buyTip = `Buy the ${row.name}${qty} for ${fmt(row.price)} credits.${earns}${have < row.price ? ` You need ${fmt(row.price - have)} more: your network keeps earning while you play.` : ''}`;
+      div.insertAdjacentHTML('beforeend', `<div><strong>${esc(row.name)}${qty}${row.earns ? ` <span class="earns mono">+${rate(row.earns)}</span>` : ''}</strong><small>${row.locked ? lockText : esc(row.description || '')}</small></div>`
         + (row.locked
-          ? `<button class="buy" aria-disabled="true" title="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `W${row.unlockWorld}`}</button>`
-          : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)} for ${row.price} credits"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(row.price)}</button>`));
+          ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `W${row.unlockWorld}`}</button>`
+          : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)} for ${fmt(row.price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(row.price)}</button>`));
       pane.append(div);
     }
   }
@@ -313,7 +314,8 @@ export function mountHud(store) {
         else if (draft && draft.from.deviceId === dev.id) why = 'same device';
         else if (!(CABLE_FITS[s.cable] || []).includes(p.kind)) why = `needs ${p.kind === 'copper' ? 'a copper' : `a ${p.kind}`} cable`;
         const led = c ? c.status : why ? 'off' : 'free';
-        return `<button class="port ${led}" data-port="${esc(p.name)}" ${why ? 'disabled' : ''}>
+        const portTip = why ? `${p.name} can’t take this cable: ${why.replace('→', 'already plugged into')}.` : `Plug the ${s.cable} cable into ${p.name} (${role(p)} port).`;
+        return `<button class="port ${led}" data-port="${esc(p.name)}" data-tip="${esc(portTip)}" ${why ? 'disabled' : ''}>
           <span class="led"></span><span class="pname">${esc(p.name)}</span><span class="to">${esc(why || role(p))}</span></button>`;
       }).join('');
       foot = `${esc(s.cable)} cable, ${store.cableCount(s.cable)} left. Esc to cancel.`;
@@ -323,11 +325,11 @@ export function mountHud(store) {
       rows = plugged.map((p) => {
         const c = used.get(p.name);
         return `<div class="port ${c.status}"><span class="led"></span><span class="pname">${esc(p.name)}</span>
-          <span class="to">→ ${esc(peer(c))}</span><button class="mini-btn" data-unplug="${c.id}">Unplug</button></div>`;
+          <span class="to">→ ${esc(peer(c))}</span><button class="mini-btn" data-unplug="${c.id}" data-tip="Unplug this cable. It goes back to your inventory, and the link stops earning.">Unplug</button></div>`;
       }).join('');
       if (!plugged.length) {
         rows = dev.fixed ? '<p class="note">Part of the building. It stays where it is.</p>'
-          : `<p class="note">Nothing plugged in.</p><button class="wide" data-pickup="${dev.id}"><i class="ti ti-hand-grab" aria-hidden="true"></i>Pick up ${esc(dev.label)}</button>`;
+          : `<p class="note">Nothing plugged in.</p><button class="wide" data-pickup="${dev.id}" data-tip="Put ${esc(dev.label)} back in your inventory, to place it somewhere else later."><i class="ti ti-hand-grab" aria-hidden="true"></i>Pick up ${esc(dev.label)}</button>`;
       }
       foot = 'Esc to close';
     } else {
@@ -345,27 +347,45 @@ export function mountHud(store) {
     el.hidden = false;
   }
 
-  /** "Tier 2 of 3" plus what the tier gives: more income, or a bigger firewall shield. */
+  const tierMult = (t) => 1 + 0.5 * (t - 1);
+
+  /** "Tier 2 of 3" plus what the device does for you: what it earns right now, or its firewall shield. */
   function tierLine(dev) {
-    const perk = dev.shield ? `shield ${dev.shield}%` : dev.tier > 1 ? `income x${1 + 0.5 * (dev.tier - 1)}` : 'base income';
-    const tip = dev.shield ? `While online, blocks ${dev.shield}% of the credits a breach would take.` : 'Higher tiers earn more while online.';
-    return `<p class="tierline" title="${esc(tip)}"><span>Tier <b>${dev.tier}</b> of ${dev.maxTier}</span><span>${esc(perk)}</span></p>`;
+    let perk, tip;
+    if (dev.shield) {
+      perk = `shield ${dev.shield}%`;
+      tip = `While it’s online, this firewall blocks ${dev.shield}% of the credits a breach would take.`;
+    } else if (dev.rate > 0) {
+      perk = dev.earning > 0 ? `earning ${rate(dev.earning)}` : `${rate(dev.rate)} when online`;
+      tip = dev.earning > 0
+        ? `${dev.label} is online and earns ${rate(dev.earning)}. Upgrades raise that: x1.5 at tier 2, x2 at tier 3.`
+        : `${dev.label} earns ${rate(dev.rate)} once it’s online: cable it to the ISP box, directly or through a router.`;
+    } else {
+      perk = 'no income';
+      tip = 'This device doesn’t earn credits itself, but it can connect others that do.';
+    }
+    return `<p class="tierline ${dev.earning > 0 ? 'on' : ''}" data-tip="${esc(tip)}"><span>Tier <b>${dev.tier}</b> of ${dev.maxTier}</span><span>${esc(perk)}</span></p>`;
   }
 
   function deviceActions(s, dev) {
     const up = dev.upgrade;
+    const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     let upBtn;
     if (!up) {
-      upBtn = '<button class="act" aria-disabled="true" title="Already at its top tier."><i class="ti ti-check" aria-hidden="true"></i>Top tier</button>';
+      upBtn = '<button class="act" aria-disabled="true" data-tip="Already at its top tier."><i class="ti ti-check" aria-hidden="true"></i>Top tier</button>';
     } else {
+      // what the upgrade buys: more income, or a bigger shield
+      const gain = dev.shield
+        ? `shield ${dev.shield}% → ${Math.min(75, (dev.shield / dev.tier) * up.tier)}%`
+        : dev.rate > 0 ? `earns ${rate(dev.rate)} → ${rate((dev.rate / tierMult(dev.tier)) * tierMult(up.tier))}` : 'a higher tier';
       const why = s.user.level < up.level
-        ? `Reach level ${up.level} to upgrade to tier ${up.tier}. Answer questions in Learn (L) for XP.`
-        : s.user.credits < up.cost ? `Upgrading to tier ${up.tier} costs ${fmt(up.cost)} credits. You need ${fmt(up.cost - s.user.credits)} more.` : '';
+        ? `Reach level ${up.level} to upgrade to tier ${up.tier} (${gain}). Answer questions in Learn (L) for XP.`
+        : have < up.cost ? `Upgrading to tier ${up.tier} (${gain}) costs ${fmt(up.cost)} credits. You need ${fmt(up.cost - have)} more.` : '';
       upBtn = why
-        ? `<button class="act" data-upgrade="${dev.id}" aria-disabled="true" title="${esc(why)}"><i class="ti ti-lock" aria-hidden="true"></i>${s.user.level < up.level ? `Lv ${up.level}` : fmt(up.cost)}</button>`
-        : `<button class="act up" data-upgrade="${dev.id}" aria-label="Upgrade to tier ${up.tier} for ${up.cost} credits"><i class="ti ti-arrow-big-up-lines" aria-hidden="true"></i>T${up.tier}, ${fmt(up.cost)}</button>`;
+        ? `<button class="act" data-upgrade="${dev.id}" aria-disabled="true" data-tip="${esc(why)}"><i class="ti ti-lock" aria-hidden="true"></i>${s.user.level < up.level ? `Lv ${up.level}` : fmt(up.cost)}</button>`
+        : `<button class="act up" data-upgrade="${dev.id}" aria-label="Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits" data-tip="${esc(`Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits: ${gain}.`)}"><i class="ti ti-arrow-big-up-lines" aria-hidden="true"></i>T${up.tier}, ${fmt(up.cost)}</button>`;
     }
-    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}"><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>`;
+    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>`;
   }
 
   function renderPlaces(s) {

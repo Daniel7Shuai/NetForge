@@ -211,7 +211,7 @@ final class Rules
             $credits = (int) $me['credits'];
             $price = (int) $row['price'];
             if ($credits < $price) {
-                throw new GameError(sprintf('You need %d more credits. Your online devices earn them over time.', $price - $credits));
+                throw new GameError(sprintf('You need %s more credits. Your online devices earn them every second.', number_format($price - $credits)));
             }
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$price, $userId]);
             Db::exec(
@@ -220,7 +220,7 @@ final class Rules
                 [$userId, $row['item_code'], (int) $row['quantity']]
             );
             $name = $row['name'] . ((int) $row['quantity'] > 1 ? ' ×' . $row['quantity'] : '');
-            self::log($userId, 'ok', sprintf('Bought %s for %d credits.', $name, $price));
+            self::log($userId, 'ok', sprintf('Bought %s for %s credits.', $name, number_format($price)));
             return $name;
         });
     }
@@ -305,7 +305,7 @@ final class Rules
             return null;
         }
         $shop = Db::one('SELECT price, unlock_level FROM shop_items WHERE item_code = ? ORDER BY quantity LIMIT 1', [$itemCode]);
-        $price = $shop ? (int) $shop['price'] : 250;   // the laptop isn't sold; treat it as a 250-credit device
+        $price = $shop ? (int) $shop['price'] : 1000;  // the laptop isn't sold; price its upgrades like a 1,000-credit device
         $level = $shop ? (int) $shop['unlock_level'] : 1;
         return ['tier' => $tier + 1, 'cost' => (int) round($price * 0.6 * $tier), 'level' => $level + 2 * $tier];
     }
@@ -336,11 +336,11 @@ final class Rules
                 throw new GameError(sprintf('Reach level %d to upgrade %s to tier %d. Answer questions in Learn for XP.', $up['level'], $d['label'], $up['tier']));
             }
             if ((int) $me['credits'] < $up['cost']) {
-                throw new GameError(sprintf('You need %d more credits to upgrade %s.', $up['cost'] - (int) $me['credits'], $d['label']));
+                throw new GameError(sprintf('You need %s more credits to upgrade %s.', number_format($up['cost'] - (int) $me['credits']), $d['label']));
             }
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$up['cost'], $userId]);
             Db::exec('UPDATE devices SET tier = ? WHERE id = ?', [$up['tier'], $deviceId]);
-            $msg = sprintf('Upgraded %s to tier %d for %d credits.', $d['label'], $up['tier'], $up['cost']);
+            $msg = sprintf('Upgraded %s to tier %d for %s credits.', $d['label'], $up['tier'], number_format($up['cost']));
             self::log($userId, 'ok', $msg);
             return $msg;
         });
@@ -419,12 +419,12 @@ final class Rules
                     throw new GameError(sprintf('Reach level %d to lease the %s.', $l['unlockLevel'], strtolower($l['name'])));
                 }
                 if ((int) $u['credits'] < $cost) {
-                    throw new GameError(sprintf('Leasing the %s costs %d credits. You need %d more.', strtolower($l['name']), $cost, $cost - (int) $u['credits']));
+                    throw new GameError(sprintf('Leasing the %s costs %s credits. You need %s more.', strtolower($l['name']), number_format($cost), number_format($cost - (int) $u['credits'])));
                 }
                 Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$cost, $userId]);
                 Db::exec('INSERT INTO user_locations (user_id, location) VALUES (?, ?)', [$userId, $code]);
                 Starter::placeFixtures($userId, $code);
-                $msg = sprintf('You leased the %s for %d credits. Wire its ISP connection to start earning here.', strtolower($l['name']), $cost);
+                $msg = sprintf('You leased the %s for %s credits. Wire its ISP connection to start earning here.', strtolower($l['name']), number_format($cost));
             }
             Db::exec('UPDATE users SET location = ?, pos_x = ?, pos_y = ? WHERE id = ?', [$code, $l['spawn']['x'], $l['spawn']['y'], $userId]);
             self::log($userId, 'ok', $msg);
@@ -470,7 +470,7 @@ final class Rules
             Db::exec('UPDATE users SET credits = credits + ? WHERE id = ?', [$o['reward']['credits'], $userId]);
             self::addXp($userId, $o['reward']['xp']);
             $gains = array_filter([
-                $o['reward']['credits'] ? sprintf('+%d credits', $o['reward']['credits']) : null,
+                $o['reward']['credits'] ? sprintf('+%s credits', number_format($o['reward']['credits'])) : null,
                 $o['reward']['xp'] ? sprintf('+%d XP', $o['reward']['xp']) : null,
             ]);
             self::log($userId, 'ok', sprintf('Objective done: %s.%s', $o['title'], $gains ? ' ' . implode(', ', $gains) . '.' : ''));

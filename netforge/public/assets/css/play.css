@@ -1,7 +1,30 @@
-body { display: grid; grid-template-rows: 56px minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); height: 100vh; overflow: hidden; }
+body { display: grid; grid-template-rows: 60px auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); height: 100vh; overflow: hidden; }
 
 /* top bar */
-.top { display: flex; align-items: center; gap: 20px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--grid); }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--grid); }
+.top-left, .top-right { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.top-right { justify-content: flex-end; }
+
+/* the wallet: the middle of the top bar, so earnings are always in view */
+.wallet { display: flex; align-items: center; gap: 12px; padding: 6px 18px 6px 14px; border: 1px solid rgba(255, 180, 61, .35); border-radius: 999px; background: linear-gradient(180deg, rgba(255, 180, 61, .08), rgba(255, 180, 61, .02)); }
+.wallet > i { font-size: 24px; color: var(--amber); }
+.wallet .amount { font-size: 24px; font-weight: 500; color: var(--amber); letter-spacing: -.01em; font-variant-numeric: tabular-nums; min-width: 6ch; text-align: right; }
+.wallet .rate { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--lime); padding-left: 12px; border-left: 1px solid rgba(255, 180, 61, .25); white-space: nowrap; }
+.wallet .rate i { font-size: 16px; }
+.wallet .rate.idle { color: var(--ink-dim); }
+
+/* coins popping out of earning devices */
+#coins { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+.coin-pop { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 4px; padding: 2px 8px 2px 5px; font: 700 14px var(--mono); color: #ffd27a; background: rgba(6, 10, 18, .82); border: 1px solid rgba(255, 180, 61, .7); border-radius: 999px; box-shadow: 0 0 12px rgba(255, 180, 61, .35); white-space: nowrap; animation: coin-rise 1.8s cubic-bezier(.16, 1, .3, 1) forwards; }
+.coin-pop i { font-size: 16px; color: var(--amber); }
+.coin-pop.still { animation: coin-fade 1.4s ease forwards; }
+@keyframes coin-rise {
+  0%   { opacity: 0; transform: translate(-50%, -60%) scale(.7); }
+  15%  { opacity: 1; transform: translate(-50%, -110%) scale(1.08); }
+  30%  { transform: translate(-50%, -125%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -260%); }
+}
+@keyframes coin-fade { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
 .brand { font-weight: 600; font-size: 19px; display: flex; align-items: center; gap: 8px; }
 .brand i { color: var(--cyan); font-size: 22px; }
 .place-wrap { position: relative; }
@@ -23,7 +46,7 @@ body { display: grid; grid-template-rows: 56px minmax(0, 1fr); grid-template-col
 .places button[aria-disabled="true"] { cursor: default; }
 .places button[aria-disabled="true"] i, .places button[aria-disabled="true"] .what { color: var(--ink-dim); }
 .places button[aria-disabled="true"] strong { color: var(--ink-dim); }
-.objective { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--void); }
+.objective { margin: 8px 16px 0; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--void); }
 .objective i { color: var(--magenta); font-size: 18px; }
 .objective.done i { color: var(--lime); }
 .objective.flash { animation: obj-done 1.4s cubic-bezier(.16, 1, .3, 1); }
@@ -68,7 +91,7 @@ body.busy #game canvas { cursor: progress; }
 .rail { grid-column: 1; grid-row: 1; }
 .stage { grid-column: 2; grid-row: 1; }
 .stage { position: relative; display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; }
-.map { position: relative; aspect-ratio: 320 / 192; width: min(100%, calc((100vh - 56px - 96px - 32px) * 320 / 192)); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0, 0, 0, .55); background: var(--void); }
+.map { position: relative; aspect-ratio: 320 / 192; width: min(100%, calc((100vh - 60px - 46px - 96px - 32px) * 320 / 192)); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0, 0, 0, .55); background: var(--void); }
 #game { position: absolute; inset: 0; }
 #game canvas { display: block; image-rendering: pixelated; }
 #tags { position: absolute; inset: 0; pointer-events: none; }
@@ -500,10 +523,12 @@ button.objective:hover { border-color: var(--ink-dim); }
 }
 
 @media (max-width: 900px) {
-  body { overflow-y: auto; overflow-x: hidden; height: auto; grid-template-rows: auto auto; }
-  .top { flex-wrap: wrap; padding: 8px 16px; gap: 10px; }
-  .brand { flex: 1; }
-  .objective { order: 3; flex-basis: 100%; }
+  body { overflow-y: auto; overflow-x: hidden; height: auto; grid-template-rows: auto auto auto; }
+  .top { display: flex; flex-wrap: wrap; padding: 8px 16px; gap: 10px; }
+  .top-left { flex: 1 1 auto; min-width: max-content; }
+  .wallet { order: 2; flex-basis: 100%; justify-content: center; }
+  .top-right { order: 3; flex: 1 1 100%; justify-content: space-between; gap: 10px; }
+  .wallet .amount { font-size: 22px; min-width: 0; }
   .objective .pip { display: none; }
   .xp small { display: none; }
   .xp .bar { width: 48px; }
@@ -522,3 +547,13 @@ button.objective:hover { border-color: var(--ink-dim); }
 .area-gate > i { font-size: 26px; color: var(--amber); }
 .area-gate strong { display: block; }
 .area-gate small { color: var(--ink-dim); font-size: 13px; }
+
+/* hover labels (tooltip.js) */
+.tip { position: fixed; z-index: 200; max-width: 280px; padding: 7px 10px; background: #0b1220; color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: 0 8px 24px rgba(0, 0, 0, .55); font: 400 13px/1.45 var(--ui); pointer-events: none; animation: tip-in .12s ease-out; }
+.tip[hidden] { display: none; }
+@keyframes tip-in { from { opacity: 0; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .tip { animation: none; } }
+
+/* earnings shown on gear */
+.drawer .row .earns { font-size: 11px; font-weight: 500; color: var(--lime); padding: 1px 6px; margin-left: 4px; border: 1px solid rgba(124, 255, 107, .35); border-radius: 999px; vertical-align: 1px; }
+.picker .tierline.on span:last-child { color: var(--lime); }

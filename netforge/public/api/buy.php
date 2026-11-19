@@ -14,6 +14,8 @@ Api::run(function () use ($uid): void {
     if (!is_int($id)) {
         throw new GameError('Pick something to buy.');
     }
+    // pay out income first: the wallet counts up live, so the student expects to spend what they see
+    \NetForge\Progress\Income::accrue($uid);
     $name = Rules::buy($uid, $id);
     Rules::checkObjective($uid);
     Api::ok(['bought' => $name, 'state' => GameState::load($uid)]);

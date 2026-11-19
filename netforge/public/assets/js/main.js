@@ -4,6 +4,8 @@ import { mountHud } from './hud.js';
 import { mountLearn } from './learn.js';
 import { mountSocial } from './social.js';
 import { mountDefence } from './defence.js';
+import { mountEconomy } from './economy.js';
+import { mountTooltips } from './tooltip.js';
 import { MapScene } from './game/MapScene.js';
 import { TILE, COLS, ROWS, setLocation } from './game/layout.js';
 
@@ -18,6 +20,8 @@ try {
 
 setLocation(store.state.user.location);
 mountHud(store);
+mountEconomy(store);
+mountTooltips();
 mountLearn(store);
 mountSocial(store);
 mountDefence(store);

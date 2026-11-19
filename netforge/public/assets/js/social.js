@@ -1,5 +1,6 @@
 // The Social panel (module 6.0): guild, weekly raid, leaderboards, friends.
 // Everything is decided on the server; this file only shows it and sends actions.
+import { rate } from './money.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -190,7 +191,7 @@ export function mountSocial(store) {
             <p class="big-stat mono">${st.current} day${st.current === 1 ? '' : 's'}</p>
             <p class="muted">${st.today ? 'You’ve learned today. ' : 'Answer a question today to keep it going. '}Best: ${st.best} day${st.best === 1 ? '' : 's'}.</p></section>
           <section class="card"><h3><i class="ti ti-trending-up" aria-hidden="true"></i>Network income</h3>
-            <p class="big-stat mono">+${d.income.rate}/h</p>
+            <p class="big-stat mono">+${rate(d.income.perSec)}</p>
             <p class="muted">${d.income.devices.length ? `Renting out ${esc(d.income.devices.join(', '))}.` : 'Nothing online yet. Link a device to the ISP box to start earning.'}</p></section>
         </div>
         <section class="card"><h3><i class="ti ti-award" aria-hidden="true"></i>${earned} of ${d.badges.length} earned</h3>

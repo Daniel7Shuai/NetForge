@@ -27,7 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         foreach ([
             'attacks_enabled' => isset($_POST['enabled']) ? 1 : 0, 'attack_min_minutes' => $min, 'attack_max_minutes' => $max,
-            'attack_seconds' => Staff::int($_POST['seconds'] ?? '', 15, 600, 60), 'attack_penalty' => Staff::int($_POST['penalty'] ?? '', 0, 10000, 75),
+            'attack_seconds' => Staff::int($_POST['seconds'] ?? '', 15, 600, 60), 'attack_penalty_minutes' => Staff::int($_POST['penalty_minutes'] ?? '', 0, 600, 5),
+            'attack_penalty_min' => Staff::int($_POST['penalty_min'] ?? '', 0, 1000000000, 100),
         ] as $k => $v) {
             Db::exec('UPDATE game_config SET value = ? WHERE name = ?', [(string) $v, $k]);
         }
@@ -92,7 +93,8 @@ require __DIR__ . '/../../src/views/staff_top.php';
         <label>Shortest gap (minutes of play) <input type="number" name="min" min="1" max="1440" value="<?= $s['min'] ?>" <?= $dis ?>></label>
         <label>Longest gap (minutes of play) <input type="number" name="max" min="1" max="1440" value="<?= $s['max'] ?>" <?= $dis ?>></label>
         <label>Time to respond (seconds) <input type="number" name="seconds" min="15" max="600" value="<?= $s['seconds'] ?>" <?= $dis ?>></label>
-        <label>Credits lost on a breach <input type="number" name="penalty" min="0" max="10000" value="<?= $s['penalty'] ?>" <?= $dis ?>></label>
+        <label>Breach costs (minutes of the student’s income) <input type="number" name="penalty_minutes" min="0" max="600" value="<?= $s['penaltyMinutes'] ?>" <?= $dis ?>></label>
+        <label>Smallest breach penalty (credits) <input type="number" name="penalty_min" min="0" max="1000000000" value="<?= $s['penaltyMin'] ?>" <?= $dis ?>></label>
       </div>
       <p class="help">Attacks only start while a student has the game open, never during a lesson or exam, and never take credits below zero.</p>
       <?php if ($isAdmin): ?><div class="actions"><button class="btn primary">Save settings</button></div><?php endif; ?>
@@ -146,7 +148,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
       <tr><td class="mono nowrap"><?= date('j M H:i', strtotime($r['created_at'])) ?></td><td><?= e($r['username']) ?></td>
         <th scope="row"><?= e($r['name']) ?><small><?= e($r['title']) ?></small></th>
         <td><?php if ($r['status'] === 'defended'): ?><span class="verdict ok"><i class="ti ti-shield-check" aria-hidden="true"></i>Defended</span><?php elseif ($r['status'] === 'breached'): ?><span class="verdict bad"><i class="ti ti-shield-x" aria-hidden="true"></i>Breached</span><?php else: ?><span class="verdict warn"><i class="ti ti-clock" aria-hidden="true"></i>In progress</span><?php endif; ?></td>
-        <td class="num mono"><?= (int) $r['penalty'] ?></td></tr>
+        <td class="num mono"><?= number_format((int) $r['penalty']) ?></td></tr>
     <?php endforeach; ?>
     </tbody>
   </table>

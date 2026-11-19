@@ -39,16 +39,18 @@ final class GameState
             'description' => $r['description'],
             'quantity'    => (int) $r['quantity'],
             'price'       => (int) $r['price'],
+            'earns'       => (int) $r['income_per_sec'], // credits per second when online
             'unlockLevel' => (int) $r['unlock_level'],
             'unlockWorld' => $r['unlock_world'] === null ? null : (int) $r['unlock_world'],
             // locked until the student's XP level is high enough (and any required world is mastered)
             'locked'      => (int) $r['unlock_level'] > $user['level']
                 || ($r['unlock_world'] !== null && !in_array((int) $r['unlock_world'], $mastered, true)),
         ], Db::all(
-            'SELECT s.id, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description
+            'SELECT s.id, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec
                FROM shop_items s JOIN item_types t ON t.code = s.item_code ORDER BY s.sort_order, s.id'
         ));
 
+        $income = \NetForge\Progress\Income::summary($userId);
         $devices = array_map(fn ($r) => [
             'id'        => (int) $r['id'],
             'item_code' => $r['item_code'],
@@ -60,12 +62,14 @@ final class GameState
             'fixed'     => (bool) $r['fixed'],
             'slotKinds' => Layout::kinds($r['slot_kinds']),
             'tier'      => (int) $r['tier'],
+            'earning'   => $income['byDevice'][(int) $r['id']] ?? 0, // credits per second, now (0 if offline)
+            'rate'      => (int) $r['income_per_sec'] * Rules::tierIncome((int) $r['tier']), // what it earns per second when online
             'maxTier'   => (int) $r['max_tier'],
             'shield'    => (int) $r['shield_pct'] * (int) $r['tier'],
             'upgrade'   => $r['fixed'] ? null : Rules::upgradeInfo($r['item_code'], (int) $r['tier'], (int) $r['max_tier']),
             'ports'     => json_decode((string) $r['ports'], true) ?: [],
         ], Db::all(
-            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, t.max_tier, t.shield_pct, t.slot_kinds, t.sprite, t.height, t.ports
+            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports
                FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ? AND d.location = ?',
             [$userId, $location]
         ));
@@ -97,7 +101,7 @@ final class GameState
         }
 
         $progress = [
-            'income' => \NetForge\Progress\Income::summary($userId),
+            'income' => ['perSec' => $income['perSec'], 'devices' => $income['devices']],
             'shield' => \NetForge\Progress\Income::shield($userId),
             'streak' => \NetForge\Progress\Badges::streak($userId),
             'badges' => (int) Db::one('SELECT COUNT(*) n FROM user_badges WHERE user_id = ?', [$userId])['n'],

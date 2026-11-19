@@ -1,5 +1,8 @@
 // Lecturer pages: live lesson preview and per-type help in the question editor.
 import { renderLesson } from './learn.js';
+import { mountTooltips } from './tooltip.js';
+
+mountTooltips(); // hover labels on icon buttons and anything with a title
 
 /* lesson preview, rendered exactly as students see it */
 const src = document.getElementById('lesson-src');

@@ -28,7 +28,9 @@ final class Defence
             'min' => max(1, Db::configInt('attack_min_minutes', 20)),
             'max' => max(1, Db::configInt('attack_max_minutes', 60)),
             'seconds' => max(10, Db::configInt('attack_seconds', 60)),
-            'penalty' => max(0, Db::configInt('attack_penalty', 75)),
+            // a breach costs some minutes of the student's own income, so it matters at every stage
+            'penaltyMinutes' => max(0, Db::configInt('attack_penalty_minutes', 5)),
+            'penaltyMin' => max(0, Db::configInt('attack_penalty_min', 100)),
         ];
     }
 
@@ -138,7 +140,7 @@ final class Defence
             );
             Rules::log($userId, $defended ? 'ok' : 'error', $defended
                 ? "{$a['type_name']} attack defended. Your network is safe."
-                : ($late ? "Too late: {$a['type_name']} attack got through." : "{$a['type_name']} attack got through.") . ($penalty ? " Lost $penalty credits." : ''));
+                : ($late ? "Too late: {$a['type_name']} attack got through." : "{$a['type_name']} attack got through.") . ($penalty ? " Lost " . number_format($penalty) . " credits." : ''));
             return [
                 'status' => $defended ? 'defended' : 'breached',
                 'late' => $late,
@@ -158,7 +160,7 @@ final class Defence
             Db::transaction(function () use ($userId, $a): void {
                 $penalty = self::charge($userId);
                 Db::exec('UPDATE attacks SET status = "breached", penalty = ?, resolved_at = NOW() WHERE id = ? AND status = "incoming"', [$penalty, $a['id']]);
-                Rules::log($userId, 'error', "No response in time: {$a['name']} attack got through." . ($penalty ? " Lost $penalty credits." : ''));
+                Rules::log($userId, 'error', "No response in time: {$a['name']} attack got through." . ($penalty ? " Lost " . number_format($penalty) . " credits." : ''));
             });
         }
     }
@@ -235,7 +237,9 @@ final class Defence
     private static function charge(int $userId): int
     {
         $credits = (int) Db::one('SELECT credits FROM users WHERE id = ? FOR UPDATE', [$userId])['credits'];
-        $penalty = self::settings()['penalty'];
+        $s = self::settings();
+        $perSec = \NetForge\Progress\Income::summary($userId)['perSec'];
+        $penalty = max($s['penaltyMin'], (int) round($perSec * 60 * $s['penaltyMinutes']));
         $shield = \NetForge\Progress\Income::shield($userId);
         $take = min($credits, (int) round($penalty * (100 - $shield) / 100));
         if ($take > 0) {
