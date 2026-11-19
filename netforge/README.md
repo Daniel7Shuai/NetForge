@@ -17,6 +17,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_mock.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_users.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_content.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_economy.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -135,7 +136,7 @@ Cyber attack and defence (module 5.0) done:
 
 ## The economy (read this before changing prices or rewards)
 
-- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to an ISP box or fibre panel by a chain of working links, earns its `item_types.income_per_hour` times its tier bonus (laptop 10, home router 15, PC 25, switch 40, router 60, server 120). The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
+- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to an ISP box or fibre panel by a chain of working links, earns its `item_types.income_per_hour` times its tier bonus (laptop 40, home router 60, PC 80, switch 120, router 180, server 300; set in `database/schema_economy.sql`). A starter garage earns 100/h, so the 800-credit office lease takes about 8 hours, and an office network (4 PCs, switch, router) saves the 3,000-credit datacentre lease in about 4. Lecturers edit every rate, including the starter laptop, on **Unlocks and prices**, which also shows this pacing for the current numbers. The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
 - **XP comes from learning**: correct answers in lessons, exams and the Daily Security Audit pay XP from Elo rating gains (5 XP per point, so repeating easy questions pays almost nothing), plus weekly raid rewards. Questions pay **no credits** (`Elo::CREDITS_PER_POINT = 0`).
 - **XP unlocks what credits can buy**: every 1000 XP is a level, and `shop_items.unlock_level` decides what each level may buy (`unlock_world` can add a world-mastery requirement). Levelling up announces the newly buyable gear (`Rules::addXp`). Lecturers tune levels, prices and pack sizes on **Unlocks and prices**.
 - New players start with 300 credits, enough for a home router and cables to get online. If a player ever has nothing online, no cable and under 40 credits, the ISP sends just enough for a pack of copper once a day, so nobody gets stuck.

@@ -186,3 +186,16 @@ table.users td, table.users th { vertical-align: middle; }
 .reset-link { border-color: var(--lime); }
 .copy-row { display: flex; gap: 8px; margin-top: 12px; }
 .copy-row input { flex: 1; }
+
+/* unlocks: income and pacing */
+.economy-extra { margin-top: 20px; align-items: start; }
+.economy-extra .num-in { width: 120px; }
+.pacing { padding: 12px 14px; border: 1px solid var(--grid); border-radius: var(--r); background: var(--panel); }
+.pacing .help { margin: 6px 0; }
+.pacing ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
+.pacing li { margin: 4px 0; }
+.pacing b { color: var(--ink); font-weight: 500; }
+.economy-extra .field { display: grid; gap: 6px; font-size: 14px; font-weight: 500; align-content: start; }
+.economy-extra .field small { font-weight: 400; color: var(--ink-dim); font-size: 12px; }
+.economy-extra .field input { width: 120px; }
+
