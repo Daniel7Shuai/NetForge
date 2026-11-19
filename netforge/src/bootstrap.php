@@ -24,6 +24,15 @@ date_default_timezone_set((string) NetForge\Config::get('app.timezone', 'Asia/Ku
 error_reporting(E_ALL);
 ini_set('display_errors', NetForge\Config::get('app.debug') ? '1' : '0');
 
+// Security headers on every response: no framing by other sites (clickjacking), no MIME
+// sniffing, and full URLs (like reset links) never sent to other sites as the referrer.
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Frame-Options: DENY');
+    header("Content-Security-Policy: frame-ancestors 'none'");
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: same-origin');
+}
+
 session_name((string) NetForge\Config::get('app.session_name', 'netforge_sid'));
 session_set_cookie_params([
     'httponly' => true,

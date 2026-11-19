@@ -18,6 +18,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_users.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_content.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_economy.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_security.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -38,8 +39,19 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
 - In `config/config.php`: set `app.debug` to `false` (errors stop showing to visitors), set `app.base_url` to the site's address, and set `mail.transport` to `mail` with SMTP configured, or password reset links won't be emailed.
 - Use a database user with its own password, not `root` with none.
 - Serve it over HTTPS. The session cookie is marked secure automatically when HTTPS is on.
+- **Set `app.base_url`.** Password reset emails refuse to send without it, because a link built from the request could be pointed at another site.
 - Create the first admin with `tools/create-user.php` and a strong password. Don't run `tools/seed-demo-data.php` there.
 - Keep `config/config.php` and `storage/` out of the web root's reach: only `public/` should be served.
+
+## Security
+
+- **Accounts**: passwords hashed with `password_hash`; the session ID is renewed at sign-in; cookies are HttpOnly and SameSite=Lax (and Secure over HTTPS). Every page and API call re-reads the account, so switching one off or leaving it idle (`app.idle_minutes`) signs it out at once.
+- **Sign-in limits**: 5 failures on a username, or 20 from one address, pause sign-in for 15 minutes (`Auth::MAX_FAILS_*`, table `login_failures`). It works the same for names that don't exist.
+- **Reset links**: one-time, 30 minutes, stored only as a SHA-256 hash, at most 3 an hour per account, never built from the request's Host header when emailing, and the forgot page answers the same whether or not the account exists.
+- **Requests**: every write needs the session's CSRF token; every query uses prepared statements; every page escapes its output; the game only starts a cyber attack for requests carrying that token.
+- **Headers**: no framing by other sites, no MIME sniffing, same-origin referrers (`src/bootstrap.php`).
+- **Exports**: CSV cells starting with = + - @ are neutralised so spreadsheets don't run them.
+- Tests: `php tests/SecurityTest.php`.
 
 ## Where things live
 

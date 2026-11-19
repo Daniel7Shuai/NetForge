@@ -118,7 +118,7 @@ export function mountDefence(store) {
         ${ok ? '' : `<p>The right response: <b>${esc(r.correct)}</b></p>`}
         <p class="atk-why">${esc(r.explanation)}</p>
         <p class="mono atk-meta">${r.penalty ? `−${r.penalty} credits · ` : ''}Security rating ${r.security ? `${r.security.grade} (${r.security.pct}%)` : '–'}</p>
-        <div class="atk-actions"><button class="btn primary" id="atk-close">Back to the garage</button></div>
+        <div class="atk-actions"><button class="btn primary" id="atk-close">Back to the ${esc((store.state.user?.locationName || 'garage').toLowerCase())}</button></div>
       </div>`;
     showSecurity(r.security);
     $('atk-close').addEventListener('click', () => setOpen(false));

@@ -29,17 +29,32 @@ final class Export
         header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
         $out = fopen('php://output', 'w');
         fwrite($out, "\xEF\xBB\xBF"); // so Excel reads UTF-8
-        fputcsv($out, [$title]);
-        fputcsv($out, [$subtitle]);
+        fputcsv($out, [self::cell($title)]);
+        fputcsv($out, [self::cell($subtitle)]);
         foreach ($tables as $t) {
             fputcsv($out, []);
-            fputcsv($out, [$t['title']]);
-            fputcsv($out, $t['columns']);
+            fputcsv($out, [self::cell($t['title'])]);
+            fputcsv($out, array_map([self::class, 'cell'], $t['columns']));
             foreach ($t['rows'] as $r) {
-                fputcsv($out, array_map(fn ($v) => $v ?? '', array_values($r)));
+                fputcsv($out, array_map([self::class, 'cell'], array_values($r)));
             }
         }
         exit;
+    }
+
+    /**
+     * A CSV cell that Excel won't run as a formula. Text starting with = + - @ (or a tab or
+     * return) gets a leading apostrophe; real numbers like -5 or +12 are left alone.
+     */
+    public static function cell(mixed $v): mixed
+    {
+        if ($v === null) {
+            return '';
+        }
+        if (is_string($v) && $v !== '' && !is_numeric($v) && str_contains("=+-@\t\r", $v[0])) {
+            return "'" . $v;
+        }
+        return $v;
     }
 
     public static function pct(?int $v): string

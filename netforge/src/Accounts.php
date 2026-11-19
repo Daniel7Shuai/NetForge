@@ -149,6 +149,13 @@ final class Accounts
         if ($who === '') {
             throw new GameError('Enter your username or email.');
         }
+        // A real email must never take its link from the request's Host header: anyone could
+        // send a forged one and receive the victim's token. So sending needs app.base_url.
+        // Checked before looking up the account, so the answer is the same for everyone.
+        if (Config::get('mail.transport', 'log') === 'mail' && trim((string) Config::get('app.base_url', '')) === '') {
+            error_log('NetForge: password reset emails need app.base_url in config/config.php.');
+            throw new GameError('Password reset by email isn’t set up on this server yet. Ask your lecturer for a reset link.');
+        }
         $u = Db::one('SELECT id, username, email, display_name, active FROM users WHERE username = ? OR email = ?', [$who, strtolower($who)]);
         if ($u === null || !$u['active'] || !$u['email']) {
             return null;

@@ -17,6 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = (string) ($_POST['username'] ?? '');
     if (!Csrf::check()) {
         $error = 'The form expired. Try again.';
+    } elseif (Auth::lockedOut($username)) {
+        $error = sprintf('Too many tries. Wait %d minutes, or reset your password if you’ve forgotten it.', Auth::LOCK_MINUTES);
     } elseif ($home = Auth::attempt($username, (string) ($_POST['password'] ?? ''))) {
         header('Location: ' . $home);
         exit;

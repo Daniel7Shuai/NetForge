@@ -125,14 +125,39 @@ final class Auth
         return null;
     }
 
+    /** Sign-in limits: this many failures within LOCK_MINUTES locks that username, or that address. */
+    public const MAX_FAILS_PER_NAME = 5;
+    public const MAX_FAILS_PER_IP = 20;
+    public const LOCK_MINUTES = 15;
+
+    private static function clientIp(): string
+    {
+        return substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 0, 45);
+    }
+
+    /**
+     * Whether sign-in is paused for this username (as typed) or this address, after too many failures.
+     * Works the same for names that don't exist, so it reveals nothing about which accounts are real.
+     */
+    public static function lockedOut(string $username): bool
+    {
+        $since = 'NOW() - INTERVAL ' . self::LOCK_MINUTES . ' MINUTE';
+        $byName = (int) Db::one("SELECT COUNT(*) n FROM login_failures WHERE username = ? AND created_at > $since", [mb_strtolower(trim($username))])['n'];
+        $byIp = (int) Db::one("SELECT COUNT(*) n FROM login_failures WHERE ip = ? AND created_at > $since", [self::clientIp()])['n'];
+        return $byName >= self::MAX_FAILS_PER_NAME || $byIp >= self::MAX_FAILS_PER_IP;
+    }
+
     /** Signs in with a username or email. Returns the user's home page on success, or null. */
     public static function attempt(string $username, string $password): ?string
     {
         $who = trim($username);
         $row = Db::one('SELECT id, password_hash, role, active FROM users WHERE username = ? OR email = ?', [$who, strtolower($who)]);
         if ($row === null || !$row['active'] || !password_verify($password, $row['password_hash'])) {
+            Db::exec('INSERT INTO login_failures (username, ip) VALUES (?, ?)', [mb_substr(mb_strtolower($who), 0, 190), self::clientIp()]);
+            Db::exec('DELETE FROM login_failures WHERE created_at < NOW() - INTERVAL 1 DAY'); // keep the table small
             return null;
         }
+        Db::exec('DELETE FROM login_failures WHERE username = ?', [mb_strtolower($who)]);
         self::login((int) $row['id']);
         Db::exec('UPDATE users SET last_login_at = NOW() WHERE id = ?', [$row['id']]);
         return self::home($row['role']);

@@ -15,10 +15,13 @@ final class Api
         if ($_SERVER['REQUEST_METHOD'] !== $method) {
             self::fail(405, 'Use ' . $method . ' for this endpoint.');
         }
-        $uid = Auth::userId();
-        if ($uid === null) {
+        // current() re-reads the account each time, so a deactivated account or an idle
+        // session is signed out here too, not just on the next page load
+        $me = Auth::current();
+        if ($me === null) {
             self::fail(401, 'Your session ended. Sign in again.');
         }
+        $uid = (int) $me['id'];
         if ($method !== 'GET' && !Csrf::check()) {
             self::fail(403, 'This request could not be verified. Reload the page.');
         }

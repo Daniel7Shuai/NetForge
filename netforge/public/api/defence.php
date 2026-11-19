@@ -28,5 +28,8 @@ Api::run(function () use ($uid, $method): void {
     // so a run abandoned by closing the tab doesn't block attacks forever.
     $run = $_SESSION['nf_run'] ?? null;
     $runActive = $run && ($run['served']['at'] ?? 0) > time() - 600;
-    Api::ok(['attack' => Defence::poll($uid, $runActive), 'security' => Defence::rating($uid)]);
+    // Only the game itself may start a new attack: it sends the CSRF header on every call.
+    // A link from another site can't, so it can't set off an attack while the student is away.
+    $fromGame = \NetForge\Csrf::check();
+    Api::ok(['attack' => Defence::poll($uid, $runActive || !$fromGame), 'security' => Defence::rating($uid)]);
 });
