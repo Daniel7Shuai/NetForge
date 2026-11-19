@@ -33,6 +33,14 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    ```
    Lecturers and admins land on the lecturer pages at `/lecturer/` after signing in.
 
+## Before putting it on a real server
+
+- In `config/config.php`: set `app.debug` to `false` (errors stop showing to visitors), set `app.base_url` to the site's address, and set `mail.transport` to `mail` with SMTP configured, or password reset links won't be emailed.
+- Use a database user with its own password, not `root` with none.
+- Serve it over HTTPS. The session cookie is marked secure automatically when HTTPS is on.
+- Create the first admin with `tools/create-user.php` and a strong password. Don't run `tools/seed-demo-data.php` there.
+- Keep `config/config.php` and `storage/` out of the web root's reach: only `public/` should be served.
+
 ## Where things live
 
 | Want to change… | Edit |

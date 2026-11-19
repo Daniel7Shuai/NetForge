@@ -7,8 +7,9 @@ declare(strict_types=1);
 //   demo_chen   struggling: low accuracy, big review backlog
 //   demo_dina   went quiet 12 days ago            demo_eli   joined 5 days ago, never answered
 //   demo_faiz   started well, rating falling this week
-// Run: php tools/seed-demo-data.php     (re-running replaces the demo students)
-// All demo passwords: your-demo-password
+// Run: php tools/seed-demo-data.php [password]   (re-running replaces the demo students)
+// Every demo student gets the password you give, or a random one that is printed at the end.
+// Never run this on a public server: demo accounts are meant for local demos and UAT.
 
 if (PHP_SAPI !== 'cli') {
     exit("Run this from the command line.\n");
@@ -19,6 +20,11 @@ require __DIR__ . '/../src/bootstrap.php';
 use NetForge\Auth;
 use NetForge\Db;
 use NetForge\Learning\Elo;
+
+$password = $argv[1] ?? bin2hex(random_bytes(6)); // random unless given, so no known password ships with the code
+if (strlen($password) < 8) {
+    exit("Use a password of at least 8 characters.\n");
+}
 
 mt_srand(2026); // same data every run
 
@@ -40,7 +46,7 @@ $plans = [
 ];
 
 foreach ($plans as $name => [$joined, $fromDay, $toDay, $perDay, $p, $lateP]) {
-    if ($err = Auth::register($name, 'your-demo-password', 'student', false)) {
+    if ($err = Auth::register($name, $password, 'student', false)) {
         exit("$name: $err\n");
     }
     $uid = (int) Db::one('SELECT id FROM users WHERE username = ?', [$name])['id'];
@@ -117,4 +123,4 @@ foreach ([
 }
 Db::exec('INSERT INTO guild_feed (guild_id, user_id, kind, message) SELECT g.id, u.id, "share", "demo_alice: Mastered World 0: Networking basics." FROM guilds g, users u WHERE g.tag = "PKT" AND u.username = "demo_alice"');
 
-echo "Done. Demo passwords: your-demo-password\n";
+echo "Done. Every demo student's password: $password\n";

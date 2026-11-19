@@ -10,3 +10,6 @@ desktop.ini
 # emails saved by the 'log' mail transport (password reset links)
 netforge/storage/
 
+# Local dev account passwords: never commit
+netforge/database/dev-test-account.txt
+
