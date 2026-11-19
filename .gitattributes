@@ -1,0 +1,5 @@
+# Keep line endings the same for everyone on the team, whatever their editor or OS.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary

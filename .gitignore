@@ -1,0 +1,8 @@
+# Local settings (database password, timezone): copy config.example.php instead
+netforge/config/config.php
+
+# Stray downloads and OS clutter
+*.pdf
+Thumbs.db
+desktop.ini
+.DS_Store

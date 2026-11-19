@@ -1,0 +1,56 @@
+/* NetForge design tokens. Every colour and font on the site comes from here. */
+:root {
+  /* surfaces */
+  --void: #060a12;
+  --panel: #0d1522;
+  --panel-2: #111b2b;
+  --grid: #17233a;
+  --line: #22314d;
+
+  /* text */
+  --ink: #c9e4f2;
+  --ink-dim: #8aa3bb;
+
+  /* neon: each colour has one job */
+  --cyan: #2be3ff;    /* interactive, selection, copper cable */
+  --amber: #ffb43d;   /* credits, fiber cable, negotiating */
+  --lime: #7cff6b;    /* link up, objective done */
+  --magenta: #ff3d9a; /* errors, wrong port, link down */
+  --violet: #9c8cff;  /* console cable */
+
+  /* type */
+  --ui: "Chakra Petch", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* shape */
+  --r: 6px;
+  --r-sm: 4px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--void);
+  color: var(--ink);
+  font: 15px/1.4 var(--ui);
+}
+::selection { background: var(--cyan); color: var(--void); }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+button, input { font: inherit; color: inherit; }
+button { background: none; border: 0; cursor: pointer; }
+a { color: var(--cyan); text-underline-offset: 3px; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* the dotted floor grid used behind the map and the sign-in panel */
+.grid-floor {
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--void);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}

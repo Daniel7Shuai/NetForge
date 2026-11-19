@@ -1,0 +1,126 @@
+# NetForge
+
+Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no build step.
+
+## Run locally (XAMPP)
+
+1. Start MySQL from the XAMPP control panel.
+2. Import the database:
+   ```
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/seed.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/seed_learning.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_social.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_defence.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_progress.sql
+   ```
+   Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
+3. Copy `config/config.example.php` to `config/config.php` and set the DB password if you have one.
+4. Serve the `public/` folder:
+   ```
+   C:\xampp\php\php.exe -S 127.0.0.1:8080 -t public
+   ```
+5. Open http://127.0.0.1:8080 and create an account (public sign-up makes students).
+6. Create a lecturer (or admin) from the command line:
+   ```
+   C:\xampp\php\php.exe tools/create-user.php <username> <password> lecturer
+   ```
+   Lecturers and admins land on the lecturer pages at `/lecturer/` after signing in.
+
+## Where things live
+
+| Want to change… | Edit |
+|---|---|
+| Colours, fonts | `public/assets/css/tokens.css` |
+| Missions and rewards | `objectives` table (`database/seed.sql`) |
+| Prices, unlock levels | `shop_items` table |
+| Starting credits, XP per level | `game_config` table |
+| A new device or cable | one row in `item_types` (ports are JSON) |
+| What a new player starts with | `src/Starter.php` |
+| Game rules (cable fits, objective checks, levelling) | `src/Rules.php` (+ hint copy in `public/assets/js/rules.js`) |
+| Floor plan, desks, rack slots | `public/assets/js/game/layout.js` |
+| Pixel art | `public/assets/js/game/art.js` |
+| What clicks and tools do | `tileClicked()` in `public/assets/js/store.js` |
+
+| Locations, furniture, placement slots | `public/assets/data/layout.json` (read by both PHP and JS) |
+| Where an item may stand | `item_types.slot_kinds` (bench, shelf, desk, rack) |
+| Room art per location | `ROOMS` / `FURNITURE` in `public/assets/js/game/art.js` |
+
+## Status
+
+Framework done: accounts, sessions, CSRF, database, state API, HUD, drawer, console, pixel-art map, player movement, LEDs, objective tracking and rewards.
+
+Locations: players start in the **garage** (tier 1) with only a busted laptop and 0 credits; the ISP fibre box on the wall is a fixed device. The **office and server room** (tier 2) is defined and drawn but not yet reachable. More tiers are added as entries in `layout.json` plus a room function in `art.js`.
+
+Placing devices done: select a device in the inventory (or drag it) and click a glowing spot. The server re-checks everything (`Rules::place`), names devices (Laptop-1, PC-1…) and completes objectives.
+
+Learning (module 3.0) done: press **L** or click the objective bar.
+- Worlds 0–8 follow CCNA ITN modules 1–17. A world opens once every earlier world *that has content* is mastered.
+- Each level = lesson + adaptive challenge run. Passing every level unlocks the timed world exam; passing it masters the world and unlocks shop items (`shop_items.unlock_world`).
+- Six challenge types: multiple choice, matching, ordering, fill in the blanks, Binary Blitz (20 s timer) and Subnet Calculator (both generated fresh each time).
+- Elo (`src/Learning/Elo.php`): per-world student rating, question ratings, K shrinks with rating, tiers Bronze/Silver/Gold/Platinum. Credits and XP are paid only from rating gains (2 credits and 5 XP per point).
+- **Daily Security Audit** (FR-3.4): every wrong answer goes into `audit_queue`, due after 1 day. In the review (top of Learn, up to 10 per round), a right answer moves it to 3 days, then 7 days, then clears it; a wrong one sends it back to 1 day. Reviews update Elo and pay from rating gains like lessons. The Learn button shows a badge with the number due. Intervals live in `Challenge::AUDIT_NEXT`.
+  To demo it without waiting a day: `UPDATE audit_queue SET due_on = CURDATE();`
+- Content seeded: World 0 (3 levels, 18 questions), World 2 (Binary Blitz), World 5 (Subnet Calculator). Add more rows to `levels` and `questions`; the payload shapes are documented in `src/Learning/Grader.php`.
+- Unit tests: `php tests/EloTest.php` (26 hand-calculated cases for Elo and subnetting).
+
+Shop buying done (`Rules::buy`): checks world mastery and credits on the server.
+
+Cabling done (Packet Tracer style):
+- Cable tool (**C**), pick the type in the bar (copper = straight-through, crossover, fiber, console; counts shown), click a device, pick a port, then click the second device and pick its port.
+- Sockets are physical: a cable that doesn’t fit a port (copper into fiber, etc.) is greyed out in the picker and refused by the server.
+- Copper ports have a role (`mdi` host-style, `mdix` switch-style, in `item_types.ports`). Straight-through links unlike roles, crossover links like roles. The wrong one plugs in but the link stays **down** (pink lights) with an explanation in the console.
+- Routes are drawn from the devices’ current positions, so moving a device later re-routes its cables. Link lights blink amber briefly, then go green or pink; live links carry a data pulse.
+- Remove tool (**Del**): unplug cables (they go back to your inventory) or pick up an unplugged device. Select or Inspect (**X**) a device to see every port, its role and what it’s connected to.
+- Server: `Rules::connect`, `Rules::unplug`, `Rules::pickUp`; endpoints `api/connect.php`, `api/unplug.php`, `api/pickup.php`. Tests: `php tests/CablingTest.php`.
+
+Roles and lecturer tools (modules 1.0 and 2.0) done:
+- `users.role` is student, lecturer or admin; `users.active` lets an account be switched off. Roles are checked on the server for every lecturer page (`Auth::requireRole`); students who open `/lecturer/` are sent back to the game.
+- **Content** (`lecturer/index.php`, `world.php`, `level.php`): world settings and exam (length, minutes, pass mark), add/edit/reorder/archive levels, lesson editor with a live preview that uses the same renderer as the game.
+- **Question bank** (`questions.php`, `question.php`): filter by world, level, type or text; each question shows its live Elo rating, answer count and % correct (pink under 40%). One editor for all six types with per-type help; editing keeps the live rating unless you change it.
+- **CSV import** (`import.php`): download the template, upload, see every rejected row with its line number and reasons, then import the valid rows. Up to 1000 rows / 2 MB per file.
+- **Unlocks and prices** (`unlocks.php`): the world that unlocks each shop item, its price and pack size.
+- The editor and the CSV import share one validator, `src/Content/QuestionInput.php`. Tests: `php tests/QuestionInputTest.php`.
+
+Analytics and reporting (module 7.0) done, in the lecturer area under **Analytics**:
+- **Class dashboard** (`analytics.php`, FR-7.1): active students, answers, accuracy, worlds mastered; accuracy by world and by topic (weakest first) for any date range.
+- **At-risk alerts** (FR-7.2): low accuracy, inactivity, a falling world rating, or a review backlog, each with the reason spelled out. Thresholds are constants at the top of `src/Analytics/Reports.php`.
+- **Question difficulty report** (`difficulty.php`, FR-7.3): % correct the Elo model expected against % observed, flagging questions harder or easier than rated.
+- **Progress reports** (FR-7.4): the class report, the students list (`students.php`) and each student’s report (`student.php`) for any period.
+- **Export** (FR-7.5): every report downloads as CSV (opens in Excel) or PDF, made by the built-in `src/Analytics/SimplePdf.php` (no library needed).
+- Demo data for presentations and UAT: `php tools/seed-demo-data.php` creates six demo students with three weeks of history (password `your-demo-password`); re-running replaces them.
+
+Social and competition (module 6.0) and weekly challenges (FR-2.5) done. In the game press **G**:
+- **Guilds** (FR-6.1): start one (name, tag, motto) or join one, up to 8 students. The leader sets a weekly goal and can remove members; leaving hands leadership to the longest-serving member, and the last one out closes the guild.
+- **Weekly raid** (FR-6.2): the lecturer publishes one challenge per week (`lecturer/challenges.php`): title, which world counts (or any), a target per guild and a reward. Every correct answer by a member adds to the guild’s tally (`raid_contributions`, recorded at answer time); when a guild hits the target, every contributor is paid once (`raid_rewards`).
+- **Leaderboards** (FR-6.3): “nearby” ranks by XP earned this week and shows only two ranks either side of you, never the whole class; a guild board ranks guilds by correct answers this week.
+- **Milestones** (FR-6.4): share earned milestones (world mastered, perfect exam, level reached, working links) to the guild news feed. The server only lets you share ones you’ve actually earned, once each.
+- **Friends** (FR-6.5): add a classmate by username; see their level, worlds mastered, XP this week, guild and last activity.
+- Rules live in `src/Social/Social.php`; one endpoint, `api/social.php`. Tables in `database/schema_social.sql`.
+- `tools/seed-demo-data.php` also creates two demo guilds, [PKT] Packet Pushers and [NOC] Night Shift.
+
+Cyber attack and defence (module 5.0) done:
+- **Random attacks** (FR-5.1): port scans, ARP spoofing, SYN floods and phishing. A student only faces types whose world they’ve mastered (`attack_types.unlock_world`: phishing W0, port scan W1, ARP spoofing W4, SYN flood W7). The game checks every 15 s; attacks only start while the game is open and never during a lesson or exam. Admins set the gap between attacks, the response time and the penalty in **Cyber attacks** (`lecturer/attacks.php`).
+- **Timed defence** (FR-5.2): each attack shows real-looking evidence (firewall log, ARP table, email, `netstat`) and four responses, shuffled per student, with a countdown. 12 scenarios, 3 per type, in `database/schema_defence.sql`.
+- **Outcome** (FR-5.3): the right response protects the network; a wrong or late one costs credits (never below zero) and the map flashes red while under attack.
+- **Security rating** (FR-5.4): grade A to F from the last 10 attacks, newer ones weighted more; shown in the top bar.
+- **History** (FR-5.5): click the rating to review every attack: your response, the right one and why.
+- Admins can send a test attack of any type to a student for demos. Lecturers can view the page but not change it.
+- Rules: `src/Defence/Defence.php`; endpoint `api/defence.php`.
+
+## The economy (read this before changing prices or rewards)
+
+- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to the ISP box by a chain of working links, earns its `item_types.income_per_hour` (laptop 10, home router 15, PC 25, switch 40, router 60, server 120). The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
+- **XP comes from learning**: correct answers in lessons, exams and the Daily Security Audit pay XP from Elo rating gains (5 XP per point, so repeating easy questions pays almost nothing), plus weekly raid rewards. Questions pay **no credits** (`Elo::CREDITS_PER_POINT = 0`).
+- **XP unlocks what credits can buy**: every 1000 XP is a level, and `shop_items.unlock_level` decides what each level may buy (`unlock_world` can add a world-mastery requirement). Levelling up announces the newly buyable gear (`Rules::addXp`). Lecturers tune levels, prices and pack sizes on **Unlocks and prices**.
+- New players start with 300 credits, enough for a home router and cables to get online. If a player ever has nothing online, no cable and under 40 credits, the ISP sends just enough for a pack of copper once a day, so nobody gets stuck.
+- Breaches from cyber attacks cost credits, so defending protects your income.
+
+## Badges and streak
+
+- **Daily learning streak** (FR-4.5): days in a row with at least one correct answer; shown in the top bar (lit once you’ve learned today).
+- **15 badges** (FR-4.5), each checked against what the student actually did (`src/Progress/Badges.php`), awarded whenever the game state loads, with a pop-up and a console line. Browse them in Social (**G**) → Badges; share them with the guild (FR-6.4).
+
+Not built yet: moving a placed device (`api/move.php` returns 501; pick up and re-place works), admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4). Not started: mock exams across worlds (FR-3.5), equipment upgrades and datacentre tiers beyond the garage (FR-4.3).
+
+The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.

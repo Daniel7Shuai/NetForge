@@ -1,0 +1,72 @@
+{
+  "tile": 16,
+  "cols": 20,
+  "rows": 12,
+  "footprints": {
+    "workbench": [4, 1],
+    "shelf": [2, 1],
+    "boxes": [1, 2],
+    "bike": [2, 1],
+    "car": [4, 6],
+    "toolchest": [1, 1],
+    "desk": [3, 2],
+    "cooling": [2, 3],
+    "plant": [1, 1]
+  },
+  "locations": {
+    "garage": {
+      "name": "Garage",
+      "tier": 1,
+      "unlockLevel": 1,
+      "spawn": { "x": 6, "y": 6 },
+      "wallRows": 2,
+      "bottomWall": true,
+      "furniture": [
+        { "type": "workbench", "x": 1, "y": 2 },
+        { "type": "shelf", "x": 6, "y": 2 },
+        { "type": "toolchest", "x": 18, "y": 2 },
+        { "type": "boxes", "x": 0, "y": 6 },
+        { "type": "bike", "x": 0, "y": 9 },
+        { "type": "car", "x": 13, "y": 4 }
+      ],
+      "slots": [
+        { "kind": "bench", "x": 2, "y": 2, "h": 1 },
+        { "kind": "bench", "x": 3, "y": 2, "h": 1 },
+        { "kind": "shelf", "x": 6, "y": 2, "h": 1 },
+        { "kind": "shelf", "x": 7, "y": 2, "h": 1 }
+      ],
+      "fixtures": [
+        { "item": "isp_box", "x": 10, "y": 1 }
+      ]
+    },
+    "office": {
+      "name": "Office and server room",
+      "tier": 2,
+      "unlockLevel": 5,
+      "spawn": { "x": 10, "y": 6 },
+      "wallRows": 2,
+      "partition": { "col": 12, "doorRows": [6, 7] },
+      "furniture": [
+        { "type": "desk", "x": 1, "y": 3 },
+        { "type": "desk", "x": 6, "y": 3 },
+        { "type": "desk", "x": 1, "y": 8 },
+        { "type": "desk", "x": 6, "y": 8 },
+        { "type": "cooling", "x": 18, "y": 3 },
+        { "type": "plant", "x": 0, "y": 8 }
+      ],
+      "slots": [
+        { "kind": "desk", "x": 4, "y": 3, "h": 1 },
+        { "kind": "desk", "x": 9, "y": 3, "h": 1 },
+        { "kind": "desk", "x": 4, "y": 8, "h": 1 },
+        { "kind": "desk", "x": 9, "y": 8, "h": 1 },
+        { "kind": "rack", "x": 14, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 15, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 16, "y": 3, "h": 2 },
+        { "kind": "rack", "x": 14, "y": 7, "h": 2 },
+        { "kind": "rack", "x": 15, "y": 7, "h": 2 },
+        { "kind": "rack", "x": 16, "y": 7, "h": 2 }
+      ],
+      "fixtures": []
+    }
+  }
+}
