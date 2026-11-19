@@ -15,6 +15,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_progress.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_upgrades.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_mock.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_users.sql
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
 3. Copy `config/config.example.php` to `config/config.php` and set the DB password if you have one.
@@ -25,7 +26,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
 5. Open http://127.0.0.1:8080 and create an account (public sign-up makes students).
 6. Create a lecturer (or admin) from the command line:
    ```
-   C:\xampp\php\php.exe tools/create-user.php <username> <password> lecturer
+   C:\xampp\php\php.exe tools/create-user.php <username> <password> lecturer [email]
    ```
    Lecturers and admins land on the lecturer pages at `/lecturer/` after signing in.
 
@@ -88,6 +89,14 @@ Cabling done (Packet Tracer style):
 - Remove tool (**Del**): unplug cables (they go back to your inventory) or pick up an unplugged device. Select or Inspect (**X**) a device to see every port, its role and what it’s connected to.
 - Server: `Rules::connect`, `Rules::unplug`, `Rules::pickUp`; endpoints `api/connect.php`, `api/unplug.php`, `api/pickup.php`. Tests: `php tests/CablingTest.php`.
 
+Accounts (module 1.0) done:
+- **Sign-up and sign-in** (FR-1.1, FR-1.2): sign-up asks for a username, email and password, all checked on the server. Sign in with the username or the email. Each role lands on its own home page. A session closes after `app.idle_minutes` (default 120) without a request, with a note on the sign-in page.
+- **Forgotten password** (FR-1.3): "Forgot it?" on the sign-in page sends a one-time link that works for `reset_minutes` (30, in `game_config`). Only a SHA-256 of the token is stored. A link dies once used, when a newer one is made, when the password changes, or when the account is switched off. The form looks the same whether or not the account exists, and sends at most 3 links an hour per account.
+- **Email delivery**: `mail.transport` in `config/config.php`. The default, `log`, saves each email to `storage/mail/` instead of sending it (XAMPP has no mail server; with `app.debug` on, the page says where the file went). Set it to `mail` and configure SMTP in `php.ini` on a real server, and set `app.base_url` so links point at the right host.
+- **Profile** (FR-1.4): the menu → Profile, for every role. Display name, avatar (8 colourways of the pixel character, shown on the map), email, and password (needs the current one). `public/profile.php`, `src/Accounts.php`.
+- **User management** (FR-1.5): admins get **Users** in the lecturer pages. Search and filter accounts; create one with a role and temporary password; edit display name, email and role; switch an account off or back on (nothing is deleted; it's signed out on its next request); make a one-time reset link to send them. Admins can't demote or switch off themselves or the last active admin. Every change is kept in `admin_log` and shown on the account's page.
+- Tests: `php tests/AccountsTest.php` (26 checks; makes and removes its own accounts).
+
 Roles and lecturer tools (modules 1.0 and 2.0) done:
 - `users.role` is student, lecturer or admin; `users.active` lets an account be switched off. Roles are checked on the server for every lecturer page (`Auth::requireRole`); students who open `/lecturer/` are sent back to the game.
 - **Content** (`lecturer/index.php`, `world.php`, `level.php`): world settings and exam (length, minutes, pass mark), add/edit/reorder/archive levels, lesson editor with a live preview that uses the same renderer as the game.
@@ -136,6 +145,6 @@ Cyber attack and defence (module 5.0) done:
 - **Daily learning streak** (FR-4.5): days in a row with at least one correct answer; shown in the top bar (lit once you’ve learned today).
 - **15 badges** (FR-4.5), each checked against what the student actually did (`src/Progress/Badges.php`), awarded whenever the game state loads, with a pop-up and a console line. Browse them in Social (**G**) → Badges; share them with the guild (FR-6.4).
 
-Not built yet: admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4).
+
 
 The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.

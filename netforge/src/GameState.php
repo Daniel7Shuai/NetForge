@@ -12,11 +12,12 @@ final class GameState
         \NetForge\Progress\Income::accrue($userId);
         $newBadges = \NetForge\Progress\Badges::award($userId);
 
-        $user = Db::one('SELECT id, username, credits, xp, level, location, pos_x, pos_y FROM users WHERE id = ?', [$userId]);
+        $user = Db::one('SELECT id, username, display_name, avatar, role, credits, xp, level, location, pos_x, pos_y FROM users WHERE id = ?', [$userId]);
         if ($user === null) {
             throw new GameError('Your account could not be found. Sign in again.');
         }
         $user = array_map(fn ($v) => is_numeric($v) ? (int) $v : $v, $user);
+        $user['name'] = Accounts::name($user);
         $user['xpPerLevel'] = Db::configInt('xp_per_level', 1000);
         $location = $user['location'];
         $user['locationName'] = Layout::location($location)['name'];

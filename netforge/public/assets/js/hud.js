@@ -134,7 +134,7 @@ export function mountHud(store) {
     const into = s.user.xp % s.user.xpPerLevel;
     $('xp-fill').style.width = `${(into / s.user.xpPerLevel) * 100}%`;
     $('xp-text').textContent = `${into}/${s.user.xpPerLevel}`;
-    $('who').textContent = `Signed in as ${s.user.username}`;
+    $('who').textContent = s.user.name === s.user.username ? `Signed in as ${s.user.username}` : `Signed in as ${s.user.name} (${s.user.username})`;
     $('loc-name').textContent = s.user.locationName;
     if (s.progress?.newBadges?.length) showBadges(s.progress.newBadges);
     if (s.progress) {

@@ -163,11 +163,34 @@ const PLAYER = [
   'kSkJjjjjJkSk', '.k.kJJJJk.k.', '...knnnnk...', '...knkknk...', '...knk.knk..', '...kbk.kbk..', '...kkk.kkk..',
 ];
 const PLAYER_PAL = { k: C.k, h: '#2a1d3d', s: '#e0a582', S: '#a8714f', j: '#11798f', J: '#0a4b5a', c: C.cyan, n: '#1c2233', b: '#0d1018', w: '#c9e4f2', a: C.magenta };
+/** Avatar colourways (FR-1.4): hair, jacket (light/dark) and trim. Mirrors Accounts::AVATARS in PHP. */
+export const AVATARS = {
+  cyan:    { h: '#2a1d3d', j: '#11798f', J: '#0a4b5a', c: C.cyan,    a: C.magenta },
+  magenta: { h: '#1a1420', j: '#9b2766', J: '#5e1640', c: C.magenta, a: C.cyan },
+  lime:    { h: '#3b2a18', j: '#3f7d2c', J: '#254a1a', c: C.lime,    a: C.amber },
+  amber:   { h: '#121212', j: '#a8661d', J: '#6a3f10', c: C.amber,   a: C.cyan },
+  violet:  { h: '#5a3a1e', j: '#5b3c9e', J: '#372361', c: '#b494ff', a: C.lime },
+  steel:   { h: '#c9c4bd', j: '#4a5a6e', J: '#2c3846', c: '#9fb3c8', a: C.amber },
+  ember:   { h: '#7a2d17', j: '#9e3a24', J: '#5e2214', c: '#ff8a5c', a: C.cyan },
+  mint:    { h: '#0f1a20', j: '#2b8a74', J: '#195446', c: '#6ff0c8', a: C.magenta },
+};
 export const PLAYER_SIZE = { w: 12, h: 21 };
-export function player(c) {
+export function player(c, avatar = 'cyan') {
+  const pal = { ...PLAYER_PAL, ...(AVATARS[avatar] || {}) };
   c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(6, 19, 6, 2, 0, 0, 7); c.fill();
   PLAYER.forEach((row, j) => {
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') R(c, i, j, 1, 1, PLAYER_PAL[row[i]]);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') R(c, i, j, 1, 1, pal[row[i]]);
+  });
+}
+
+/** Draws an avatar into every <canvas data-avatar="..."> on the page, scaled up crisp. */
+export function paintAvatars(root = document) {
+  root.querySelectorAll('canvas[data-avatar]').forEach((cv) => {
+    const scale = Number(cv.dataset.scale || 3);
+    cv.width = PLAYER_SIZE.w * scale; cv.height = PLAYER_SIZE.h * scale;
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.save(); ctx.scale(scale, scale); player(ctx, cv.dataset.avatar); ctx.restore();
   });
 }
 

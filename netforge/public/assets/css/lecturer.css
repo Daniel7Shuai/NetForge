@@ -4,8 +4,8 @@ body { min-height: 100vh; }
 .staff-top .brand { display: flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 18px; white-space: nowrap; }
 .staff-top .brand i { color: var(--cyan); font-size: 22px; }
 .staff-top .brand span { font-weight: 500; color: var(--amber); font-size: 14px; }
-.staff-top nav { display: flex; gap: 2px; flex: 1; }
-.staff-top nav a { color: var(--ink-dim); text-decoration: none; padding: 8px 12px; border-radius: var(--r-sm); font-weight: 500; font-size: 14px; }
+.staff-top nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.staff-top nav a { color: var(--ink-dim); text-decoration: none; white-space: nowrap; padding: 8px 10px; border-radius: var(--r-sm); font-weight: 500; font-size: 14px; }
 .staff-top nav a:hover { color: var(--ink); background: var(--panel-2); }
 .staff-top nav a[aria-current=page] { color: var(--ink); background: var(--grid); }
 .staff-top .who { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--ink-dim); white-space: nowrap; }
@@ -161,3 +161,26 @@ table.data a { color: var(--cyan); }
   .span2 { grid-column: auto; }
   table.data { display: block; overflow-x: auto; }
 }
+
+/* users (FR-1.5) */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.role-count { margin-left: 14px; }
+.role-count b { color: var(--ink); font-weight: 500; }
+.who-cell { display: flex; align-items: center; gap: 10px; }
+.who-cell canvas { width: 24px; height: 42px; image-rendering: pixelated; flex: none; }
+.who-cell small { display: block; color: var(--ink-dim); font-size: 12px; font-weight: 400; }
+table.users td, table.users th { vertical-align: middle; }
+.role { font-size: 13px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-dim); }
+.role.lecturer { color: var(--amber); border-color: rgba(255, 180, 61, .45); }
+.role.admin { color: var(--cyan); border-color: rgba(43, 227, 255, .45); }
+.who-head { display: flex; align-items: center; gap: 16px; }
+.who-head canvas { width: 48px; height: 84px; image-rendering: pixelated; }
+.who-head .verdict { margin-left: 6px; }
+.btn.danger { color: #ffc2de; border-color: rgba(255, 61, 154, .55); background: rgba(255, 61, 154, .06); }
+.btn.danger:hover:not(:disabled) { border-color: var(--magenta); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.actions.start { justify-content: flex-start; margin-top: 10px; }
+.form strong { font-weight: 600; }
+.reset-link { border-color: var(--lime); }
+.copy-row { display: flex; gap: 8px; margin-top: 12px; }
+.copy-row input { flex: 1; }

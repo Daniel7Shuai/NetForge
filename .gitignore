@@ -6,3 +6,7 @@ netforge/config/config.php
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# emails saved by the 'log' mail transport (password reset links)
+netforge/storage/
+

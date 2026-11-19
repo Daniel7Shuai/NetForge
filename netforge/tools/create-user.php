@@ -11,12 +11,12 @@ if (PHP_SAPI !== 'cli') {
 $_SERVER['REQUEST_METHOD'] = 'CLI';
 require __DIR__ . '/../src/bootstrap.php';
 
-[$script, $username, $password, $role] = $argv + [null, null, null, 'student'];
+[$script, $username, $password, $role, $email] = $argv + [null, null, null, 'student', null];
 if (!$username || !$password) {
-    fwrite(STDERR, "Usage: php tools/create-user.php <username> <password> <student|lecturer|admin>\n");
+    fwrite(STDERR, "Usage: php tools/create-user.php <username> <password> <student|lecturer|admin> [email]\n");
     exit(1);
 }
-$error = NetForge\Auth::register($username, $password, $role, false);
+$error = NetForge\Auth::register($username, $password, $role, false, $email);
 if ($error !== null) {
     fwrite(STDERR, $error . "\n");
     exit(1);

@@ -20,6 +20,17 @@ final class Staff
         return $me;
     }
 
+    /** Guards an admin-only page (FR-1.5). Lecturers are sent back to the content pages. */
+    public static function beginAdmin(): array
+    {
+        $me = self::begin();
+        if ($me['role'] !== 'admin') {
+            self::flash('error', 'Only an administrator can manage accounts.');
+            self::redirect('index.php');
+        }
+        return $me;
+    }
+
     public static function flash(string $kind, string $message): void
     {
         $_SESSION['flash'][] = [$kind, $message];
