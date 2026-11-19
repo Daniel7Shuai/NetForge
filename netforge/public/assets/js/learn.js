@@ -4,6 +4,8 @@ import { api } from './api.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+/** Escaped text with `code` shown as inline code (commands in prompts and explanations). */
+const rich = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
 const TIER_CLASS = { Bronze: 'bronze', Silver: 'silver', Gold: 'gold', Platinum: 'platinum' };
 /** What happened to the question in the Daily Security Audit after this answer. */
 const AUDIT_NOTE = (a) => {
@@ -16,16 +18,30 @@ const AUDIT_NOTE = (a) => {
 };
 const TYPE_LABEL = { mcq: 'Multiple choice', matching: 'Matching', ordering: 'Ordering', fill: 'Fill in the blanks', blitz: 'Binary Blitz', subnet: 'Subnet calculator' };
 
-/** Light markdown used in lessons: paragraphs, "- " lists, **bold**, `code`. Escapes first. */
+/**
+ * Light markdown used in lessons: paragraphs, "- " and "1. " lists, **bold**, `code`,
+ * and ``` fenced blocks for device commands. Escapes first.
+ */
 export function renderLesson(md) {
   const inline = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  return md.trim().split(/\n\s*\n/).map((block) => {
-    const lines = block.split('\n');
-    if (lines.every((l) => l.trim().startsWith('- '))) {
-      return `<ul>${lines.map((l) => `<li>${inline(l.trim().slice(2))}</li>`).join('')}</ul>`;
+  const out = [];
+  // pull out fenced blocks first, so blank lines inside them don't split them
+  const parts = md.trim().split(/^```[^\n]*\n([\s\S]*?)^```\s*$/m);
+  parts.forEach((part, i) => {
+    if (i % 2 === 1) { out.push(`<pre class="cli"><code>${esc(part.replace(/\n$/, ''))}</code></pre>`); return; }
+    for (const block of part.trim().split(/\n\s*\n/)) {
+      if (!block.trim()) continue;
+      const lines = block.split('\n').map((l) => l.trim());
+      if (lines.every((l) => l.startsWith('- '))) {
+        out.push(`<ul>${lines.map((l) => `<li>${inline(l.slice(2))}</li>`).join('')}</ul>`);
+      } else if (lines.every((l) => /^\d+\.\s/.test(l))) {
+        out.push(`<ol>${lines.map((l) => `<li>${inline(l.replace(/^\d+\.\s+/, ''))}</li>`).join('')}</ol>`);
+      } else {
+        out.push(`<p>${inline(lines.join(' '))}</p>`);
+      }
     }
-    return `<p>${inline(lines.join(' '))}</p>`;
-  }).join('');
+  });
+  return out.join('');
 }
 
 const tierChip = (tier, rating) => `<span class="tier ${TIER_CLASS[tier]}" title="Elo rating ${rating}">${tier} <b class="mono">${rating}</b></span>`;
@@ -36,6 +52,8 @@ export function mountLearn(store) {
   const view = $('learn-view');
   let worlds = [];
   let audit = { due: 0, total: 0, stages: {}, upcoming: [], topics: [] };
+  let mock = { worlds: [], lengths: [10, 20, 30], secondsPerQuestion: 60, readyPct: 70, history: [] };
+  const mockPick = { worlds: new Set(), length: 10 }; // the student's choices, kept while Learn is open
   let worldId = null;     // world on screen, or 'audit'
   let run = null;          // {run, question}
   let timer = null;
@@ -78,6 +96,10 @@ export function mountLearn(store) {
     const r = await api.learn.roadmap();
     worlds = r.worlds;
     audit = r.audit;
+    mock = r.mock || mock;
+    const ids = new Set(mock.worlds.map((w) => w.id));
+    mockPick.worlds = new Set([...mockPick.worlds].filter((id) => ids.has(id)));
+    if (!mockPick.worlds.size) mock.worlds.forEach((w) => mockPick.worlds.add(w.id)); // default: everything open
     renderList();
   }
 
@@ -86,9 +108,14 @@ export function mountLearn(store) {
         <i class="ti ti-shield-check wnum" aria-hidden="true"></i>
         <span class="wtitle">Daily Security Audit<small>${audit.due ? `${audit.due} due today` : audit.total ? 'Nothing due today' : 'No mistakes to review'}</small></span>
         ${audit.due ? `<span class="due-badge mono">${audit.due}</span>` : '<i class="ti ti-circle-check" aria-hidden="true"></i>'}</button>`;
-    list.innerHTML = auditRow + worlds.map((w) => {
-      const icon = { mastered: 'ti-circle-check', open: 'ti-player-play', locked: 'ti-lock', soon: 'ti-clock' }[w.status];
-      const meta = w.status === 'soon' ? 'Coming soon' : w.status === 'locked' ? 'Locked' : w.tier;
+    const last = mock.history[0];
+    const mockRow = `<button class="world audit-row mock-row${worldId === 'mock' ? ' on' : ''}" data-mock="1">
+        <i class="ti ti-clipboard-check wnum" aria-hidden="true"></i>
+        <span class="wtitle">Mock exam<small>${last ? `Last score ${last.pct}%` : 'Timed, from the worlds you pick'}</small></span>
+        <i class="ti ti-chevron-right" aria-hidden="true"></i></button>`;
+    list.innerHTML = auditRow + mockRow + worlds.map((w) => {
+      const icon = { mastered: 'ti-circle-check', open: 'ti-player-play', locked: 'ti-lock', area: 'ti-building', soon: 'ti-clock' }[w.status];
+      const meta = w.status === 'soon' ? 'Coming soon' : w.status === 'locked' ? 'Locked' : w.status === 'area' ? `Lease the ${w.needs.name.toLowerCase()}` : w.tier;
       return `<button class="world ${w.status}${w.id === worldId ? ' on' : ''}" data-world="${w.id}" ${w.status === 'soon' ? 'aria-disabled="true"' : ''}>
         <span class="wnum mono">W${w.number}</span>
         <span class="wtitle">${esc(w.title)}<small>${meta}</small></span>
@@ -98,6 +125,7 @@ export function mountLearn(store) {
   list.addEventListener('click', (e) => {
     if (run) return;
     if (e.target.closest('[data-audit]')) { showAudit(); return; }
+    if (e.target.closest('[data-mock]')) { showMock(); return; }
     const b = e.target.closest('[data-world]');
     if (b) showWorld(Number(b.dataset.world));
   });
@@ -134,12 +162,43 @@ export function mountLearn(store) {
       ${audit.upcoming.length ? `<h3 class="sub">Coming up</h3><ul class="upcoming">${audit.upcoming.slice(0, 5).map((u) => `<li><span>${fmtDay(u.date)}</span><b class="mono">${u.count}</b></li>`).join('')}</ul>` : ''}`;
   }
 
+  const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
+  function showMock() {
+    stopTimer();
+    worldId = 'mock';
+    renderList();
+    const chosen = mock.worlds.filter((w) => mockPick.worlds.has(w.id));
+    // a paper can't be longer than the chosen worlds' questions, unless one of them generates fresh ones
+    const pool = chosen.some((w) => w.generated) ? Infinity : chosen.reduce((sum, w) => sum + w.questions, 0);
+    const n = Math.min(mockPick.length, pool), minutes = Math.ceil((n * mock.secondsPerQuestion) / 60);
+    const short = chosen.length && n < mockPick.length ? ` ${chosen.length > 1 ? 'These worlds only have' : 'This world only has'} ${n} questions, so that’s the paper.` : '';
+    const worldBtns = mock.worlds.map((w) => `<button type="button" class="wpick" data-mock-world="${w.id}" aria-pressed="${mockPick.worlds.has(w.id)}">
+        <i class="ti ${mockPick.worlds.has(w.id) ? 'ti-square-check' : 'ti-square'}" aria-hidden="true"></i><span class="mono">W${w.number}</span>${esc(w.title)}</button>`).join('');
+    const lenBtns = mock.lengths.map((l) => `<button type="button" role="radio" aria-checked="${l === mockPick.length}" data-mock-len="${l}">${l}</button>`).join('');
+    const hist = mock.history.map((h) => `<tr><td>${esc(new Date(h.at.replace(' ', 'T')).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}</td>
+        <td class="mono">${h.worlds.map((x) => `W${x}`).join(' ')}</td><td class="mono">${h.correct}/${h.total}</td>
+        <td class="mono">${clock(h.seconds)}${h.timedOut ? ' (time)' : ''}</td><td class="mono pct">${h.pct}%</td></tr>`).join('');
+    view.innerHTML = `<header class="whead"><div>
+        <p class="crumb mono">Exam practice</p>
+        <h2>Mock exam</h2>
+        <p class="sum">Questions from the worlds you pick, shared evenly, on one clock. Like the real thing, you only see answers at the end, with your score by topic. Answers still earn XP and count toward your rating.</p>
+      </div></header>
+      ${mock.worlds.length ? `<h3 class="sub">Worlds</h3><div class="wpicks">${worldBtns}</div>
+      <h3 class="sub" id="mock-len">Questions</h3><div class="seg" role="radiogroup" aria-labelledby="mock-len">${lenBtns}</div>
+      <div class="exam ready mock-go"><i class="ti ti-clock-hour-4" aria-hidden="true"></i>
+        <div><strong>${n} questions, ${minutes} minutes</strong><small>${chosen.length ? `From ${chosen.length > 1 ? `worlds ${chosen.slice(0, -1).map((w) => w.number).join(', ')} and ${chosen.at(-1).number}` : `world ${chosen[0].number}`}. Score ${mock.readyPct}% to count as exam-ready.${short}` : 'Pick at least one world.'}</small></div>
+        <button class="btn primary" data-mock-start="1" ${chosen.length ? '' : 'disabled'}>Start mock exam</button></div>`
+        : '<p class="empty">Open a world in Learn first. Mock exams draw from the worlds you can play.</p>'}
+      ${hist ? `<h3 class="sub">Past attempts</h3><table class="hist"><thead><tr><th>Date</th><th>Worlds</th><th>Right</th><th>Time</th><th>Score</th></tr></thead><tbody>${hist}</tbody></table>` : ''}`;
+  }
+
   function showWorld(id) {
     stopTimer();
     worldId = id;
     renderList();
     const w = worlds.find((x) => x.id === id);
-    const locked = w.status === 'locked' || w.status === 'soon';
+    const locked = w.status === 'locked' || w.status === 'soon' || w.status === 'area';
     const levels = w.levels.map((l) => `
       <li class="lvl${l.completed ? ' done' : ''}">
         <span class="lnum mono">${w.number}.${l.number}</span>
@@ -153,12 +212,14 @@ export function mountLearn(store) {
       : 'Finish every level to unlock the exam.';
     view.innerHTML = `
       <header class="whead">
-        <div><p class="crumb mono">World ${w.number} · CCNA ITN modules ${esc(w.ccnaModules)}</p>
+        <div><p class="crumb mono">World ${w.number}${w.needs ? `, in the ${esc(w.needs.name.toLowerCase())}` : ''}: ${esc(w.ccnaModules)}</p>
         <h2>${esc(w.title)}</h2><p class="sum">${esc(w.summary)}</p></div>
         ${w.status === 'soon' ? '' : tierChip(w.tier, w.rating)}
       </header>
       ${w.status === 'soon' ? '<p class="empty">Lessons for this world haven’t been written yet. Lecturers add them in the question bank.</p>'
-        : w.status === 'locked' ? '<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier worlds to open this one.</p>' : ''}
+        : w.status === 'locked' ? `<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier worlds to open this one.${w.needs ? ` You’ll also need to lease the ${esc(w.needs.name.toLowerCase())}.` : ''}</p>`
+        : w.status === 'area' ? `<div class="area-gate"><i class="ti ti-building" aria-hidden="true"></i><div><strong>Taught in the ${esc(w.needs.name.toLowerCase())}</strong>
+          <small>Lease it from the place menu in the top bar to open these lessons: level ${w.needs.unlockLevel} and ${w.needs.leaseCost.toLocaleString('en-US')} credits.${store.state.user.level < w.needs.unlockLevel ? ` You’re level ${store.state.user.level}, so keep learning for XP.` : ''}</small></div></div>` : ''}
       ${w.levels.length ? `<ol class="levels">${levels}</ol>` : ''}
       ${w.levels.length ? `<div class="exam${ex.ready && !locked ? ' ready' : ''}">
         <i class="ti ti-certificate" aria-hidden="true"></i>
@@ -175,7 +236,10 @@ export function mountLearn(store) {
       else if (t.dataset.start) startRun(api.learn.startLevel(Number(t.dataset.start)));
       else if (t.dataset.exam) startRun(api.learn.startExam(Number(t.dataset.exam)));
       else if (t.dataset.auditStart) await startRun(api.learn.startAudit());
-      else if (t.dataset.back) (worldId === 'audit' ? showAudit() : showWorld(worldId));
+      else if (t.dataset.mockWorld) { const id = Number(t.dataset.mockWorld); mockPick.worlds.has(id) ? mockPick.worlds.delete(id) : mockPick.worlds.add(id); showMock(); view.querySelector(`[data-mock-world="${id}"]`)?.focus(); }
+      else if (t.dataset.mockLen) { mockPick.length = Number(t.dataset.mockLen); showMock(); view.querySelector(`[data-mock-len="${mockPick.length}"]`)?.focus(); }
+      else if (t.dataset.mockStart) await startRun(api.learn.startMock([...mockPick.worlds], mockPick.length));
+      else if (t.dataset.back) (worldId === 'audit' ? showAudit() : worldId === 'mock' ? showMock() : showWorld(worldId));
       else if (t.dataset.next) showQuestion();
       else if (t.dataset.check) submit();
       else if (t.dataset.up || t.dataset.down) moveItem(t);
@@ -211,7 +275,7 @@ export function mountLearn(store) {
     return `<header class="qhead">
       <span class="qtitle">${esc(r.title)}</span>
       <span class="pips" aria-label="Question ${r.index + 1} of ${r.total}">${pips}</span>
-      ${tierChip(r.tier, r.rating)}
+      ${r.mode === 'mock' ? `<span class="qcount mono">${r.index + 1} of ${r.total}</span>` : tierChip(r.tier, r.rating)}
       <span class="clock mono" id="clock" aria-live="off"></span>
     </header>`;
   }
@@ -236,7 +300,7 @@ export function mountLearn(store) {
           <button class="mini" data-down="1" aria-label="Move down"><i class="ti ti-chevron-down"></i></button></li>`).join('')}</ol>`;
         break;
       case 'fill':
-        body = `<p class="fill">${q.parts.map((p, i) => esc(p) + (i < q.parts.length - 1 ? `<input class="blank" data-blank="${i}" autocomplete="off" spellcheck="false" aria-label="Blank ${i + 1}">` : '')).join('')}</p>`;
+        body = `<p class="fill">${q.parts.map((p, i) => rich(p) + (i < q.parts.length - 1 ? `<input class="blank" data-blank="${i}" autocomplete="off" spellcheck="false" aria-label="Blank ${i + 1}">` : '')).join('')}</p>`;
         break;
       default: // blitz, subnet
         body = `<input class="big mono" id="free" autocomplete="off" spellcheck="false" inputmode="${q.inputHint === 'Number' ? 'numeric' : 'text'}" placeholder="${esc(q.inputHint)}" aria-label="Your answer">`;
@@ -244,11 +308,11 @@ export function mountLearn(store) {
     view.innerHTML = `${header()}
       <section class="q">
         <p class="qmeta">${TYPE_LABEL[q.type]} · ${esc(q.topic)} · <span class="tier-txt">${q.tier}</span></p>
-        <h3 class="${q.type === 'fill' ? 'sr-only' : ''}">${esc(q.prompt)}</h3>
+        <h3 class="${q.type === 'fill' ? 'sr-only' : ''}">${rich(q.prompt)}</h3>
         ${body}
         <p class="qerr" id="qerr" role="alert"></p>
       </section>
-      <div class="actions"><button class="btn primary" data-check="1">Check answer <kbd>Enter</kbd></button></div>`;
+      <div class="actions"><button class="btn primary" data-check="1">${run.run.mode === 'mock' ? (run.run.index + 1 === run.run.total ? 'Finish exam' : 'Next question') : 'Check answer'} <kbd>Enter</kbd></button></div>`;
     (view.querySelector('#free, .blank, .opt, select') || view.querySelector('[data-check]')).focus();
     startTimer(q.seconds);
   }
@@ -302,9 +366,10 @@ export function mountLearn(store) {
       const res = await api.learn.answer(answer);
       store.applyServerState(res.state);
       if (audit.due !== res.state.user.auditDue) { audit.due = res.state.user.auditDue; renderList(); }
-      if (res.summary) { const s = res.summary; run = null; renderList(); return showFeedback(res.result, () => showSummary(s)); }
+      const mockRun = run.run.mode === 'mock'; // no feedback mid-exam: answers come at the end
+      if (res.summary) { const s = res.summary; run = null; renderList(); return mockRun ? showSummary(s) : showFeedback(res.result, () => showSummary(s)); }
       run = { run: res.run, question: res.question };
-      showFeedback(res.result, null);
+      if (mockRun) showQuestion(); else showFeedback(res.result, null);
     } catch (err) {
       showErr(err.message);
     } finally {
@@ -324,7 +389,7 @@ export function mountLearn(store) {
     fb.innerHTML = `
       <p class="verdict"><i class="ti ${r.correct ? 'ti-circle-check' : 'ti-circle-x'}" aria-hidden="true"></i>${r.correct ? 'Correct' : r.late ? 'Out of time' : 'Not quite'}</p>
       ${r.correct ? '' : `<p class="ans">Answer: <b>${esc(r.answerText)}</b></p>`}
-      <p class="why">${esc(r.explanation)}</p>
+      <p class="why">${rich(r.explanation)}</p>
       <p class="delta mono">Rating ${r.ratingBefore} → ${r.ratingAfter} (${delta >= 0 ? '+' : ''}${delta})${gains ? ` · <span class="gain">${gains}</span>` : ''}${AUDIT_NOTE(r.audit)}</p>`;
     view.querySelector('.actions').replaceWith(fb);
     const next = document.createElement('div');
@@ -338,6 +403,7 @@ export function mountLearn(store) {
   }
 
   function showSummary(s) {
+    if (s.mode === 'mock') return showMockSummary(s);
     const delta = s.ratingAfter - s.ratingBefore;
     if (s.mode === 'audit') {
       const back = s.total - s.correct;
@@ -371,6 +437,44 @@ export function mountLearn(store) {
       </section>
       <div class="actions"><button class="btn primary" data-back="1">Back to World</button></div>`;
     view.querySelector('[data-back]').focus();
+    loadRoadmap().then(renderList);
+  }
+
+  /** One row per topic or world: a bar for the score, a mark at the exam-ready line, the number in text. */
+  function scoreRows(rows, name) {
+    return rows.map((r) => {
+      const pct = Math.round((r.correct / r.total) * 100);
+      const weak = pct < mock.readyPct;
+      return `<li title="${esc(name(r))}: ${r.correct} of ${r.total} right (${pct}%)">
+        <span class="tname">${esc(name(r))}</span>
+        <span class="meter" aria-hidden="true"><span class="fill" style="width:${Math.max(pct, 2)}%"></span><span class="line" style="left:${mock.readyPct}%"></span></span>
+        <span class="tval mono">${r.correct}/${r.total}</span>
+        <span class="tflag">${weak ? '<i class="ti ti-alert-triangle" aria-hidden="true"></i>Work on' : '<i class="ti ti-check" aria-hidden="true"></i>Ready'}</span></li>`;
+    }).join('');
+  }
+
+  function showMockSummary(s) {
+    const ready = s.pct >= s.passPct;
+    const unanswered = s.unanswered ? ` ${s.unanswered} left unanswered.` : '';
+    view.innerHTML = `<section class="summary mock-sum ${ready ? 'pass' : 'fail'}">
+        <p class="crumb mono">${esc(s.title)}${s.timedOut ? ', time ran out' : ''}</p>
+        <p class="score mono">${s.pct}%</p>
+        <h2>${ready ? 'Exam-ready' : `Not exam-ready yet: ${s.passPct}% needed`}</h2>
+        <p>${s.correct} of ${s.total} correct in ${clock(s.seconds ?? 0)}.${unanswered}</p>
+        <p class="gain mono">+${s.xp} XP</p>
+      </section>
+      <h3 class="sub">By topic, weakest first</h3>
+      <ul class="scores" aria-label="Score by topic">${scoreRows(s.topics, (t) => t.topic)}</ul>
+      ${s.byWorld.length > 1 ? `<h3 class="sub">By world</h3><ul class="scores" aria-label="Score by world">${scoreRows(s.byWorld, (w) => `World ${w.world}`)}</ul>` : ''}
+      <p class="legend-note"><span class="line-key" aria-hidden="true"></span>${s.passPct}% exam-ready line</p>
+      ${s.missed.length ? `<h3 class="sub">Review your mistakes</h3><ol class="missed">${s.missed.map((m) => `<li>
+        <p class="mq">${rich(m.prompt)}</p>
+        <p class="ma">${m.late ? 'Out of time. ' : ''}Answer: <b>${esc(m.answer)}</b> <span class="mono">W${m.world}, ${esc(m.topic)}</span></p>
+        ${m.why ? `<p class="why">${rich(m.why)}</p>` : ''}</li>`).join('')}</ol>` : ''}
+      <p class="note">Wrong answers also go to your Daily Security Audit.</p>
+      <div class="actions"><button class="btn primary" data-back="1">Back to mock exams</button></div>`;
+    view.querySelector('[data-back]').focus({ preventScroll: true });
+    view.scrollTop = 0;
     loadRoadmap().then(renderList);
   }
 

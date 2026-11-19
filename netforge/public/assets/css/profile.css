@@ -1,0 +1,32 @@
+/* Profile page (FR-1.4): the sign-in terminal, widened. */
+.terminal.wide { width: min(100%, 620px); margin: 24px 0; }
+.terminal header .back { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; color: var(--ink-dim); text-decoration: none; }
+.terminal header .back i { font-size: 16px; color: inherit; }
+.terminal header .back:hover { color: var(--cyan); }
+
+.me { display: flex; align-items: center; gap: 18px; padding: 20px 16px 4px; }
+.me canvas { width: 48px; height: 84px; image-rendering: pixelated; flex: none; }
+.me h1 { margin: 0; font-size: 24px; font-weight: 600; }
+.me .hint { margin: 4px 0 0; }
+.note.saved { margin: 12px 16px 0; }
+
+.section { border-top: 1px solid var(--grid); }
+.section:first-of-type { border-top: 0; }
+.section h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ink); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.terminal form .hint { margin-top: -6px; }
+label .hint { margin-top: 0 !important; }
+
+.avatars { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.avatars legend { padding: 0; margin-bottom: 8px; font-size: 14px; color: var(--ink-dim); display: flex; gap: 8px; align-items: baseline; }
+.av { position: relative; display: grid; justify-items: center; gap: 6px; padding: 10px 4px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); cursor: pointer; font-size: 12px; text-align: center; }
+.av input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.av canvas { width: 24px; height: 42px; image-rendering: pixelated; }
+.av:hover { border-color: var(--ink-dim); }
+.av:has(input:checked) { border-color: var(--cyan); background: rgba(43, 227, 255, .07); color: var(--ink); }
+.av:has(input:focus-visible) { box-shadow: 0 0 0 1px var(--cyan); }
+
+@media (max-width: 520px) {
+  .avatars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pair { grid-template-columns: 1fr; }
+}

@@ -97,7 +97,7 @@ export class MapScene extends Phaser.Scene {
     };
     tex('room', W, H, (c) => art.drawRoom(c, layout.LOC_CODE, layout.LOC));
     tex('vignette', W, H, art.vignette);
-    tex('player', art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, art.player);
+    tex('player', art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.player(c, this.store.state.user?.avatar));
     for (const [name, s] of Object.entries(art.SPRITES)) tex(`dev-${name}`, s.w, s.h, s.draw);
   }
 

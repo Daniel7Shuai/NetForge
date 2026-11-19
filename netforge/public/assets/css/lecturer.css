@@ -4,8 +4,8 @@ body { min-height: 100vh; }
 .staff-top .brand { display: flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; font-weight: 600; font-size: 18px; white-space: nowrap; }
 .staff-top .brand i { color: var(--cyan); font-size: 22px; }
 .staff-top .brand span { font-weight: 500; color: var(--amber); font-size: 14px; }
-.staff-top nav { display: flex; gap: 2px; flex: 1; }
-.staff-top nav a { color: var(--ink-dim); text-decoration: none; padding: 8px 12px; border-radius: var(--r-sm); font-weight: 500; font-size: 14px; }
+.staff-top nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.staff-top nav a { color: var(--ink-dim); text-decoration: none; white-space: nowrap; padding: 8px 10px; border-radius: var(--r-sm); font-weight: 500; font-size: 14px; }
 .staff-top nav a:hover { color: var(--ink); background: var(--panel-2); }
 .staff-top nav a[aria-current=page] { color: var(--ink); background: var(--grid); }
 .staff-top .who { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--ink-dim); white-space: nowrap; }
@@ -99,7 +99,9 @@ label.check input { accent-color: var(--cyan); width: 16px; height: 16px; }
 .preview-wrap .label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
 .lesson-preview { padding: 14px 18px; min-height: 200px; border: 1px dashed var(--line); border-radius: var(--r-sm); background: var(--void); font-size: 15px; line-height: 1.65; max-height: 520px; overflow: auto; }
 .lesson-preview p { margin: 0 0 12px; }
-.lesson-preview ul { margin: 0 0 12px; padding-left: 20px; }
+.lesson-preview ul, .lesson-preview ol { margin: 0 0 12px; padding-left: 22px; }
+.lesson-preview pre.cli { margin: 0 0 12px; padding: 8px 12px; background: var(--panel); border-left: 2px solid var(--lime); border-radius: var(--r-sm); overflow-x: auto; }
+.lesson-preview pre.cli code { padding: 0; background: none; color: var(--lime); }
 .lesson-preview strong { color: #eaf6fd; }
 .lesson-preview code, .panel code { font: 13px var(--mono); color: var(--cyan); background: var(--grid); padding: 1px 5px; border-radius: 3px; }
 
@@ -161,3 +163,39 @@ table.data a { color: var(--cyan); }
   .span2 { grid-column: auto; }
   table.data { display: block; overflow-x: auto; }
 }
+
+/* users (FR-1.5) */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.role-count { margin-left: 14px; }
+.role-count b { color: var(--ink); font-weight: 500; }
+.who-cell { display: flex; align-items: center; gap: 10px; }
+.who-cell canvas { width: 24px; height: 42px; image-rendering: pixelated; flex: none; }
+.who-cell small { display: block; color: var(--ink-dim); font-size: 12px; font-weight: 400; }
+table.users td, table.users th { vertical-align: middle; }
+.role { font-size: 13px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-dim); }
+.role.lecturer { color: var(--amber); border-color: rgba(255, 180, 61, .45); }
+.role.admin { color: var(--cyan); border-color: rgba(43, 227, 255, .45); }
+.who-head { display: flex; align-items: center; gap: 16px; }
+.who-head canvas { width: 48px; height: 84px; image-rendering: pixelated; }
+.who-head .verdict { margin-left: 6px; }
+.btn.danger { color: #ffc2de; border-color: rgba(255, 61, 154, .55); background: rgba(255, 61, 154, .06); }
+.btn.danger:hover:not(:disabled) { border-color: var(--magenta); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.actions.start { justify-content: flex-start; margin-top: 10px; }
+.form strong { font-weight: 600; }
+.reset-link { border-color: var(--lime); }
+.copy-row { display: flex; gap: 8px; margin-top: 12px; }
+.copy-row input { flex: 1; }
+
+/* unlocks: income and pacing */
+.economy-extra { margin-top: 20px; align-items: start; }
+.economy-extra .num-in { width: 120px; }
+.pacing { padding: 12px 14px; border: 1px solid var(--grid); border-radius: var(--r); background: var(--panel); }
+.pacing .help { margin: 6px 0; }
+.pacing ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
+.pacing li { margin: 4px 0; }
+.pacing b { color: var(--ink); font-weight: 500; }
+.economy-extra .field { display: grid; gap: 6px; font-size: 14px; font-weight: 500; align-content: start; }
+.economy-extra .field small { font-weight: 400; color: var(--ink-dim); font-size: 12px; }
+.economy-extra .field input { width: 120px; }
+

@@ -6,6 +6,9 @@ use NetForge\Api;
 use NetForge\Learning\Learning;
 
 // GET -> worlds 0-8 with status, Elo rating, tier, levels and exam info,
-// plus the Daily Security Audit overview.
+// plus the Daily Security Audit overview and the mock exam options and history.
 $uid = Api::begin('GET');
-Api::run(fn () => Api::ok(['worlds' => Learning::roadmap($uid), 'audit' => Learning::audit($uid)]));
+Api::run(function () use ($uid): void {
+    $worlds = Learning::roadmap($uid);
+    Api::ok(['worlds' => $worlds, 'audit' => Learning::audit($uid), 'mock' => \NetForge\Learning\Mock::overview($uid, $worlds)]);
+});

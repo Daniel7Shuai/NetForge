@@ -90,6 +90,22 @@ export function ispBox(c, x, y) {
   R(c, x + 3, y + 21, 6, 2, '#6f7d8f');
 }
 
+/** Firewall appliance: a squat box with a hazard stripe and status lights. */
+export function firewall(c, x, y) {
+  R(c, x + 1, y + 8, 13, 2, 'rgba(0,0,0,.45)');
+  R(c, x, y, 14, 9, C.k); R(c, x + 1, y + 1, 12, 7, '#3a1626'); R(c, x + 1, y + 1, 12, 1, '#5c2238');
+  for (let i = 0; i < 6; i++) R(c, x + 1 + i * 2, y + 2, 1, 1, i % 2 ? C.magenta : '#ff9bc7');
+  R(c, x + 2, y + 6, 10, 1, '#1d0b13');
+}
+
+/** Datacentre fibre entry panel on the wall. */
+export function fibrePanel(c, x, y) {
+  R(c, x + 4, y, 1, 12, '#d9a03a'); R(c, x + 7, y, 1, 12, '#d9a03a'); R(c, x + 8, y, 1, 12, 'rgba(0,0,0,.4)');
+  R(c, x, y + 11, 12, 14, C.k); R(c, x + 1, y + 12, 10, 12, '#2a3446'); R(c, x + 1, y + 12, 10, 1, '#465672');
+  for (let i = 0; i < 4; i++) R(c, x + 2 + i * 2, y + 16, 1, 2, C.amber);
+  R(c, x + 3, y + 21, 6, 2, '#141a26');
+}
+
 export function switchBox(c, x, y) {
   R(c, x, y + 5, 16, 7, C.k); R(c, x + 1, y + 6, 14, 5, '#1c2638');
   for (let i = 0; i < 6; i++) R(c, x + 2 + i * 2, y + 8, 1, 2, i < 2 ? C.lime : C.deep);
@@ -112,6 +128,8 @@ export const SPRITES = {
   laptop:     { w: 15, h: 12, off: [1, 1],  box: [14, 11], port: [13, 9], draw: (c) => laptop(c, 0, 0), leds: [[2, 2]] },
   homerouter: { w: 15, h: 11, off: [1, 2],  box: [14, 10], port: [7, 9],  draw: (c) => homeRouter(c, 0, 0), leds: [[3, 7], [5, 7], [7, 7], [9, 7]] },
   ispbox:     { w: 13, h: 25, off: [2, -8], box: [12, 25], port: [6, 23], draw: (c) => ispBox(c, 0, 0), leds: [[3, 13], [5, 13]] },
+  firewall:   { w: 15, h: 11, off: [1, 4],  box: [14, 9],  port: [7, 8],  draw: (c) => firewall(c, 0, 0), leds: [[3, 4], [6, 4], [9, 4]] },
+  fibrepanel: { w: 13, h: 25, off: [2, -8], box: [12, 25], port: [6, 23], draw: (c) => fibrePanel(c, 0, 0), leds: [[3, 13], [9, 13]] },
 };
 
 export function coil(c, col) {
@@ -130,6 +148,7 @@ export function drawIcon(c, item) {
     case 'pc': return tower(c, 4, 0);
     case 'laptop': return laptop(c, 1, 3);
     case 'home_router': return homeRouter(c, 1, 3);
+    case 'firewall': return firewall(c, 1, 4);
     case 'switch8': return switchBox(c, 0, 0);
     case 'router': return routerBox(c, 0, 0);
     default: c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore();
@@ -144,11 +163,34 @@ const PLAYER = [
   'kSkJjjjjJkSk', '.k.kJJJJk.k.', '...knnnnk...', '...knkknk...', '...knk.knk..', '...kbk.kbk..', '...kkk.kkk..',
 ];
 const PLAYER_PAL = { k: C.k, h: '#2a1d3d', s: '#e0a582', S: '#a8714f', j: '#11798f', J: '#0a4b5a', c: C.cyan, n: '#1c2233', b: '#0d1018', w: '#c9e4f2', a: C.magenta };
+/** Avatar colourways (FR-1.4): hair, jacket (light/dark) and trim. Mirrors Accounts::AVATARS in PHP. */
+export const AVATARS = {
+  cyan:    { h: '#2a1d3d', j: '#11798f', J: '#0a4b5a', c: C.cyan,    a: C.magenta },
+  magenta: { h: '#1a1420', j: '#9b2766', J: '#5e1640', c: C.magenta, a: C.cyan },
+  lime:    { h: '#3b2a18', j: '#3f7d2c', J: '#254a1a', c: C.lime,    a: C.amber },
+  amber:   { h: '#121212', j: '#a8661d', J: '#6a3f10', c: C.amber,   a: C.cyan },
+  violet:  { h: '#5a3a1e', j: '#5b3c9e', J: '#372361', c: '#b494ff', a: C.lime },
+  steel:   { h: '#c9c4bd', j: '#4a5a6e', J: '#2c3846', c: '#9fb3c8', a: C.amber },
+  ember:   { h: '#7a2d17', j: '#9e3a24', J: '#5e2214', c: '#ff8a5c', a: C.cyan },
+  mint:    { h: '#0f1a20', j: '#2b8a74', J: '#195446', c: '#6ff0c8', a: C.magenta },
+};
 export const PLAYER_SIZE = { w: 12, h: 21 };
-export function player(c) {
+export function player(c, avatar = 'cyan') {
+  const pal = { ...PLAYER_PAL, ...(AVATARS[avatar] || {}) };
   c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(6, 19, 6, 2, 0, 0, 7); c.fill();
   PLAYER.forEach((row, j) => {
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') R(c, i, j, 1, 1, PLAYER_PAL[row[i]]);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') R(c, i, j, 1, 1, pal[row[i]]);
+  });
+}
+
+/** Draws an avatar into every <canvas data-avatar="..."> on the page, scaled up crisp. */
+export function paintAvatars(root = document) {
+  root.querySelectorAll('canvas[data-avatar]').forEach((cv) => {
+    const scale = Number(cv.dataset.scale || 3);
+    cv.width = PLAYER_SIZE.w * scale; cv.height = PLAYER_SIZE.h * scale;
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.save(); ctx.scale(scale, scale); player(ctx, cv.dataset.avatar); ctx.restore();
   });
 }
 
@@ -369,7 +411,36 @@ function office(c, loc) {
 
 /* ======================= shared ======================= */
 
-const ROOMS = { garage, office };
+/* ======================= datacentre ======================= */
+
+function datacentre(c, loc) {
+  const W = COLS * TILE, H = ROWS * TILE, wallH = loc.wallRows * TILE;
+  // wall with the network operations display and a cyan light strip
+  R(c, 0, 0, W, wallH, '#080d16');
+  for (let x = 0; x < W; x += 40) R(c, x, 2, 1, wallH - 4, '#060a12');
+  R(c, 0, 0, W, 2, '#162033'); R(c, 0, wallH - 2, W, 2, '#04060b');
+  R(c, 8, 6, W - 16, 1, C.cyan); R(c, 8, 5, W - 16, 1, 'rgba(43,227,255,.25)'); R(c, 8, 7, W - 16, 1, 'rgba(43,227,255,.25)');
+  for (const [sx, w] of [[24, 96], [200, 96]]) {
+    R(c, sx, 10, w, 19, '#1a2436'); R(c, sx + 1, 11, w - 2, 17, '#04121a');
+    let y = 24;
+    for (let i = 0; i < w - 6; i++) { // traffic graph
+      y = Math.max(14, Math.min(26, y + Math.round((hash(i, sx) - 0.5) * 4)));
+      R(c, sx + 3 + i, y, 1, 1, sx < 100 ? C.cyan : C.lime);
+    }
+  }
+  // raised floor, with perforated tiles on the cold aisles
+  for (let ty = loc.wallRows; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    const x = tx * TILE, y = ty * TILE;
+    R(c, x, y, 16, 16, '#111a27'); R(c, x, y, 16, 1, '#19253a'); R(c, x, y, 1, 16, '#19253a');
+    R(c, x + 15, y, 1, 16, '#070b12'); R(c, x, y + 15, 16, 1, '#070b12');
+    if (ty === 5 || ty === 6) for (let py = 3; py < 14; py += 3) for (let px = 3; px < 14; px += 3) R(c, x + px, y + py, 1, 1, '#1c3d4f');
+  }
+  // yellow safety line along the walkway
+  for (let x = 0; x < W; x += 6) R(c, x, 9 * TILE + 1, 3, 1, '#6b5418');
+  for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
+}
+
+const ROOMS = { garage, office, datacentre };
 
 export function drawRoom(c, code, loc) {
   c.clearRect(0, 0, COLS * TILE, ROWS * TILE);

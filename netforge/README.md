@@ -13,6 +13,12 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_social.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_defence.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_progress.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_upgrades.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_mock.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_users.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_content.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_economy.sql
+   C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
 3. Copy `config/config.example.php` to `config/config.php` and set the DB password if you have one.
@@ -23,7 +29,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
 5. Open http://127.0.0.1:8080 and create an account (public sign-up makes students).
 6. Create a lecturer (or admin) from the command line:
    ```
-   C:\xampp\php\php.exe tools/create-user.php <username> <password> lecturer
+   C:\xampp\php\php.exe tools/create-user.php <username> <password> lecturer [email]
    ```
    Lecturers and admins land on the lecturer pages at `/lecturer/` after signing in.
 
@@ -50,18 +56,30 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
 
 Framework done: accounts, sessions, CSRF, database, state API, HUD, drawer, console, pixel-art map, player movement, LEDs, objective tracking and rewards.
 
-Locations: players start in the **garage** (tier 1) with only a busted laptop and 0 credits; the ISP fibre box on the wall is a fixed device. The **office and server room** (tier 2) is defined and drawn but not yet reachable. More tiers are added as entries in `layout.json` plus a room function in `art.js`.
+Locations (FR-4.3, three datacentre levels): click the place name in the top bar to travel.
+- **Garage** (tier 1): where every player starts, with only a busted laptop. Bench and shelf spots, and the ISP box on the wall.
+- **Office and server room** (tier 2): lease at level 4 for 800 credits. Four desks and six rack slots.
+- **Datacentre** (tier 3): lease at level 7 for 3,000 credits. 25 rack slots on a raised floor and an ISP fibre panel (copper and fibre).
+- Leasing is paid once (`user_locations`); after that you travel freely. Devices stay where you placed them and keep earning while you're elsewhere. Each place has its own ISP connection to wire up. Level, price and layout are in `public/assets/data/layout.json`; `Rules::travel`, `api/travel.php`.
+
+Upgrades (FR-4.3): select a device to see its tier and an **Upgrade** button.
+- Tiers 1 to 3 (`item_types.max_tier`; building fixtures have one tier). Tier 2 costs 60% of the item's shop price and needs its unlock level + 2; tier 3 costs 120% and needs + 4. So credits pay for it, but XP decides when. `Rules::upgradeInfo`, `Rules::upgrade`, `api/upgrade.php`.
+- Higher tiers earn more while online: income x1, x1.5, x2.
+- The **firewall** (shop, level 4, 500 credits; fits a shelf or rack): while online it blocks 25% of every breach penalty per tier, at most 75% (`item_types.shield_pct`, `Income::shield`, applied in `Defence::charge`).
+- **Move** (same popover): click a free spot to move the device there. Its cables stay plugged in and re-route. `Rules::move`, `api/move.php`.
+- Tests: `php tests/UpgradeTest.php`.
 
 Placing devices done: select a device in the inventory (or drag it) and click a glowing spot. The server re-checks everything (`Rules::place`), names devices (Laptop-1, PC-1…) and completes objectives.
 
 Learning (module 3.0) done: press **L** or click the objective bar.
-- Worlds 0–8 follow CCNA ITN modules 1–17. A world opens once every earlier world *that has content* is mastered.
+- **One world per area of the game**, following the CCNA 200-301 blueprint: World 0 **Garage** (Network Fundamentals), World 1 **Office** (Network Access, IP Connectivity), World 2 **Datacentre** (IP Services, Security Fundamentals, Automation and Programmability). A world opens once the earlier worlds are mastered **and** the student has leased its area (`worlds.requires_location`, set per world on the lecturer world page). Until then Learn shows "Lease the office" with the level and credits it takes.
 - Each level = lesson + adaptive challenge run. Passing every level unlocks the timed world exam; passing it masters the world and unlocks shop items (`shop_items.unlock_world`).
 - Six challenge types: multiple choice, matching, ordering, fill in the blanks, Binary Blitz (20 s timer) and Subnet Calculator (both generated fresh each time).
 - Elo (`src/Learning/Elo.php`): per-world student rating, question ratings, K shrinks with rating, tiers Bronze/Silver/Gold/Platinum. Credits and XP are paid only from rating gains (2 credits and 5 XP per point).
 - **Daily Security Audit** (FR-3.4): every wrong answer goes into `audit_queue`, due after 1 day. In the review (top of Learn, up to 10 per round), a right answer moves it to 3 days, then 7 days, then clears it; a wrong one sends it back to 1 day. Reviews update Elo and pay from rating gains like lessons. The Learn button shows a badge with the number due. Intervals live in `Challenge::AUDIT_NEXT`.
   To demo it without waiting a day: `UPDATE audit_queue SET due_on = CURDATE();`
-- Content seeded: World 0 (3 levels, 18 questions), World 2 (Binary Blitz), World 5 (Subnet Calculator). Add more rows to `levels` and `questions`; the payload shapes are documented in `src/Learning/Grader.php`.
+- **Mock exams** (FR-3.5): the Mock exam row in Learn. Pick any open worlds and 10, 20 or 30 questions; questions are drawn up front, shared evenly across the worlds, on one clock (1 minute per question). No answers are shown until the end, like a real exam. The result gives the score, a breakdown by topic (weakest first) and by world against a 70% exam-ready line, and every miss with its answer and explanation. Answers still update Elo, earn XP and feed the Daily Security Audit. Results are kept in `mock_exams` and listed as past attempts. Settings are constants in `src/Learning/Mock.php`; the run is played by `Challenge` in mode `mock`.
+- **Question bank**: 154 questions in 27 levels. The 120 CCNA questions follow the blueprint weights exactly (Fundamentals 24, Network Access 24, IP Connectivity 30, IP Services 12, Security 18, Automation 12), on top of the 34 starter questions and drills in the Garage. They live in `database/content/ccna.php` (one lesson per level, questions in the same format as the editor) and load with `php tools/seed-content.php`, which checks every question with the editor's rules and changes nothing if one fails. Loading again only refreshes wording; live ratings and answer counts are kept. Lecturers can keep editing in the question bank as before. Lessons support `- ` and `1. ` lists, **bold**, `code` and ``` blocks for device commands. Tests: `php tests/ContentTest.php` checks the weights and that every answer key marks correctly.
 - Unit tests: `php tests/EloTest.php` (26 hand-calculated cases for Elo and subnetting).
 
 Shop buying done (`Rules::buy`): checks world mastery and credits on the server.
@@ -73,6 +91,14 @@ Cabling done (Packet Tracer style):
 - Routes are drawn from the devices’ current positions, so moving a device later re-routes its cables. Link lights blink amber briefly, then go green or pink; live links carry a data pulse.
 - Remove tool (**Del**): unplug cables (they go back to your inventory) or pick up an unplugged device. Select or Inspect (**X**) a device to see every port, its role and what it’s connected to.
 - Server: `Rules::connect`, `Rules::unplug`, `Rules::pickUp`; endpoints `api/connect.php`, `api/unplug.php`, `api/pickup.php`. Tests: `php tests/CablingTest.php`.
+
+Accounts (module 1.0) done:
+- **Sign-up and sign-in** (FR-1.1, FR-1.2): sign-up asks for a username, email and password, all checked on the server. Sign in with the username or the email. Each role lands on its own home page. A session closes after `app.idle_minutes` (default 120) without a request, with a note on the sign-in page.
+- **Forgotten password** (FR-1.3): "Forgot it?" on the sign-in page sends a one-time link that works for `reset_minutes` (30, in `game_config`). Only a SHA-256 of the token is stored. A link dies once used, when a newer one is made, when the password changes, or when the account is switched off. The form looks the same whether or not the account exists, and sends at most 3 links an hour per account.
+- **Email delivery**: `mail.transport` in `config/config.php`. The default, `log`, saves each email to `storage/mail/` instead of sending it (XAMPP has no mail server; with `app.debug` on, the page says where the file went). Set it to `mail` and configure SMTP in `php.ini` on a real server, and set `app.base_url` so links point at the right host.
+- **Profile** (FR-1.4): the menu → Profile, for every role. Display name, avatar (8 colourways of the pixel character, shown on the map), email, and password (needs the current one). `public/profile.php`, `src/Accounts.php`.
+- **User management** (FR-1.5): admins get **Users** in the lecturer pages. Search and filter accounts; create one with a role and temporary password; edit display name, email and role; switch an account off or back on (nothing is deleted; it's signed out on its next request); make a one-time reset link to send them. Admins can't demote or switch off themselves or the last active admin. Every change is kept in `admin_log` and shown on the account's page.
+- Tests: `php tests/AccountsTest.php` (26 checks; makes and removes its own accounts).
 
 Roles and lecturer tools (modules 1.0 and 2.0) done:
 - `users.role` is student, lecturer or admin; `users.active` lets an account be switched off. Roles are checked on the server for every lecturer page (`Auth::requireRole`); students who open `/lecturer/` are sent back to the game.
@@ -110,17 +136,18 @@ Cyber attack and defence (module 5.0) done:
 
 ## The economy (read this before changing prices or rewards)
 
-- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to the ISP box by a chain of working links, earns its `item_types.income_per_hour` (laptop 10, home router 15, PC 25, switch 40, router 60, server 120). The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
+- **Credits come from passive income** (FR-4.4): every device that is *online*, meaning joined to an ISP box or fibre panel by a chain of working links, earns its `item_types.income_per_hour` times its tier bonus (laptop 40, home router 60, PC 80, switch 120, router 180, server 300; set in `database/schema_economy.sql`). A starter garage earns 100/h, so the 800-credit office lease takes about 8 hours, and an office network (4 PCs, switch, router) saves the 3,000-credit datacentre lease in about 4. Lecturers edit every rate, including the starter laptop, on **Unlocks and prices**, which also shows this pacing for the current numbers. The player is renting out their network. Up to `income_cap_hours` (8) builds up while they’re away. `src/Progress/Income.php`.
 - **XP comes from learning**: correct answers in lessons, exams and the Daily Security Audit pay XP from Elo rating gains (5 XP per point, so repeating easy questions pays almost nothing), plus weekly raid rewards. Questions pay **no credits** (`Elo::CREDITS_PER_POINT = 0`).
 - **XP unlocks what credits can buy**: every 1000 XP is a level, and `shop_items.unlock_level` decides what each level may buy (`unlock_world` can add a world-mastery requirement). Levelling up announces the newly buyable gear (`Rules::addXp`). Lecturers tune levels, prices and pack sizes on **Unlocks and prices**.
 - New players start with 300 credits, enough for a home router and cables to get online. If a player ever has nothing online, no cable and under 40 credits, the ISP sends just enough for a pack of copper once a day, so nobody gets stuck.
-- Breaches from cyber attacks cost credits, so defending protects your income.
+- Breaches from cyber attacks cost credits, so defending protects your income. An online firewall blocks part of each breach.
+- Credits are spent on gear, on upgrades (tier 2 and 3) and on leasing the office and datacentre; each is gated by level, so learning sets the pace.
 
 ## Badges and streak
 
 - **Daily learning streak** (FR-4.5): days in a row with at least one correct answer; shown in the top bar (lit once you’ve learned today).
 - **15 badges** (FR-4.5), each checked against what the student actually did (`src/Progress/Badges.php`), awarded whenever the game state loads, with a pop-up and a console line. Browse them in Social (**G**) → Badges; share them with the guild (FR-6.4).
 
-Not built yet: moving a placed device (`api/move.php` returns 501; pick up and re-place works), admin user management (FR-1.5), password reset (FR-1.3), profile editing (FR-1.4). Not started: mock exams across worlds (FR-3.5), equipment upgrades and datacentre tiers beyond the garage (FR-4.3).
+
 
 The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.

@@ -24,7 +24,15 @@ final class Auth
         if ($id === null) {
             return null;
         }
-        $u = Db::one('SELECT id, username, role, active FROM users WHERE id = ?', [$id]);
+        // close the session after a spell of inactivity (FR-1.2)
+        $idle = max(5, (int) Config::get('app.idle_minutes', 120)) * 60;
+        if (isset($_SESSION['seen']) && time() - (int) $_SESSION['seen'] > $idle) {
+            self::logout();
+            $_SESSION['notice'] = 'You were signed out after a while without activity. Sign in again.';
+            return null;
+        }
+        $_SESSION['seen'] = time();
+        $u = Db::one('SELECT id, username, display_name, avatar, role, active FROM users WHERE id = ?', [$id]);
         if ($u === null || !$u['active']) {
             self::logout(); // account deleted, deactivated, or database rebuilt
             return null;
@@ -49,6 +57,14 @@ final class Auth
         return (int) $u['id'];
     }
 
+    /** Shows a one-off message on the next page (e.g. after an idle sign-out). */
+    public static function takeNotice(): ?string
+    {
+        $n = $_SESSION['notice'] ?? null;
+        unset($_SESSION['notice']);
+        return $n;
+    }
+
     /**
      * For staff pages: sends guests to sign in and students back to the game (NFR-3: checked on the server).
      * $root is the relative path from the page to public/, e.g. '../'.
@@ -69,8 +85,18 @@ final class Auth
     }
 
     /** Returns an error message, or null when the account was created. */
-    public static function register(string $username, string $password, string $role = 'student', bool $signIn = true): ?string
+    public static function register(string $username, string $password, string $role = 'student', bool $signIn = true, ?string $email = null): ?string
     {
+        if ($email !== null) {
+            try {
+                $email = Accounts::checkEmail($email);
+            } catch (GameError $e) {
+                return $e->getMessage();
+            }
+            if (Db::one('SELECT id FROM users WHERE email = ?', [$email])) {
+                return 'That email already has an account. Sign in, or reset your password.';
+            }
+        }
         $username = trim($username);
         if (!preg_match('/^[A-Za-z0-9_]{3,32}$/', $username)) {
             return 'Use 3 to 32 letters, numbers or underscores for your username.';
@@ -85,10 +111,10 @@ final class Auth
             return 'That username is taken. Try another.';
         }
         $start = Db::configInt('start_credits', 0);
-        Db::transaction(function () use ($username, $password, $role, $start, $signIn): void {
+        Db::transaction(function () use ($username, $password, $role, $start, $signIn, $email): void {
             Db::exec(
-                'INSERT INTO users (username, password_hash, role, credits) VALUES (?, ?, ?, ?)',
-                [$username, password_hash($password, PASSWORD_DEFAULT), $role, $start]
+                'INSERT INTO users (username, email, password_hash, role, credits) VALUES (?, ?, ?, ?, ?)',
+                [$username, $email, password_hash($password, PASSWORD_DEFAULT), $role, $start]
             );
             $id = (int) Db::pdo()->lastInsertId();
             Starter::give($id);
@@ -99,14 +125,16 @@ final class Auth
         return null;
     }
 
-    /** Returns the user's home page on success, or null. */
+    /** Signs in with a username or email. Returns the user's home page on success, or null. */
     public static function attempt(string $username, string $password): ?string
     {
-        $row = Db::one('SELECT id, password_hash, role, active FROM users WHERE username = ?', [trim($username)]);
+        $who = trim($username);
+        $row = Db::one('SELECT id, password_hash, role, active FROM users WHERE username = ? OR email = ?', [$who, strtolower($who)]);
         if ($row === null || !$row['active'] || !password_verify($password, $row['password_hash'])) {
             return null;
         }
         self::login((int) $row['id']);
+        Db::exec('UPDATE users SET last_login_at = NOW() WHERE id = ?', [$row['id']]);
         return self::home($row['role']);
     }
 
@@ -120,5 +148,6 @@ final class Auth
     {
         session_regenerate_id(true);
         $_SESSION['uid'] = $id;
+        $_SESSION['seen'] = time();
     }
 }

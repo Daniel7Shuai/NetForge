@@ -11,6 +11,7 @@ if ($me = Auth::current()) {
 }
 
 $error = null;
+$notice = Auth::takeNotice();
 $username = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = (string) ($_POST['username'] ?? '');
@@ -20,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . $home);
         exit;
     } else {
-        $error = 'That username and password don’t match.';
+        $error = 'That username or email and password don’t match.';
     }
 }
 
@@ -35,10 +36,11 @@ require __DIR__ . '/../src/views/head.php';
     <?= Csrf::field() ?>
     <p class="prompt"><b>nf@noc:~$</b> sign in to start your shift</p>
     <?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif; ?>
-    <label>Username
+    <?php if ($notice): ?><p class="note info" role="status"><?= e($notice) ?></p><?php endif; ?>
+    <label>Username or email
       <input type="text" name="username" value="<?= e($username) ?>" autocomplete="username" required autofocus>
     </label>
-    <label>Password
+    <label><span class="label-row">Password <a href="forgot.php">Forgot it?</a></span>
       <input type="password" name="password" autocomplete="current-password" required>
     </label>
     <button class="primary" type="submit">Sign in</button>

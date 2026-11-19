@@ -12,6 +12,9 @@ $nav = [
     'attacks'   => ['attacks.php', 'Cyber attacks'],
     'analytics' => ['analytics.php', 'Analytics'],
 ];
+if ($me['role'] === 'admin') {
+    $nav['users'] = ['users.php', 'Users']; // FR-1.5: admins only
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -36,7 +39,7 @@ $nav = [
   </nav>
   <div class="who">
     <a href="../play.php" title="Open the student game"><i class="ti ti-device-gamepad-2" aria-hidden="true"></i>Game</a>
-    <span class="mono"><?= e($me['username']) ?> · <?= e($me['role']) ?></span>
+    <a href="../profile.php" title="Your profile"><i class="ti ti-user-circle" aria-hidden="true"></i><?= e($me['username']) ?>, <?= e($me['role']) ?></a>
     <form method="post" action="../logout.php"><?= Csrf::field() ?><button type="submit">Sign out</button></form>
   </div>
 </header>

@@ -2,7 +2,7 @@
 // assets/data/layout.json, which the PHP rules read too, so the client and
 // server always agree on valid spots. Call setLocation() once at boot.
 
-const L = await (await fetch('assets/data/layout.json')).json();
+const L = await (await fetch(new URL('../../data/layout.json', import.meta.url))).json(); // relative to this file, so any page can import it
 
 export const TILE = L.tile;
 export const COLS = L.cols;

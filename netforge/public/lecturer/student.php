@@ -17,7 +17,7 @@ if ($r === null) {
 }
 $u = $r['user'];
 $label = date('j M Y', strtotime($period['from'])) . ' to ' . date('j M Y', strtotime($period['to']));
-$modeName = ['practice' => 'Lessons', 'exam' => 'Exams', 'audit' => 'Daily Security Audit'];
+$modeName = ['practice' => 'Lessons', 'exam' => 'Exams', 'audit' => 'Daily Security Audit', 'mock' => 'Mock exams'];
 
 if (in_array($_GET['format'] ?? '', ['csv', 'pdf'], true)) {
     Export::send($_GET['format'], 'netforge-student-' . $u['username'], 'Progress report: ' . $u['username'], $label, [

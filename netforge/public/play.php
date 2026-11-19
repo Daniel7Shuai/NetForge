@@ -14,7 +14,12 @@ require __DIR__ . '/../src/views/head.php';
 <body>
 <header class="top">
   <div class="brand"><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</div>
-  <div class="place" title="Where you are"><i class="ti ti-map-pin" aria-hidden="true"></i><span id="loc-name">…</span></div>
+  <div class="place-wrap">
+    <button type="button" class="place" id="place-btn" title="Where you are. Click to travel." aria-expanded="false" aria-controls="places">
+      <i class="ti ti-map-pin" aria-hidden="true"></i><span id="loc-name">…</span><i class="ti ti-chevron-down caret" aria-hidden="true"></i>
+    </button>
+    <div class="places" id="places" hidden></div>
+  </div>
   <button class="objective" title="Current objective. Opens Learn." data-open-learn>
     <i class="ti ti-target-arrow" aria-hidden="true"></i>
     <span class="what" id="obj-title">Loading your shift…</span>
@@ -31,7 +36,7 @@ require __DIR__ . '/../src/views/head.php';
     <button class="iconbtn" id="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><i class="ti ti-menu-2"></i></button>
     <div class="menu" id="menu" hidden>
       <p class="who mono" id="who"></p>
-      <button type="button" disabled title="Coming later"><i class="ti ti-settings" aria-hidden="true"></i>Settings</button>
+      <a href="profile.php"><i class="ti ti-user-circle" aria-hidden="true"></i>Profile</a>
       <form method="post" action="logout.php">
         <?= Csrf::field() ?>
         <button type="submit"><i class="ti ti-logout" aria-hidden="true"></i>Sign out</button>
