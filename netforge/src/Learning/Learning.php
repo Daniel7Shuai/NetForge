@@ -23,6 +23,10 @@ final class Learning
             $wp[(int) $r['world_id']] = $r;
         }
 
+        // areas this student has leased (the garage, and anything with no lease cost, always counts)
+        $leased = array_column(Db::all('SELECT location FROM user_locations WHERE user_id = ?', [$userId]), 'location');
+        $areas = \NetForge\Layout::data()['locations'];
+
         $out = [];
         $open = true; // a world is open once every earlier world that has content is mastered
         foreach ($worlds as $w) {
@@ -42,7 +46,17 @@ final class Learning
             $rating = $p ? (int) $p['rating'] : Elo::START_RATING;
             $mastered = $p && $p['mastered_at'] !== null;
             $hasContent = $lvls !== [];
-            $status = !$hasContent ? 'soon' : ($mastered ? 'mastered' : ($open ? 'open' : 'locked'));
+            // some worlds are taught in a later area of the game, and open only once it's leased
+            $area = $w['requires_location'] ?? null;
+            $needs = null;
+            if ($area !== null && isset($areas[$area])) {
+                $needs = [
+                    'code' => $area, 'name' => $areas[$area]['name'], 'unlockLevel' => (int) $areas[$area]['unlockLevel'],
+                    'leaseCost' => (int) ($areas[$area]['leaseCost'] ?? 0),
+                    'leased' => (int) ($areas[$area]['leaseCost'] ?? 0) === 0 || in_array($area, $leased, true),
+                ];
+            }
+            $status = !$hasContent ? 'soon' : ($mastered ? 'mastered' : (!$open ? 'locked' : ($needs && !$needs['leased'] ? 'area' : 'open')));
 
             $out[] = [
                 'id'          => $wid,
@@ -50,7 +64,8 @@ final class Learning
                 'title'       => $w['title'],
                 'summary'     => $w['summary'],
                 'ccnaModules' => $w['ccna_modules'],
-                'status'      => $status,
+                'status'      => $status,      // open | mastered | locked (earlier world first) | area (lease the area first) | soon
+                'needs'       => $needs,
                 'rating'      => $rating,
                 'tier'        => Elo::tier($rating),
                 'levels'      => $lvls,
@@ -85,6 +100,9 @@ final class Learning
         $w = self::world($userId, $worldId);
         if ($w['status'] === 'locked') {
             throw new GameError('Master the earlier worlds first.');
+        }
+        if ($w['status'] === 'area') {
+            throw new GameError(sprintf('These lessons are taught in the %s. Lease it from the place menu to start.', strtolower($w['needs']['name'])));
         }
         if ($w['status'] === 'soon') {
             throw new GameError('This world has no lessons yet.');

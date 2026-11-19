@@ -99,7 +99,9 @@ label.check input { accent-color: var(--cyan); width: 16px; height: 16px; }
 .preview-wrap .label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
 .lesson-preview { padding: 14px 18px; min-height: 200px; border: 1px dashed var(--line); border-radius: var(--r-sm); background: var(--void); font-size: 15px; line-height: 1.65; max-height: 520px; overflow: auto; }
 .lesson-preview p { margin: 0 0 12px; }
-.lesson-preview ul { margin: 0 0 12px; padding-left: 20px; }
+.lesson-preview ul, .lesson-preview ol { margin: 0 0 12px; padding-left: 22px; }
+.lesson-preview pre.cli { margin: 0 0 12px; padding: 8px 12px; background: var(--panel); border-left: 2px solid var(--lime); border-radius: var(--r-sm); overflow-x: auto; }
+.lesson-preview pre.cli code { padding: 0; background: none; color: var(--lime); }
 .lesson-preview strong { color: #eaf6fd; }
 .lesson-preview code, .panel code { font: 13px var(--mono); color: var(--cyan); background: var(--grid); padding: 1px 5px; border-radius: 3px; }
 

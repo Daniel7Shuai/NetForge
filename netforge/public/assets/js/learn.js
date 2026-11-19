@@ -4,6 +4,8 @@ import { api } from './api.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+/** Escaped text with `code` shown as inline code (commands in prompts and explanations). */
+const rich = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
 const TIER_CLASS = { Bronze: 'bronze', Silver: 'silver', Gold: 'gold', Platinum: 'platinum' };
 /** What happened to the question in the Daily Security Audit after this answer. */
 const AUDIT_NOTE = (a) => {
@@ -16,16 +18,30 @@ const AUDIT_NOTE = (a) => {
 };
 const TYPE_LABEL = { mcq: 'Multiple choice', matching: 'Matching', ordering: 'Ordering', fill: 'Fill in the blanks', blitz: 'Binary Blitz', subnet: 'Subnet calculator' };
 
-/** Light markdown used in lessons: paragraphs, "- " lists, **bold**, `code`. Escapes first. */
+/**
+ * Light markdown used in lessons: paragraphs, "- " and "1. " lists, **bold**, `code`,
+ * and ``` fenced blocks for device commands. Escapes first.
+ */
 export function renderLesson(md) {
   const inline = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  return md.trim().split(/\n\s*\n/).map((block) => {
-    const lines = block.split('\n');
-    if (lines.every((l) => l.trim().startsWith('- '))) {
-      return `<ul>${lines.map((l) => `<li>${inline(l.trim().slice(2))}</li>`).join('')}</ul>`;
+  const out = [];
+  // pull out fenced blocks first, so blank lines inside them don't split them
+  const parts = md.trim().split(/^```[^\n]*\n([\s\S]*?)^```\s*$/m);
+  parts.forEach((part, i) => {
+    if (i % 2 === 1) { out.push(`<pre class="cli"><code>${esc(part.replace(/\n$/, ''))}</code></pre>`); return; }
+    for (const block of part.trim().split(/\n\s*\n/)) {
+      if (!block.trim()) continue;
+      const lines = block.split('\n').map((l) => l.trim());
+      if (lines.every((l) => l.startsWith('- '))) {
+        out.push(`<ul>${lines.map((l) => `<li>${inline(l.slice(2))}</li>`).join('')}</ul>`);
+      } else if (lines.every((l) => /^\d+\.\s/.test(l))) {
+        out.push(`<ol>${lines.map((l) => `<li>${inline(l.replace(/^\d+\.\s+/, ''))}</li>`).join('')}</ol>`);
+      } else {
+        out.push(`<p>${inline(lines.join(' '))}</p>`);
+      }
     }
-    return `<p>${inline(lines.join(' '))}</p>`;
-  }).join('');
+  });
+  return out.join('');
 }
 
 const tierChip = (tier, rating) => `<span class="tier ${TIER_CLASS[tier]}" title="Elo rating ${rating}">${tier} <b class="mono">${rating}</b></span>`;
@@ -98,8 +114,8 @@ export function mountLearn(store) {
         <span class="wtitle">Mock exam<small>${last ? `Last score ${last.pct}%` : 'Timed, from the worlds you pick'}</small></span>
         <i class="ti ti-chevron-right" aria-hidden="true"></i></button>`;
     list.innerHTML = auditRow + mockRow + worlds.map((w) => {
-      const icon = { mastered: 'ti-circle-check', open: 'ti-player-play', locked: 'ti-lock', soon: 'ti-clock' }[w.status];
-      const meta = w.status === 'soon' ? 'Coming soon' : w.status === 'locked' ? 'Locked' : w.tier;
+      const icon = { mastered: 'ti-circle-check', open: 'ti-player-play', locked: 'ti-lock', area: 'ti-building', soon: 'ti-clock' }[w.status];
+      const meta = w.status === 'soon' ? 'Coming soon' : w.status === 'locked' ? 'Locked' : w.status === 'area' ? `Lease the ${w.needs.name.toLowerCase()}` : w.tier;
       return `<button class="world ${w.status}${w.id === worldId ? ' on' : ''}" data-world="${w.id}" ${w.status === 'soon' ? 'aria-disabled="true"' : ''}>
         <span class="wnum mono">W${w.number}</span>
         <span class="wtitle">${esc(w.title)}<small>${meta}</small></span>
@@ -182,7 +198,7 @@ export function mountLearn(store) {
     worldId = id;
     renderList();
     const w = worlds.find((x) => x.id === id);
-    const locked = w.status === 'locked' || w.status === 'soon';
+    const locked = w.status === 'locked' || w.status === 'soon' || w.status === 'area';
     const levels = w.levels.map((l) => `
       <li class="lvl${l.completed ? ' done' : ''}">
         <span class="lnum mono">${w.number}.${l.number}</span>
@@ -196,12 +212,14 @@ export function mountLearn(store) {
       : 'Finish every level to unlock the exam.';
     view.innerHTML = `
       <header class="whead">
-        <div><p class="crumb mono">World ${w.number} · CCNA ITN modules ${esc(w.ccnaModules)}</p>
+        <div><p class="crumb mono">World ${w.number}${w.needs ? `, in the ${esc(w.needs.name.toLowerCase())}` : ''}: ${esc(w.ccnaModules)}</p>
         <h2>${esc(w.title)}</h2><p class="sum">${esc(w.summary)}</p></div>
         ${w.status === 'soon' ? '' : tierChip(w.tier, w.rating)}
       </header>
       ${w.status === 'soon' ? '<p class="empty">Lessons for this world haven’t been written yet. Lecturers add them in the question bank.</p>'
-        : w.status === 'locked' ? '<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier worlds to open this one.</p>' : ''}
+        : w.status === 'locked' ? `<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier worlds to open this one.${w.needs ? ` You’ll also need to lease the ${esc(w.needs.name.toLowerCase())}.` : ''}</p>`
+        : w.status === 'area' ? `<div class="area-gate"><i class="ti ti-building" aria-hidden="true"></i><div><strong>Taught in the ${esc(w.needs.name.toLowerCase())}</strong>
+          <small>Lease it from the place menu in the top bar to open these lessons: level ${w.needs.unlockLevel} and ${w.needs.leaseCost.toLocaleString('en-US')} credits.${store.state.user.level < w.needs.unlockLevel ? ` You’re level ${store.state.user.level}, so keep learning for XP.` : ''}</small></div></div>` : ''}
       ${w.levels.length ? `<ol class="levels">${levels}</ol>` : ''}
       ${w.levels.length ? `<div class="exam${ex.ready && !locked ? ' ready' : ''}">
         <i class="ti ti-certificate" aria-hidden="true"></i>
@@ -282,7 +300,7 @@ export function mountLearn(store) {
           <button class="mini" data-down="1" aria-label="Move down"><i class="ti ti-chevron-down"></i></button></li>`).join('')}</ol>`;
         break;
       case 'fill':
-        body = `<p class="fill">${q.parts.map((p, i) => esc(p) + (i < q.parts.length - 1 ? `<input class="blank" data-blank="${i}" autocomplete="off" spellcheck="false" aria-label="Blank ${i + 1}">` : '')).join('')}</p>`;
+        body = `<p class="fill">${q.parts.map((p, i) => rich(p) + (i < q.parts.length - 1 ? `<input class="blank" data-blank="${i}" autocomplete="off" spellcheck="false" aria-label="Blank ${i + 1}">` : '')).join('')}</p>`;
         break;
       default: // blitz, subnet
         body = `<input class="big mono" id="free" autocomplete="off" spellcheck="false" inputmode="${q.inputHint === 'Number' ? 'numeric' : 'text'}" placeholder="${esc(q.inputHint)}" aria-label="Your answer">`;
@@ -290,7 +308,7 @@ export function mountLearn(store) {
     view.innerHTML = `${header()}
       <section class="q">
         <p class="qmeta">${TYPE_LABEL[q.type]} · ${esc(q.topic)} · <span class="tier-txt">${q.tier}</span></p>
-        <h3 class="${q.type === 'fill' ? 'sr-only' : ''}">${esc(q.prompt)}</h3>
+        <h3 class="${q.type === 'fill' ? 'sr-only' : ''}">${rich(q.prompt)}</h3>
         ${body}
         <p class="qerr" id="qerr" role="alert"></p>
       </section>
@@ -371,7 +389,7 @@ export function mountLearn(store) {
     fb.innerHTML = `
       <p class="verdict"><i class="ti ${r.correct ? 'ti-circle-check' : 'ti-circle-x'}" aria-hidden="true"></i>${r.correct ? 'Correct' : r.late ? 'Out of time' : 'Not quite'}</p>
       ${r.correct ? '' : `<p class="ans">Answer: <b>${esc(r.answerText)}</b></p>`}
-      <p class="why">${esc(r.explanation)}</p>
+      <p class="why">${rich(r.explanation)}</p>
       <p class="delta mono">Rating ${r.ratingBefore} → ${r.ratingAfter} (${delta >= 0 ? '+' : ''}${delta})${gains ? ` · <span class="gain">${gains}</span>` : ''}${AUDIT_NOTE(r.audit)}</p>`;
     view.querySelector('.actions').replaceWith(fb);
     const next = document.createElement('div');
@@ -450,9 +468,9 @@ export function mountLearn(store) {
       ${s.byWorld.length > 1 ? `<h3 class="sub">By world</h3><ul class="scores" aria-label="Score by world">${scoreRows(s.byWorld, (w) => `World ${w.world}`)}</ul>` : ''}
       <p class="legend-note"><span class="line-key" aria-hidden="true"></span>${s.passPct}% exam-ready line</p>
       ${s.missed.length ? `<h3 class="sub">Review your mistakes</h3><ol class="missed">${s.missed.map((m) => `<li>
-        <p class="mq">${esc(m.prompt)}</p>
+        <p class="mq">${rich(m.prompt)}</p>
         <p class="ma">${m.late ? 'Out of time. ' : ''}Answer: <b>${esc(m.answer)}</b> <span class="mono">W${m.world}, ${esc(m.topic)}</span></p>
-        ${m.why ? `<p class="why">${esc(m.why)}</p>` : ''}</li>`).join('')}</ol>` : ''}
+        ${m.why ? `<p class="why">${rich(m.why)}</p>` : ''}</li>`).join('')}</ol>` : ''}
       <p class="note">Wrong answers also go to your Daily Security Audit.</p>
       <div class="actions"><button class="btn primary" data-back="1">Back to mock exams</button></div>`;
     view.querySelector('[data-back]').focus({ preventScroll: true });

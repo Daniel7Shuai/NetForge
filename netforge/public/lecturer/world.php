@@ -25,9 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Staff::back();
         }
         Db::exec(
-            'UPDATE worlds SET title = ?, summary = ?, ccna_modules = ?, exam_questions = ?, exam_minutes = ?, exam_pass_pct = ?, archived = ? WHERE id = ?',
+            'UPDATE worlds SET title = ?, summary = ?, ccna_modules = ?, requires_location = ?, exam_questions = ?, exam_minutes = ?, exam_pass_pct = ?, archived = ? WHERE id = ?',
             [
-                $title, $summary, mb_substr(trim((string) ($_POST['ccna_modules'] ?? '')), 0, 32),
+                $title, $summary, mb_substr(trim((string) ($_POST['ccna_modules'] ?? '')), 0, 80),
+                isset(\NetForge\Layout::data()['locations'][$_POST['requires_location'] ?? '']) && ($_POST['requires_location'] ?? '') !== 'garage' ? $_POST['requires_location'] : null,
                 Staff::int($_POST['exam_questions'] ?? '', 3, 50, 10), Staff::int($_POST['exam_minutes'] ?? '', 1, 120, 10),
                 Staff::int($_POST['exam_pass_pct'] ?? '', 1, 100, 70), isset($_POST['archived']) ? 1 : 0, $id,
             ]
@@ -116,8 +117,13 @@ require __DIR__ . '/../../src/views/staff_top.php';
     <?= Csrf::field() ?><input type="hidden" name="action" value="save">
     <div class="grid2">
       <label>Title <input name="title" value="<?= e($w['title']) ?>" maxlength="80" required></label>
-      <label>CCNA ITN modules <input name="ccna_modules" value="<?= e($w['ccna_modules']) ?>" maxlength="32"><small>For example 4-5.</small></label>
+      <label>CCNA topics <input name="ccna_modules" value="<?= e($w['ccna_modules']) ?>" maxlength="80"><small>The blueprint domains it covers, for example Network Access.</small></label>
     </div>
+    <label>Taught in <select name="requires_location">
+      <?php foreach (\NetForge\Layout::data()['locations'] as $code => $loc): ?>
+        <option value="<?= e($code) ?>" <?= ($w['requires_location'] ?? 'garage') === $code ? 'selected' : '' ?>><?= e($loc['name']) ?><?= $loc['leaseCost'] ? ', students must lease it first' : '' ?></option>
+      <?php endforeach; ?></select>
+      <small>Students only open this world once they’ve leased that area in the game (and mastered the worlds before it).</small></label>
     <label>Summary <input name="summary" value="<?= e($w['summary']) ?>" maxlength="255" required></label>
     <div class="grid3">
       <label>Exam questions <input name="exam_questions" type="number" min="3" max="50" value="<?= (int) $w['exam_questions'] ?>"></label>

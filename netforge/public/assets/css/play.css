@@ -377,10 +377,13 @@ button.objective:hover { border-color: var(--ink-dim); }
 
 .lesson { max-width: 68ch; font-size: 16px; line-height: 1.65; }
 .lesson p { margin: 0 0 14px; }
-.lesson ul { margin: 0 0 14px; padding-left: 20px; }
+.lesson ul, .lesson ol { margin: 0 0 14px; padding-left: 22px; }
+.lesson ol li::marker { color: var(--ink-dim); font: 14px var(--mono); }
+.lesson pre.cli { margin: 0 0 14px; padding: 10px 14px; background: var(--void); border: 1px solid var(--grid); border-left: 2px solid var(--lime); border-radius: var(--r-sm); overflow-x: auto; }
+.lesson pre.cli code { padding: 0; background: none; color: var(--lime); font: 14px/1.6 var(--mono); }
 .lesson li { margin: 4px 0; }
 .lesson strong { color: #eaf6fd; font-weight: 600; }
-.lesson code, .q code { font: 14px var(--mono); color: var(--cyan); background: var(--grid); padding: 1px 5px; border-radius: 3px; }
+.lesson code, .q code, .fb code, .missed code { font: 14px var(--mono); color: var(--cyan); background: var(--grid); padding: 1px 5px; border-radius: 3px; }
 .actions { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
 
 .qhead { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--grid); flex-wrap: wrap; }
@@ -511,3 +514,11 @@ button.objective:hover { border-color: var(--ink-dim); }
   .cablebar { display: none; }
   .console { height: auto; }
 }
+
+/* a world taught in an area the student hasn't leased yet */
+.world.area .wtitle small { color: var(--amber); }
+.world.area > i { color: var(--amber); }
+.area-gate { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; padding: 14px 16px; border: 1px solid rgba(255, 180, 61, .5); border-radius: var(--r); background: rgba(255, 180, 61, .05); }
+.area-gate > i { font-size: 26px; color: var(--amber); }
+.area-gate strong { display: block; }
+.area-gate small { color: var(--ink-dim); font-size: 13px; }

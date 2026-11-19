@@ -16,6 +16,8 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_upgrades.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_mock.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_users.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_content.sql
+   C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
 3. Copy `config/config.example.php` to `config/config.php` and set the DB password if you have one.
@@ -69,14 +71,14 @@ Upgrades (FR-4.3): select a device to see its tier and an **Upgrade** button.
 Placing devices done: select a device in the inventory (or drag it) and click a glowing spot. The server re-checks everything (`Rules::place`), names devices (Laptop-1, PC-1…) and completes objectives.
 
 Learning (module 3.0) done: press **L** or click the objective bar.
-- Worlds 0–8 follow CCNA ITN modules 1–17. A world opens once every earlier world *that has content* is mastered.
+- **One world per area of the game**, following the CCNA 200-301 blueprint: World 0 **Garage** (Network Fundamentals), World 1 **Office** (Network Access, IP Connectivity), World 2 **Datacentre** (IP Services, Security Fundamentals, Automation and Programmability). A world opens once the earlier worlds are mastered **and** the student has leased its area (`worlds.requires_location`, set per world on the lecturer world page). Until then Learn shows "Lease the office" with the level and credits it takes.
 - Each level = lesson + adaptive challenge run. Passing every level unlocks the timed world exam; passing it masters the world and unlocks shop items (`shop_items.unlock_world`).
 - Six challenge types: multiple choice, matching, ordering, fill in the blanks, Binary Blitz (20 s timer) and Subnet Calculator (both generated fresh each time).
 - Elo (`src/Learning/Elo.php`): per-world student rating, question ratings, K shrinks with rating, tiers Bronze/Silver/Gold/Platinum. Credits and XP are paid only from rating gains (2 credits and 5 XP per point).
 - **Daily Security Audit** (FR-3.4): every wrong answer goes into `audit_queue`, due after 1 day. In the review (top of Learn, up to 10 per round), a right answer moves it to 3 days, then 7 days, then clears it; a wrong one sends it back to 1 day. Reviews update Elo and pay from rating gains like lessons. The Learn button shows a badge with the number due. Intervals live in `Challenge::AUDIT_NEXT`.
   To demo it without waiting a day: `UPDATE audit_queue SET due_on = CURDATE();`
 - **Mock exams** (FR-3.5): the Mock exam row in Learn. Pick any open worlds and 10, 20 or 30 questions; questions are drawn up front, shared evenly across the worlds, on one clock (1 minute per question). No answers are shown until the end, like a real exam. The result gives the score, a breakdown by topic (weakest first) and by world against a 70% exam-ready line, and every miss with its answer and explanation. Answers still update Elo, earn XP and feed the Daily Security Audit. Results are kept in `mock_exams` and listed as past attempts. Settings are constants in `src/Learning/Mock.php`; the run is played by `Challenge` in mode `mock`.
-- Content seeded: World 0 (3 levels, 18 questions), World 2 (Binary Blitz), World 5 (Subnet Calculator). Add more rows to `levels` and `questions`; the payload shapes are documented in `src/Learning/Grader.php`.
+- **Question bank**: 154 questions in 27 levels. The 120 CCNA questions follow the blueprint weights exactly (Fundamentals 24, Network Access 24, IP Connectivity 30, IP Services 12, Security 18, Automation 12), on top of the 34 starter questions and drills in the Garage. They live in `database/content/ccna.php` (one lesson per level, questions in the same format as the editor) and load with `php tools/seed-content.php`, which checks every question with the editor's rules and changes nothing if one fails. Loading again only refreshes wording; live ratings and answer counts are kept. Lecturers can keep editing in the question bank as before. Lessons support `- ` and `1. ` lists, **bold**, `code` and ``` blocks for device commands. Tests: `php tests/ContentTest.php` checks the weights and that every answer key marks correctly.
 - Unit tests: `php tests/EloTest.php` (26 hand-calculated cases for Elo and subnetting).
 
 Shop buying done (`Rules::buy`): checks world mastery and credits on the server.

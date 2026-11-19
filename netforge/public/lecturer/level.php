@@ -77,7 +77,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
   <div class="split">
     <label>Lesson
       <textarea name="lesson" id="lesson-src" rows="18" required><?= e($form['lesson']) ?></textarea>
-      <small>Blank line between paragraphs. Start lines with “- ” for a list. **bold** and `code` work.</small>
+      <small>Blank line between paragraphs. Start lines with “- ” for a list or “1. ” for numbered steps. **bold** and `code` work. Put device commands between lines of ``` to show them as a terminal block.</small>
     </label>
     <div class="preview-wrap">
       <span class="label">Preview, as students see it</span>
