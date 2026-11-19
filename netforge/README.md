@@ -122,7 +122,7 @@ Analytics and reporting (module 7.0) done, in the lecturer area under **Analytic
 - **Question difficulty report** (`difficulty.php`, FR-7.3): % correct the Elo model expected against % observed, flagging questions harder or easier than rated.
 - **Progress reports** (FR-7.4): the class report, the students list (`students.php`) and each student’s report (`student.php`) for any period.
 - **Export** (FR-7.5): every report downloads as CSV (opens in Excel) or PDF, made by the built-in `src/Analytics/SimplePdf.php` (no library needed).
-- Demo data for presentations and UAT: `php tools/seed-demo-data.php` creates six demo students with three weeks of history (password `your-demo-password`); re-running replaces them.
+- Demo data for presentations and UAT: `php tools/seed-demo-data.php [password]` creates six demo students with three weeks of history, all with the password you give (or a random one it prints); re-running replaces them. Local demos only, never on a public server.
 
 Social and competition (module 6.0) and weekly challenges (FR-2.5) done. In the game press **G**:
 - **Guilds** (FR-6.1): start one (name, tag, motto) or join one, up to 8 students. The leader sets a weekly goal and can remove members; leaving hands leadership to the longest-serving member, and the last one out closes the guild.
