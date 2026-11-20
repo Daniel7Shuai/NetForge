@@ -55,7 +55,6 @@ require __DIR__ . '/../src/views/head.php';
       <a href="profile.php"><i class="ti ti-user-circle" aria-hidden="true"></i>Profile</a>
       <button type="button" id="intro-replay"><i class="ti ti-movie" aria-hidden="true"></i>Watch the intro</button>
       <button type="button" id="tutorial-replay"><i class="ti ti-school" aria-hidden="true"></i>Replay tutorial</button>
-      <button type="button" id="ending-rewind" hidden><i class="ti ti-history" aria-hidden="true"></i>Go back to before buying DataTech</button>
       <form method="post" action="logout.php">
         <?= Csrf::field() ?>
         <button type="submit"><i class="ti ti-logout" aria-hidden="true"></i>Sign out</button>

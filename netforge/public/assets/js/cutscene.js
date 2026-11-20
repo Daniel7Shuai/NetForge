@@ -357,7 +357,8 @@ export async function playEnding(store) {
   return choice;
 }
 
-function endCard(player) {
+/** The end card: go back to before buying DataTech, or stay at the ending. Resolves 'rewind' or 'stay'. */
+export function endCard(player) {
   return new Promise((resolve) => {
     const el = document.createElement('div');
     el.className = 'end-card';

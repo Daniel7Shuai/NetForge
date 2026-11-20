@@ -180,7 +180,7 @@ export function mountHud(store) {
     badge.hidden = !s.user.auditDue;
     learnBtn.setAttribute('aria-label', `Learn (L)${s.user.auditDue ? `, ${s.user.auditDue} audit questions due` : ''}`);
     const o = s.objective;
-    $('obj-title').textContent = s.user.gameEnded ? 'You saved your dad and bought DataTech. The end! (Menu: go back to keep playing.)'
+    $('obj-title').textContent = s.user.gameEnded ? 'You saved your dad and bought DataTech. The end!'
       : o ? o.title : 'Keep learning (L) to master topics and unlock new gear';
     const objEl = $('obj-title').closest('.objective');
     objEl.classList.toggle('done', !o);
