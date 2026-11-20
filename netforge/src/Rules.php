@@ -194,7 +194,7 @@ final class Rules
     {
         return Db::transaction(function () use ($userId, $shopId): string {
             $row = Db::one(
-                'SELECT s.item_code, s.quantity, s.price, s.unlock_level, s.unlock_world, t.name
+                'SELECT s.id, s.item_code, s.quantity, s.price, s.unlock_level, s.unlock_world, s.seller, t.name
                    FROM shop_items s JOIN item_types t ON t.code = s.item_code WHERE s.id = ?',
                 [$shopId]
             );
@@ -210,6 +210,14 @@ final class Rules
             }
             $credits = (int) $me['credits'];
             $price = (int) $row['price'];
+            if ($row['seller'] !== null) {
+                // sold by a GPU seller: today's price, and only while they have stock
+                $q = Market::quote($row, $userId);
+                if ($q['stock'] < 1) {
+                    throw new GameError(sprintf('%s is sold out of the %s. They restock in %d minutes, or try another seller.', $row['seller'], $row['name'], (int) ceil($q['restockIn'] / 60)));
+                }
+                $price = $q['price'];
+            }
             if ($credits < $price) {
                 throw new GameError(sprintf('You need %s more credits. Your online devices earn them every second.', number_format($price - $credits)));
             }
@@ -219,7 +227,10 @@ final class Rules
                  ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)',
                 [$userId, $row['item_code'], (int) $row['quantity']]
             );
-            $name = $row['name'] . ((int) $row['quantity'] > 1 ? ' ×' . $row['quantity'] : '');
+            if ($row['seller'] !== null) {
+                Market::recordPurchase($userId, (int) $row['id']);
+            }
+            $name = $row['name'] . ((int) $row['quantity'] > 1 ? ' ×' . $row['quantity'] : '') . ($row['seller'] !== null ? ' from ' . $row['seller'] : '');
             self::log($userId, 'ok', sprintf('Bought %s for %s credits.', $name, number_format($price)));
             return $name;
         });
@@ -248,11 +259,11 @@ final class Rules
             $user = Db::one('SELECT location FROM users WHERE id = ? FOR UPDATE', [$userId]);
             $location = $user['location'];
             $locName = Layout::location($location)['name'];
-            if (Layout::slotsFor($location, $kinds) === []) {
+            if (Layout::slotsFor($location, $kinds, $userId) === []) {
                 throw new GameError(sprintf('There’s no spot for a %s in the %s. You’ll need a bigger place.', $item['name'], strtolower($locName)));
             }
 
-            $slot = Layout::slotAnchoredAt($location, $kinds, $x, $y);
+            $slot = Layout::slotAnchoredAt($location, $kinds, $x, $y, $userId);
             if ($slot === null) {
                 throw new GameError(Layout::KIND_HINTS[$kinds[0]] ?? 'That spot doesn’t fit this item.');
             }
@@ -362,7 +373,7 @@ final class Rules
                 throw new GameError($d['label'] . ' is part of the building. It stays where it is.');
             }
             $kinds = Layout::kinds($d['slot_kinds']);
-            $slot = Layout::slotAnchoredAt($d['location'], $kinds, $x, $y);
+            $slot = Layout::slotAnchoredAt($d['location'], $kinds, $x, $y, $userId);
             if ($slot === null) {
                 throw new GameError(Layout::KIND_HINTS[$kinds[0]] ?? 'That spot doesn’t fit this device.');
             }

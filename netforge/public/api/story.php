@@ -7,7 +7,7 @@ use NetForge\GameError;
 use NetForge\Story;
 
 // GET  -> {characters: [{code, name, role, side, art}], tutorial: {step, done}}
-// POST {action: "step", step} | {action: "done"} | {action: "restart"} -> {tutorial}
+// POST {action: "step", step} | {action: "done"} | {action: "restart"} | {action: "seen", flag} -> {tutorial}
 $method = $_SERVER['REQUEST_METHOD'] === 'POST' ? 'POST' : 'GET';
 $uid = Api::begin($method);
 Api::run(function () use ($uid, $method): void {
@@ -19,5 +19,5 @@ Api::run(function () use ($uid, $method): void {
     if (!is_string($action)) {
         throw new GameError('Missing tutorial action.');
     }
-    Api::ok(['tutorial' => Story::setTutorial($uid, $action, is_int($in['step'] ?? null) ? $in['step'] : 0)]);
+    Api::ok(['tutorial' => Story::setTutorial($uid, $action, is_int($in['step'] ?? null) ? $in['step'] : 0, is_string($in['flag'] ?? null) ? $in['flag'] : '')]);
 });

@@ -23,16 +23,21 @@ final class GameState
         $user['locationName'] = Layout::location($location)['name'];
         $user['auditDue'] = \NetForge\Learning\Learning::auditDue($userId);
 
-        $inventory = array_map(fn ($r) => ['quantity' => (int) $r['quantity'], 'slotKinds' => Layout::kinds($r['slot_kinds'])] + $r, Db::all(
-            'SELECT t.code, t.name, t.category, t.sprite, t.slot_kinds, t.description, i.quantity
+        $inventory = array_map(fn ($r) => ['quantity' => (int) $r['quantity'], 'slotKinds' => Layout::kinds($r['slot_kinds']),
+                'group' => $r['shop_group'], 'furniture' => $r['furniture_type'], 'boost' => (int) $r['boost_pct']] + $r, Db::all(
+            'SELECT t.code, t.name, t.category, t.sprite, t.slot_kinds, t.description, t.shop_group, t.furniture_type, t.boost_pct, i.quantity
                FROM inventory i JOIN item_types t ON t.code = i.item_code
-              WHERE i.user_id = ? ORDER BY t.category DESC, t.name',
+              WHERE i.user_id = ? AND i.quantity > 0 ORDER BY t.category DESC, t.name',
             [$userId]
         ));
 
         $mastered = \NetForge\Learning\Learning::masteredNumbers($userId);
-        $shop = array_map(fn ($r) => [
+        $shop = array_map(fn ($r) => ($r['seller'] ? ['seller' => $r['seller'], 'quote' => Market::quote($r, $userId)] : ['seller' => null, 'quote' => null]) + [
             'id'          => (int) $r['id'],
+            'group'       => $r['shop_group'],
+            'sprite'      => $r['sprite'],
+            'boost'       => (int) $r['boost_pct'],
+            'furniture'   => $r['furniture_type'],
             'code'        => $r['code'],
             'name'        => $r['name'],
             'category'    => $r['category'],
@@ -46,7 +51,8 @@ final class GameState
             'locked'      => (int) $r['unlock_level'] > $user['level']
                 || ($r['unlock_world'] !== null && !in_array((int) $r['unlock_world'], $mastered, true)),
         ], Db::all(
-            'SELECT s.id, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec
+            'SELECT s.id, s.item_code, s.seller, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec,
+                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite
                FROM shop_items s JOIN item_types t ON t.code = s.item_code ORDER BY s.sort_order, s.id'
         ));
 
@@ -63,14 +69,17 @@ final class GameState
             'slotKinds' => Layout::kinds($r['slot_kinds']),
             'tier'      => (int) $r['tier'],
             'earning'   => $income['byDevice'][(int) $r['id']] ?? 0, // credits per second, now (0 if offline)
-            'rate'      => (int) $r['income_per_sec'] * Rules::tierIncome((int) $r['tier']), // what it earns per second when online
+            'rate'      => (int) round((int) $r['income_per_sec'] * Rules::tierIncome((int) $r['tier']) * (1 + (int) $r['gpu_boost'] / 100)), // per second when online
+            'gpuCard'   => $r['gpu_card'],
+            'gpuBoost'  => (int) $r['gpu_boost'],
             'maxTier'   => (int) $r['max_tier'],
             'shield'    => (int) $r['shield_pct'] * (int) $r['tier'],
             'upgrade'   => $r['fixed'] ? null : Rules::upgradeInfo($r['item_code'], (int) $r['tier'], (int) $r['max_tier']),
             'ports'     => json_decode((string) $r['ports'], true) ?: [],
         ], Db::all(
-            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports
-               FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ? AND d.location = ?',
+            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, COALESCE(g.boost_pct, 0) gpu_boost,
+                    t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports
+               FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ? AND d.location = ?',
             [$userId, $location]
         ));
 
@@ -109,7 +118,9 @@ final class GameState
         ];
 
         $locations = Rules::locations($userId);
+        $furniture = Layout::userFurniture($userId, $location);
+        $events = Events::poll($userId, false);
 
-        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations');
+        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events');
     }
 }

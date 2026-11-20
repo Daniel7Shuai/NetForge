@@ -26,9 +26,10 @@ export function portraitEl(c, scale = 5) {
 
 /**
  * Plays a list of [speaker, text] lines. Resolves 'done' after the last line, or 'skipped'.
- * Options: player (name for {player}), skipLabel.
+ * Options: player (name for {player}), skipLabel, choices: [{label, value}] offered on the last
+ * line instead of Done (resolves with the chosen value; Esc or Skip still resolve 'skipped').
  */
-export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip' } = {}) {
+export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip', choices = null } = {}) {
   return new Promise((resolve) => {
     const host = document.querySelector('.stage');
     const root = document.createElement('div');
@@ -76,6 +77,23 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip' 
       shown = reduceMotion ? full.length : 0;
       textEl.textContent = full.slice(0, shown);
       nextBtn.innerHTML = i === lines.length - 1 ? 'Done <kbd>Enter</kbd>' : 'Next <kbd>Enter</kbd>';
+      // a question on the last line: its answers replace the Done button
+      const last = i === lines.length - 1 && choices?.length;
+      nextBtn.hidden = !!last;
+      root.querySelector('.dlg-choices')?.remove();
+      if (last) {
+        const row = document.createElement('div');
+        row.className = 'dlg-choices';
+        choices.forEach((ch, n) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = n === 0 ? 'dlg-choice primary' : 'dlg-choice';
+          b.innerHTML = `${esc(ch.label)} <kbd>${n + 1}</kbd>`;
+          b.addEventListener('click', (e) => { e.stopPropagation(); close(ch.value); });
+          row.append(b);
+        });
+        root.querySelector('.dlg-actions').prepend(row);
+      }
       root.style.setProperty('--dlg-h', `${box.offsetHeight}px`); // phones stand the speaker on top of the box
       clearInterval(timer);
       if (!reduceMotion) {
@@ -89,7 +107,7 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip' 
     function next() {
       // the first press finishes the line being typed; the next moves on
       if (typing()) { shown = full.length; textEl.textContent = full; clearInterval(timer); return; }
-      if (i < lines.length - 1) show(i + 1); else close('done');
+      if (i < lines.length - 1) show(i + 1); else if (!choices?.length) close('done');
     }
     function close(result) {
       clearInterval(timer);
@@ -99,7 +117,9 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip' 
       resolve(result);
     }
     function onKey(e) {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); next(); }
+      const pick = choices?.length && i === lines.length - 1 && !typing() ? choices[Number(e.key) - 1] : null;
+      if (pick) { e.preventDefault(); e.stopPropagation(); close(pick.value); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); next(); }
       else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close('skipped'); }
       else e.stopPropagation(); // the game's shortcuts wait until the conversation ends
     }

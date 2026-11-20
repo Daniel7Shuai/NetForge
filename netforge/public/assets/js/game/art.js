@@ -117,6 +117,33 @@ export function routerBox(c, x, y) {
   R(c, x + 4, y + 2, 1, 4, C.metal2); R(c, x + 11, y + 2, 1, 4, C.metal2);
 }
 
+/** GPU rig: a rack chassis full of graphics cards, with a green glow through the mesh. */
+export function gpuRig(c, x, y) {
+  R(c, x, y + 31, 16, 2, 'rgba(0,0,0,.5)');
+  R(c, x, y, 16, 31, C.k); R(c, x + 1, y + 1, 14, 29, '#141c14'); R(c, x + 1, y + 1, 14, 1, '#2f4a2c');
+  for (let u = 0; u < 4; u++) {
+    const yy = y + 4 + u * 6;
+    R(c, x + 2, yy, 12, 4, '#1d2a1c'); R(c, x + 2, yy, 12, 1, '#34502f');
+    for (let f = 0; f < 3; f++) R(c, x + 3 + f * 4, yy + 1, 2, 2, '#0b120b'); // fans
+    R(c, x + 2, yy + 4, 12, 1, 'rgba(124,255,107,.18)');
+  }
+  R(c, x + 3, y + 28, 10, 1, '#0b120b');
+}
+/** Graphics card, for the inventory and shop. */
+export function gpuCard(c, x, y) {
+  R(c, x, y + 3, 16, 9, C.k); R(c, x + 1, y + 4, 14, 7, '#22301f'); R(c, x + 1, y + 4, 14, 1, '#3b5a34');
+  for (const fx of [4, 11]) { c.fillStyle = '#0b120b'; c.beginPath(); c.arc(x + fx, y + 7.5, 2.6, 0, 7); c.fill(); R(c, x + fx, y + 7, 1, 1, '#3b5a34'); }
+  R(c, x + 2, y + 12, 10, 2, '#b08a2e'); for (let i = 0; i < 5; i++) R(c, x + 3 + i * 2, y + 12, 1, 2, '#6b5418'); // gold fingers
+  R(c, x + 14, y + 5, 1, 1, C.lime);
+}
+/** A bought rack, standing empty: the frame and rails, waiting for a device. */
+export function rackFrame(c, x, y) {
+  R(c, x, y + 31, 16, 2, 'rgba(0,0,0,.5)');
+  R(c, x, y, 16, 31, C.k); R(c, x + 1, y + 1, 14, 29, '#0b111b');
+  R(c, x + 1, y + 1, 14, 2, C.metal2); R(c, x + 1, y + 1, 1, 29, C.metal2); R(c, x + 14, y + 1, 1, 29, C.metal2);
+  for (let u = 0; u < 9; u++) { R(c, x + 2, y + 5 + u * 3, 1, 1, C.metal3); R(c, x + 13, y + 5 + u * 3, 1, 1, C.metal3); }
+}
+
 /**
  * Every map sprite: texture size, where it sits inside its tile (off), its
  * visible box height (h, used for depth and outlines) and blinking LEDs.
@@ -130,6 +157,7 @@ export const SPRITES = {
   ispbox:     { w: 13, h: 25, off: [2, -8], box: [12, 25], port: [6, 23], draw: (c) => ispBox(c, 0, 0), leds: [[3, 13], [5, 13]] },
   firewall:   { w: 15, h: 11, off: [1, 4],  box: [14, 9],  port: [7, 8],  draw: (c) => firewall(c, 0, 0), leds: [[3, 4], [6, 4], [9, 4]] },
   fibrepanel: { w: 13, h: 25, off: [2, -8], box: [12, 25], port: [6, 23], draw: (c) => fibrePanel(c, 0, 0), leds: [[3, 13], [9, 13]] },
+  gpurig:     { w: 16, h: 33, off: [0, 0],  box: [16, 31], port: [8, 29], draw: (c) => gpuRig(c, 0, 0), leds: [[14, 2], [12, 2]] },
 };
 
 export function coil(c, col) {
@@ -151,6 +179,12 @@ export function drawIcon(c, item) {
     case 'firewall': return firewall(c, 1, 4);
     case 'switch8': return switchBox(c, 0, 0);
     case 'router': return routerBox(c, 0, 0);
+    case 'desk_kit': c.save(); c.scale(1 / 3, 1 / 3); desk(c, 0, 0); c.restore(); return;
+    case 'server_rack': c.save(); c.scale(0.5, 0.5); rackFrame(c, 8, 0); c.restore(); return;
+  }
+  if (item.sprite === 'gpucard' || item.category === 'part') return gpuCard(c, 0, 0);
+  switch (item.sprite) {
+    case 'gpurig': c.save(); c.scale(0.5, 0.5); gpuRig(c, 8, 0); c.restore(); return;
     default: c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore();
   }
 }
@@ -174,28 +208,36 @@ export const AVATARS = {
   ember:   { h: '#7a2d17', j: '#9e3a24', J: '#5e2214', c: '#ff8a5c', a: C.cyan },
   mint:    { h: '#0f1a20', j: '#2b8a74', J: '#195446', c: '#6ff0c8', a: C.magenta },
 };
+/** Characters who walk the map besides the player. Vex the broker: dark coat, shades, amber trim. */
+export const NPCS = {
+  broker: { h: '#0b0b10', j: '#6a5a82', J: '#433858', c: C.amber, a: C.magenta, w: '#05070d', s: '#c98f6b', S: '#8f5f42', n: '#121219' },
+};
 export const PLAYER_SIZE = { w: 12, h: 21 };
 export function player(c, avatar = 'cyan') {
   playerFrame(c, avatar, 'idle0');
 }
 
-// Legs (rows 14-18) for the walk cycle: standing, left foot lifted, right foot lifted.
+// Legs (rows 14-18). A walk is a stride: legs apart (one forward, one back), then passing
+// (legs together, body up a pixel), then apart again with the front foot just landing.
+// Scissoring legs read as walking in either direction, so the character never moonwalks.
 const LEGS = {
-  stand: PLAYER.slice(14),
-  left:  ['...knnnnk...', '...knkknk...', '...kbk.knk..', '...kkk.kbk..', '.......kkk..'],
-  right: ['...knnnnk...', '...knkknk...', '...knk.kbk..', '...kbk.kkk..', '...kkk......'],
+  stand:   PLAYER.slice(14),
+  apart:   ['...knnnnk...', '..knkkknk...', '..knk..knk..', '.kbk....kbk.', '.kkk....kkk.'],
+  landing: ['...knnnnk...', '..knkkknk...', '..knk..knk..', '.kbk...kbk..', '.kkk...kkk..'],
+  passing: ['...knnnnk...', '....knnk....', '....knnk....', '....kbbk....', '....kkkk....'],
 };
 /** The player animation frames: idle0/idle1 (breathing: the head bobs a pixel), walk0-2 (stride). */
 export const PLAYER_FRAMES = ['idle0', 'idle1', 'walk0', 'walk1', 'walk2'];
 export function playerFrame(c, avatar = 'cyan', pose = 'idle0') {
-  const pal = { ...PLAYER_PAL, ...(AVATARS[avatar] || {}) };
+  const pal = { ...PLAYER_PAL, ...(AVATARS[avatar] || NPCS[avatar] || {}) };
   const row = (text, y) => { for (let i = 0; i < text.length; i++) if (text[i] !== '.') R(c, i, y, 1, 1, pal[text[i]]); };
-  c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(6, 19, pose === 'walk0' || pose.startsWith('idle') ? 6 : 5, 2, 0, 0, 7); c.fill();
-  const legs = pose === 'walk1' ? LEGS.left : pose === 'walk2' ? LEGS.right : LEGS.stand;
-  legs.forEach((r, j) => row(r, 14 + j));
-  for (let j = 8; j <= 13; j++) row(PLAYER[j], j);                // body
+  const legs = { walk0: LEGS.passing, walk1: LEGS.apart, walk2: LEGS.landing }[pose] || LEGS.stand;
+  const lift = pose === 'walk0' ? 1 : 0;                           // passing step: the body rises a pixel
+  c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(6, 19, pose === 'walk1' ? 6 : 5, 2, 0, 0, 7); c.fill();
+  legs.forEach((r, j) => row(r, 14 + j - lift));
+  for (let j = 8; j <= 13; j++) row(PLAYER[j], j - lift);         // body
   const bob = pose === 'idle1' ? 1 : 0;                            // breathing: the head dips a pixel
-  for (let j = 0; j <= 7; j++) row(PLAYER[j], j + bob);
+  for (let j = 0; j <= 7; j++) row(PLAYER[j], j + bob - lift);
 }
 
 /** Draws an avatar into every <canvas data-avatar="..."> on the page, scaled up crisp. */
@@ -349,6 +391,7 @@ const FURNITURE = {
   },
   desk: (c, x, y) => desk(c, x, y),
   cooling: (c, x, y) => cooling(c, x, y),
+  rack: (c, x, y) => rackFrame(c, x, y),
   plant(c, x, y) {
     const p = { x: x + 8, y };
     R(c, p.x, p.y + 6, 10, 10, C.k); R(c, p.x + 1, p.y + 7, 8, 8, '#1d2a1d');
@@ -457,6 +500,13 @@ function datacentre(c, loc) {
 
 const ROOMS = { garage, office, datacentre };
 
+/** Draws one piece of furniture (built-in or bought) with its top-left on tile (tx, ty). */
+export function drawFurniture(c, type, tx, ty) {
+  FURNITURE[type]?.(c, tx * TILE, ty * TILE);
+}
+/** Pixel size of a piece of furniture's picture (for the placing ghost). */
+export const FURNITURE_PX = { desk: [48, 40], rack: [16, 33] };
+
 export function drawRoom(c, code, loc) {
   c.clearRect(0, 0, COLS * TILE, ROWS * TILE);
   (ROOMS[code] || garage)(c, loc);
@@ -519,7 +569,40 @@ function genericPortrait(c) {
   R(c, 4, 24, 24, 8, '#3a4a5e'); R(c, 11, 7, 10, 13, '#c9a27e'); R(c, 10, 5, 12, 4, '#2a2a33'); R(c, 13, 12, 2, 2, '#1a2233'); R(c, 17, 12, 2, 2, '#1a2233');
 }
 
-const PORTRAITS = { teacher: teacherPortrait, hacker: hackerPortrait };
+/** Vex, the grey-market broker: long coat with the collar up, shades, a gold chain, a smirk. */
+function brokerPortrait(c) {
+  const coat = '#6a5a82', coatD = '#433858', skin = '#c98f6b', skinS = '#8f5f42', hair = '#0b0b10';
+  R(c, 2, 24, 28, 8, coat); R(c, 5, 21, 22, 3, coat);
+  R(c, 6, 18, 5, 8, coatD); R(c, 21, 18, 5, 8, coatD);             // collar up
+  R(c, 13, 22, 6, 10, '#17171d');                                  // dark shirt
+  for (let x = 12; x <= 19; x++) R(c, x, 23 + (x % 2), 1, 1, C.amber); // gold chain
+  R(c, 14, 19, 4, 4, skinS);                                       // neck
+  R(c, 11, 6, 10, 1, skin); R(c, 10, 7, 12, 12, skin); R(c, 11, 19, 10, 1, skinS);
+  R(c, 9, 3, 14, 5, hair); R(c, 10, 2, 11, 1, hair); R(c, 9, 7, 2, 5, hair); R(c, 21, 7, 2, 4, hair); // slicked back
+  R(c, 12, 3, 6, 1, '#2a2a36');
+  R(c, 10, 11, 12, 3, '#05070d'); R(c, 11, 11, 4, 2, '#1f2a3a'); R(c, 17, 11, 4, 2, '#1f2a3a'); // shades
+  R(c, 12, 11, 1, 1, C.amber); R(c, 18, 11, 1, 1, C.amber);         // a glint
+  R(c, 13, 17, 5, 1, '#5e3326'); R(c, 18, 16, 1, 1, '#5e3326');    // smirk
+  R(c, 12, 18, 7, 1, skinS);                                       // stubble line
+}
+
+/** Mira from Lumen Capital: sharp blazer, bob haircut, earpiece. */
+function investorPortrait(c) {
+  const suit = '#1d3557', suitD = '#14243d', skin = '#9a6a4a', skinS = '#77503a', hair = '#1a1110';
+  R(c, 3, 24, 26, 8, suit); R(c, 5, 22, 22, 2, suit); R(c, 3, 28, 4, 4, suitD); R(c, 25, 28, 4, 4, suitD);
+  R(c, 13, 22, 6, 10, '#e9eef2'); R(c, 12, 22, 2, 6, suitD); R(c, 18, 22, 2, 6, suitD); // lapels
+  R(c, 21, 26, 3, 1, C.lime);                                      // pocket square
+  R(c, 14, 19, 4, 4, skinS);
+  R(c, 11, 6, 10, 1, skin); R(c, 10, 7, 12, 12, skin); R(c, 11, 19, 10, 1, skinS);
+  R(c, 9, 3, 14, 5, hair); R(c, 8, 6, 3, 12, hair); R(c, 21, 6, 3, 12, hair); R(c, 10, 7, 7, 2, hair); // bob with a side part
+  R(c, 12, 4, 4, 1, '#3a2620');
+  R(c, 12, 12, 2, 2, '#1a2233'); R(c, 18, 12, 2, 2, '#1a2233'); R(c, 12, 12, 1, 1, '#f0f6fa'); R(c, 18, 12, 1, 1, '#f0f6fa');
+  R(c, 12, 11, 3, 1, hair); R(c, 17, 11, 3, 1, hair);              // brows
+  R(c, 14, 17, 4, 1, '#7a2e3a');                                   // lipstick
+  R(c, 22, 12, 1, 3, C.cyan);                                      // earpiece
+}
+
+const PORTRAITS = { teacher: teacherPortrait, hacker: hackerPortrait, broker: brokerPortrait, investor: investorPortrait };
 
 /** Draws the built-in portrait for a character code. */
 export function portrait(c, code) {

@@ -73,7 +73,10 @@ export class MapScene extends Phaser.Scene {
     this.anims.create({ key: 'walk', frames: [{ key: 'player-walk1' }, { key: 'player-walk0' }, { key: 'player-walk2' }, { key: 'player-walk0' }], frameRate: 9, repeat: -1 });
     this.player = this.add.sprite(0, 0, 'player-idle0').setOrigin(0.5, 1);
     if (!reduceMotion) this.player.play('idle');
+    this.anims.create({ key: 'b-idle', frames: [{ key: 'broker-idle0' }, { key: 'broker-idle1' }], frameRate: 2, repeat: -1 });
+    this.anims.create({ key: 'b-walk', frames: [{ key: 'broker-walk1' }, { key: 'broker-walk0' }, { key: 'broker-walk2' }, { key: 'broker-walk0' }], frameRate: 9, repeat: -1 });
     this.walkId = 0;
+    this.npc = null;
     this.placePlayer();
 
     this.input.on('pointermove', (p) => this.hover(p));
@@ -95,8 +98,15 @@ export class MapScene extends Phaser.Scene {
     tex('vignette', W, H, art.vignette);
     for (const pose of art.PLAYER_FRAMES) {
       tex(`player-${pose}`, art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.playerFrame(c, this.store.state.user?.avatar, pose));
+      tex(`broker-${pose}`, art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.playerFrame(c, 'broker', pose));
     }
+    tex('bubble', 9, 8, (c) => { // a "psst" speech bubble
+      c.fillStyle = '#05070d'; c.fillRect(0, 0, 9, 6); c.fillRect(2, 6, 2, 2);
+      c.fillStyle = '#ffb43d'; c.fillRect(1, 1, 7, 4); c.fillRect(2, 5, 1, 1);
+      c.fillStyle = '#05070d'; for (const x of [2, 4, 6]) c.fillRect(x, 3, 1, 1);
+    });
     for (const [name, s] of Object.entries(art.SPRITES)) tex(`dev-${name}`, s.w, s.h, s.draw);
+    for (const [type, [w, h]] of Object.entries(art.FURNITURE_PX)) tex(`furn-${type}`, w, h, (c) => art.drawFurniture(c, type, 0, 0));
   }
 
   /* ---------- state -> picture ---------- */
@@ -124,7 +134,7 @@ export class MapScene extends Phaser.Scene {
       for (let i = 0; i < dev.height; i++) this.blocked.add(`${dev.tile_x},${dev.tile_y + i}`);
     }
     for (const [id, s] of this.sprites) if (!seen.has(id)) { s.destroy(); this.sprites.delete(id); }
-    const sig = devices.map((d) => `${d.id}:${d.tile_x},${d.tile_y}`).join('|');
+    const sig = devices.map((d) => `${d.id}:${d.tile_x},${d.tile_y}`).join('|') + '#' + layout.USER_FURNITURE.map((f) => `${f.id}:${f.x},${f.y}`).join('|');
     if (sig !== this.devSig) { this.devSig = sig; this.redrawRoom(devices); }
     this.drawCables();
     this.drawSlots();
@@ -136,6 +146,7 @@ export class MapScene extends Phaser.Scene {
     const t = this.textures.get('room');
     const c = t.getContext();
     art.drawRoom(c, layout.LOC_CODE, layout.LOC);
+    for (const f of layout.USER_FURNITURE) art.drawFurniture(c, f.type, f.x, f.y); // what the student bought and placed
     // office desks light up their monitor when a PC sits beside them
     for (const d of layout.furnitureOf('desk')) {
       if (devices.some((v) => v.sprite === 'tower' && v.tile_x === d.x + 3 && v.tile_y === d.y)) art.monitorOn(c, d.x, d.y);
@@ -218,6 +229,11 @@ export class MapScene extends Phaser.Scene {
 
   update(time) {
     this.drawLinks(time / 1000);
+    if (this.npc) {
+      const { spr, bubble } = this.npc;
+      spr.setDepth(spr.y + 1);
+      bubble.setPosition(spr.x + 3, spr.y - 21 - (reduceMotion ? 0 : Math.round(Math.sin(time / 250))));
+    }
     if (!this.nextLed || time > this.nextLed) {
       this.nextLed = time + 140;
       this.drawLeds(time / 1000);
@@ -263,18 +279,22 @@ export class MapScene extends Phaser.Scene {
   }
 
   /** Shortest path (4 directions) from the player to any of the goal tiles, or null. */
-  pathTo(goals) {
-    const want = new Set(goals.filter((g) => this.walkable(g.x, g.y)).map((g) => `${g.x},${g.y}`));
+  pathTo(goals) { return this.pathFrom(this.tile, goals); }
+
+  /** Shortest path (4 directions) from a tile to any of the goal tiles, or null. */
+  pathFrom(from, goals, avoid = null) {
+    const ok = (x, y) => this.walkable(x, y) && !(avoid && avoid.x === x && avoid.y === y);
+    const want = new Set(goals.filter((g) => ok(g.x, g.y)).map((g) => `${g.x},${g.y}`));
     if (!want.size) return null;
-    const start = `${this.tile.x},${this.tile.y}`;
+    const start = `${from.x},${from.y}`;
     if (want.has(start)) return [];
     const prev = new Map([[start, null]]);
-    const queue = [this.tile];
+    const queue = [from];
     while (queue.length) {
       const cur = queue.shift();
       for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
         const nx = cur.x + dx, ny = cur.y + dy, key = `${nx},${ny}`;
-        if (prev.has(key) || !this.walkable(nx, ny)) continue;
+        if (prev.has(key) || !ok(nx, ny)) continue;
         prev.set(key, `${cur.x},${cur.y}`);
         if (want.has(key)) {
           const path = [];
@@ -304,7 +324,9 @@ export class MapScene extends Phaser.Scene {
         if (i >= path.length) { this.stopWalking(); this.store.playerMoved(this.tile); resolve(true); return; }
         const t = path[i];
         if (t.x !== this.tile.x) this.player.setFlipX(t.x < this.tile.x);
+        const left = this.tile;
         this.tile = t;
+        this.npcFollow(left);
         this.tweens.add({
           targets: this.player, x: t.x * TILE + 8, y: t.y * TILE + 15, duration: reduceMotion ? 0 : 120,
           onUpdate: () => this.player.setDepth(this.player.y + 1),
@@ -328,6 +350,65 @@ export class MapScene extends Phaser.Scene {
     // in front (below) first, then the sides, then behind
     const goals = [{ x: slot.x, y: slot.y + h }, ...around, { x: slot.x, y: slot.y - 1 }];
     return this.walkTo(goals);
+  }
+
+  /** Walks up beside a box of tiles (a piece of furniture about to be set down). */
+  walkAround(box) {
+    const goals = [];
+    for (let x = box.x - 1; x <= box.x + box.w; x++) goals.push({ x, y: box.y + box.h }, { x, y: box.y - 1 });
+    for (let y = box.y; y < box.y + box.h; y++) goals.push({ x: box.x - 1, y }, { x: box.x + box.w, y });
+    return this.walkTo(goals);
+  }
+
+  /* ---------- the broker: a character who trails the player ---------- */
+
+  /** Brings the broker in through the door; he walks up and then follows the player around. */
+  showNpc() {
+    if (this.npc) return;
+    const sp = layout.LOC.spawn || { x: 10, y: 6 };
+    const start = this.walkable(sp.x, sp.y) && !(sp.x === this.tile.x && sp.y === this.tile.y) ? sp
+      : [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: this.tile.x + dx, y: this.tile.y + dy })).find((t) => this.walkable(t.x, t.y)) || sp;
+    const spr = this.add.sprite(start.x * TILE + 8, start.y * TILE + 15, 'broker-idle0').setOrigin(0.5, 1).setAlpha(0);
+    const bubble = this.add.image(0, 0, 'bubble').setOrigin(0.5, 1).setDepth(7000);
+    this.npc = { spr, bubble, tile: start, walkId: 0 };
+    if (!reduceMotion) spr.play('b-idle');
+    this.tweens.add({ targets: spr, alpha: 1, duration: reduceMotion ? 0 : 400 });
+    this.npcFollow(this.tile, true);
+  }
+
+  /** Sends the broker back out of the door. */
+  hideNpc() {
+    const n = this.npc;
+    if (!n) return;
+    this.npc = null;
+    n.bubble.destroy();
+    this.tweens.killTweensOf(n.spr);
+    this.tweens.add({ targets: n.spr, alpha: 0, duration: reduceMotion ? 0 : 500, onComplete: () => n.spr.destroy() });
+  }
+
+  /** The broker walks to a tile next to where the player just was (never onto the player). */
+  npcFollow(target, near = false) {
+    const n = this.npc;
+    if (!n) return;
+    const goals = near ? [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => ({ x: target.x + dx, y: target.y + dy })) : [target];
+    const path = this.pathFrom(n.tile, goals, this.tile);
+    if (!path || !path.length) return;
+    const id = ++n.walkId;
+    if (!reduceMotion) n.spr.play('b-walk', true);
+    const step = (i) => {
+      if (this.npc !== n || id !== n.walkId) return;
+      if (i >= path.length) { if (!reduceMotion) n.spr.play('b-idle', true); return; }
+      const t = path[i];
+      if (t.x !== n.tile.x) n.spr.setFlipX(t.x < n.tile.x);
+      n.tile = t;
+      this.tweens.add({ targets: n.spr, x: t.x * TILE + 8, y: t.y * TILE + 15, duration: reduceMotion ? 0 : 130, onComplete: () => step(i + 1) });
+    };
+    step(0);
+  }
+
+  npcAt(tile) {
+    const n = this.npc;
+    return !!n && n.tile.x === tile.x && (tile.y === n.tile.y || tile.y === n.tile.y - 1); // his head pokes into the tile above
   }
 
   /* ---------- pointer ---------- */
@@ -364,6 +445,15 @@ export class MapScene extends Phaser.Scene {
     const g = this.hoverG;
     g.clear();
     const item = this.store.placingItem();
+    if (item && item.category === 'furniture') {
+      const { problem } = this.store.placementCheck(item, tile);
+      const [w, h] = art.FURNITURE_PX[item.furniture] || [16, 16];
+      const box = { x: tile.x * TILE, y: tile.y * TILE, w, h: Math.min(h, (layout.FOOTPRINTS[item.furniture]?.[1] || 1) * TILE) };
+      this.ghost.setTexture(`furn-${item.furniture}`).setPosition(box.x, box.y).setVisible(true)
+        .setAlpha(problem ? 0.45 : 0.8).setTint(problem ? 0xff3d9a : 0xffffff);
+      MapScene.brackets(g, box, problem ? 0xff3d9a : 0x7cff6b);
+      return;
+    }
     if (item) {
       const { slot, problem } = this.store.placementCheck(item, tile);
       const at = slot || { x: tile.x, y: tile.y };
@@ -384,7 +474,7 @@ export class MapScene extends Phaser.Scene {
     const g = this.slotsG;
     g.clear();
     const item = this.store.placingItem();
-    if (!item) return;
+    if (!item || item.category === 'furniture') return;
     const t = this.time.now / 1000;
     for (const slot of layout.slotsFor(item.slotKinds)) {
       if (this.store.occupant(slot)) continue;
@@ -397,6 +487,7 @@ export class MapScene extends Phaser.Scene {
   click(p) {
     if (this.store.state.uiFocus) return;
     const tile = this.tileAt(p);
+    if (this.npcAt(tile) && !this.store.placingItem()) { this.store.npcClicked?.(); return; }
     const device = this.deviceAt(tile);
     // point and click: open floor with nothing in hand means "walk there"
     if (!device && !this.store.placingItem() && this.store.state.tool === 'select' && !this.store.state.cableDraft) {

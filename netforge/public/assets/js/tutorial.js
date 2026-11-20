@@ -35,6 +35,7 @@ export async function mountTutorial(store) {
     location.reload();
   });
 
+  store.tutorialDone = done; // the characters' other tips wait until the tutorial is over
   if (done) return;
   store.subscribe(() => tick());
   setInterval(() => tick(), 1000); // also catch up after Learn, an attack or a conversation closes
@@ -68,6 +69,7 @@ export async function mountTutorial(store) {
   function finish() {
     if (done) return;
     done = true;
+    store.tutorialDone = true;
     hideCard();
     glow();
     api.tutorial('done').catch(() => {});

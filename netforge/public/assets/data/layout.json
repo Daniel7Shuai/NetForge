@@ -9,9 +9,10 @@
     "bike": [2, 1],
     "car": [4, 6],
     "toolchest": [1, 1],
-    "desk": [3, 2],
+    "desk": [3, 3],
     "cooling": [2, 3],
-    "plant": [1, 1]
+    "plant": [1, 1],
+    "rack": [1, 2]
   },
   "locations": {
     "garage": {

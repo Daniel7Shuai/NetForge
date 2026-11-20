@@ -1,7 +1,7 @@
 // One shared game state for the HUD and the map. Views subscribe; actions
 // change state and notify. Gameplay actions (place, connect...) live here.
 import { api } from './api.js';
-import { slotAt, slotsFor, LOC } from './game/layout.js';
+import { slotAt, slotsFor, LOC, setFurniture, furnitureProblem, userFurnitureAt, FOOTPRINTS } from './game/layout.js';
 
 /** Player-facing hint for each slot kind. Mirrors Layout::KIND_HINTS in PHP. */
 const KIND_HINTS = {
@@ -22,6 +22,9 @@ export function createStore() {
       picker: null,        // {deviceId, mode: 'cable' | 'remove' | 'inspect'}: the port popover
       cableDraft: null,    // {kind, from: {deviceId, port}}: one end plugged in, other in hand
       freshCables: {},     // cable id -> time it was plugged in (shows "negotiating" briefly)
+      furniture: [],       // furniture the student placed here
+      events: null,        // {event, unread, buffs}: the broker, texts, temporary buffs
+      shopGroup: 'all',    // the shop's category filter
     },
 
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -46,7 +49,9 @@ export function createStore() {
 
     applyServerState(data) {
       store.serverLog = data.log;
+      setFurniture(data.furniture);
       store.set({
+        furniture: data.furniture || [], events: data.events || store.state.events,
         user: data.user, inventory: data.inventory, shop: data.shop, objective: data.objective,
         devices: data.devices, cables: data.cables, log: store.mergedLog(), progress: data.progress, locations: data.locations || [],
       });
@@ -68,6 +73,7 @@ export function createStore() {
       const next = !keep && store.state.selectedItem === code ? null : code;
       const item = store.state.inventory.find((i) => i.code === next);
       if (item && item.category === 'cable') { store.set({ cable: code }); store.setTool('cable'); return; }
+      if (item && item.category === 'part') { store.log('info', `To fit the ${item.name.toLowerCase()}, click one of your servers and pick it under GPU card.`); }
       store.set({ selectedItem: next, tool: 'select', picker: null, cableDraft: null, moving: null });
     },
     /** Esc: back out one step (popover, then cable in hand, then the tool). */
@@ -160,7 +166,7 @@ export function createStore() {
         if (d) return { code: d.item_code, name: d.label, sprite: d.sprite, slotKinds: d.slotKinds, category: 'device', quantity: 1, moveId: d.id };
       }
       const item = s.inventory.find((i) => i.code === s.selectedItem);
-      return item && item.category === 'device' && item.quantity > 0 ? item : null;
+      return item && (item.category === 'device' || item.category === 'furniture') && item.quantity > 0 ? item : null;
     },
 
     /** Device covering any tile of a slot, or null. */
@@ -170,6 +176,11 @@ export function createStore() {
 
     /** Why the item can't go on this tile (null if it can), plus the slot it would use. */
     placementCheck(item, tile) {
+      if (item.category === 'furniture') {
+        // furniture goes on open floor, its top-left on the tile
+        const [w, h] = FOOTPRINTS[item.furniture] || [1, 1];
+        return { slot: { x: tile.x, y: tile.y, w, h }, problem: furnitureProblem(item.furniture, tile.x, tile.y, store.state.devices, store.state.playerTile) };
+      }
       if (!slotsFor(item.slotKinds).length) {
         return { slot: null, problem: `There’s no spot for a ${item.name} in the ${LOC.name.toLowerCase()}. You’ll need a bigger place.` };
       }
@@ -191,7 +202,7 @@ export function createStore() {
       if (store.scene?.walkNear) {
         if (store.walking) return;
         store.walking = true;
-        const arrived = await store.scene.walkNear(slot);
+        const arrived = await (item.category === 'furniture' ? store.scene.walkAround(slot) : store.scene.walkNear(slot));
         store.walking = false;
         const still = store.placingItem();
         if (!still || still.code !== item.code || still.moveId !== item.moveId) return; // cancelled on the way
@@ -200,6 +211,20 @@ export function createStore() {
         } else if (!arrived) return; // another click took over
       }
       store.set({ busy: true });
+      if (item.category === 'furniture') {
+        try {
+          const res = await api.placeFurniture(item.code, { x: slot.x, y: slot.y });
+          store.applyServerState(res.state);
+          const left = res.state.inventory.find((i) => i.code === item.code);
+          store.set({ selectedItem: left && left.quantity > 0 ? item.code : null, lastEvent: { type: 'furniture', at: Date.now() } });
+          store.log('ok', res.message);
+        } catch (err) {
+          store.log('error', err.message);
+        } finally {
+          store.set({ busy: false });
+        }
+        return;
+      }
       if (item.moveId) {
         try {
           store.applyServerState((await api.move(item.moveId, { x: slot.x, y: slot.y })).state);
@@ -234,6 +259,32 @@ export function createStore() {
       if (!d || d.fixed) return;
       store.set({ picker: null, cableDraft: null, selectedItem: null, tool: 'select', moving: deviceId });
       store.log('you', `Moving ${d.label}. Click a free spot. Its cables come along. Esc to cancel.`);
+    },
+
+    async pickUpFurniture(id) {
+      if (store.state.busy) return;
+      store.set({ busy: true, picker: null });
+      try {
+        store.applyServerState((await api.pickUpFurniture(id)).state);
+      } catch (err) {
+        store.log('error', err.message);
+      } finally {
+        store.set({ busy: false });
+      }
+    },
+
+    async installCard(deviceId, card) {
+      if (store.state.busy) return;
+      store.set({ busy: true });
+      try {
+        const res = await api.installCard(deviceId, card);
+        store.applyServerState(res.state);
+        store.set({ lastEvent: { type: 'card', at: Date.now() } });
+      } catch (err) {
+        store.log('error', err.message);
+      } finally {
+        store.set({ busy: false });
+      }
     },
 
     async upgrade(deviceId) {
@@ -285,6 +336,8 @@ export function createStore() {
       const { tool } = store.state;
       if (!device) {
         store.set({ picker: null });
+        const f = tool === 'remove' && userFurnitureAt(tile);
+        if (f) store.pickUpFurniture(f.id);
         return;
       }
       if (tool === 'cable') {

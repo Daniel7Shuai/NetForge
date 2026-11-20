@@ -10,6 +10,25 @@ import { fmt, rate } from './money.js';
 /** A control's explanation, whether it's still in title or already moved to data-tip by the tooltips. */
 const tipOf = (el) => el.dataset.tip || el.title || '';
 
+/** Shop and inventory categories, in Packet Tracer's order. */
+const GROUPS = [
+  ['end', 'End devices', 'ti-device-desktop'], ['network', 'Network devices', 'ti-router'], ['security', 'Security', 'ti-shield-lock'],
+  ['gpu', 'GPUs', 'ti-cpu'], ['cable', 'Cables', 'ti-plug'], ['furniture', 'Furniture', 'ti-armchair'],
+];
+const groupOf = (i) => i.group || (i.category === 'cable' ? 'cable' : i.category === 'part' ? 'gpu' : i.category === 'furniture' ? 'furniture' : 'end');
+const HOW = {
+  device: 'Click it, then a glowing spot on the map (or drag it there).',
+  cable: 'Use it with the cable tool (C).',
+  furniture: 'Click it, then an open bit of floor on the map.',
+  part: 'Click one of your servers to fit it.',
+};
+const DETAIL = {
+  device: 'Click a glowing spot on the map, or drag it there. Esc to cancel.',
+  cable: 'Pick the cable tool (C) to run it.',
+  furniture: 'Click open floor on the map to set it down: the green outline shows where it goes. Esc to cancel.',
+  part: 'Click one of your servers on the map, then pick this card under GPU card.',
+};
+
 function icon(item) {
   const c = document.createElement('canvas');
   c.width = 16; c.height = 16;
@@ -22,6 +41,8 @@ export function mountHud(store) {
   const shownBadges = new Set();
   const badgeQueue = [];
   let toastBusy = false;
+  // GPU offers count their restock down from when the state arrived (declared first: the first render uses them)
+  let quotedAt = performance.now(), lastShop = null;
 
   /* tool rail, drawer tabs, cable bar */
   document.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', () => store.setTool(b.dataset.tool)));
@@ -74,6 +95,8 @@ export function mountHud(store) {
     if (slot) store.selectItem(slot.dataset.item);
   });
   $('pane-shop').addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-shop-group]');
+    if (chip) { store.set({ shopGroup: chip.dataset.shopGroup }); return; }
     const btn = e.target.closest('[data-buy]');
     if (!btn) return;
     if (btn.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(btn)); return; }
@@ -88,6 +111,7 @@ export function mountHud(store) {
     else if (b.dataset.unplug) store.unplug(Number(b.dataset.unplug));
     else if (b.dataset.pickup) store.pickUp(Number(b.dataset.pickup));
     else if (b.dataset.move) store.startMove(Number(b.dataset.move));
+    else if (b.dataset.card) store.installCard(Number(b.dataset.dev), b.dataset.card);
     else if (b.dataset.upgrade) {
       if (b.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(b)); return; }
       store.upgrade(Number(b.dataset.upgrade));
@@ -98,7 +122,7 @@ export function mountHud(store) {
   /* drag a device from the inventory onto the map */
   $('pane-inv').addEventListener('dragstart', (e) => {
     const slot = e.target.closest('[data-item]');
-    if (!slot || slot.dataset.category !== 'device') { e.preventDefault(); return; }
+    if (!slot || (slot.dataset.category !== 'device' && slot.dataset.category !== 'furniture')) { e.preventDefault(); return; }
     e.dataTransfer.setData('text/plain', slot.dataset.item);
     e.dataTransfer.effectAllowed = 'move';
     store.selectItem(slot.dataset.item, true);
@@ -199,8 +223,11 @@ export function mountHud(store) {
   function renderInventory(s) {
     const pane = $('pane-inv');
     pane.innerHTML = '';
-    for (const [cat, label] of [['device', 'Devices'], ['cable', 'Cables']]) {
-      const items = s.inventory.filter((i) => i.category === cat && i.quantity > 0);
+    const owned = s.inventory.filter((i) => i.quantity > 0);
+    for (const [g, label] of GROUPS) {
+      const items = owned.filter((i) => groupOf(i) === g);
+      // devices and cables always show (with empty slots), the rest only once you own some
+      if (!items.length && g !== 'end' && g !== 'cable') continue;
       const group = document.createElement('div');
       group.className = 'group';
       group.innerHTML = `<h4>${label}</h4><div class="slots"></div>`;
@@ -210,9 +237,9 @@ export function mountHud(store) {
         b.className = 'slot' + (s.selectedItem === item.code ? ' sel' : '');
         b.dataset.item = item.code;
         b.dataset.category = item.category;
-        b.draggable = item.category === 'device';
+        b.draggable = item.category === 'device' || item.category === 'furniture';
         b.setAttribute('aria-label', `${item.name}, ${item.quantity}`);
-        b.dataset.tip = `${item.name} ×${item.quantity}. ${item.description || ''} ${item.category === 'device' ? 'Click it, then a glowing spot on the map (or drag it there).' : 'Use it with the cable tool (C).'}`;
+        b.dataset.tip = `${item.name} ×${item.quantity}. ${item.description || ''} ${HOW[item.category] || ''}`;
         b.setAttribute('aria-pressed', String(s.selectedItem === item.code));
         b.append(icon(item));
         b.insertAdjacentHTML('beforeend', `<span class="n">${item.quantity}</span>`);
@@ -224,31 +251,101 @@ export function mountHud(store) {
     }
     const sel = s.inventory.find((i) => i.code === s.selectedItem);
     pane.insertAdjacentHTML('beforeend', sel
-      ? `<div class="detail"><strong>${esc(sel.name)}</strong><div class="spec">${esc(sel.description || '')}</div><p>${sel.category === 'device' ? 'Click a glowing spot on the map, or drag it there. Esc to cancel.' : 'Pick the cable tool (C) to run it.'}</p></div>`
+      ? `<div class="detail"><strong>${esc(sel.name)}</strong><div class="spec">${esc(sel.description || '')}</div><p>${esc(DETAIL[sel.category] || '')}</p></div>`
       : '<p class="empty-note">Select an item to see what it does.</p>');
   }
 
+
+  /** A seller's live offer: price against the list price, stock, and when they restock. */
+  function restockLeft(q) { return Math.max(0, q.restockIn - (performance.now() - quotedAt) / 1000); }
+
+  function offerLine(row) {
+    const q = row.quote, ch = q.change;
+    const trend = ch > 0 ? `<span class="chg up">▲ ${ch}% over list</span>`
+      : ch < 0 ? `<span class="chg down">▼ ${-ch}% under list</span>` : '<span class="chg">list price</span>';
+    const mins = Math.max(1, Math.ceil(restockLeft(q) / 60));
+    const stock = q.stock > 0 ? `${q.stock} in stock` : `<span class="soldout">Sold out</span>, back in ${mins} min`;
+    return `${trend}<span>${stock}</span>`;
+  }
+
+  /** How a GPU compares with the standard model: 80% for the budget build, 115% for the pro. */
+  function perfOf(row, shop) {
+    const std = shop.find((r) => r.code === row.code.replace(/_(budget|pro)$/, '_std'));
+    if (!std) return null;
+    const mine = row.earns || row.boost, base = std.earns || std.boost;
+    return base ? Math.round((mine / base) * 100) : null;
+  }
+
+  function shopRow(s, row) {
+    const div = document.createElement('div');
+    div.className = 'row' + (row.locked ? ' locked' : '') + (row.seller ? ' offer' : '');
+    div.append(icon(row));
+    const qty = row.quantity > 1 ? `, ${row.quantity} pack` : '';
+    // what still stands between the player and this item: their XP level, then any required world
+    const needLevel = row.unlockLevel > s.user.level;
+    const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock` : `Master World ${row.unlockWorld} to unlock`;
+    const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master World ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
+    const have = store.liveCredits ? store.liveCredits() : s.user.credits;
+    const price = row.quote ? row.quote.price : row.price;
+    const perk = row.earns ? `+${rate(row.earns)}` : row.boost ? `+${row.boost}%` : '';
+    const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.` : row.boost ? ` Fit it in a server for +${row.boost}% income.` : '';
+    const soldOut = row.quote && row.quote.stock < 1;
+    const buyTip = soldOut
+      ? `${row.seller} is sold out. They restock in ${Math.max(1, Math.ceil(restockLeft(row.quote) / 60))} minutes, or try another seller.`
+      : `Buy the ${row.name}${qty}${row.seller ? ` from ${row.seller}` : ''} for ${fmt(price)} credits.${earns}${have < price ? ` You need ${fmt(price - have)} more: your network keeps earning while you play.` : ''}`;
+    const perf = row.seller ? perfOf(row, s.shop) : null;
+    const title = row.seller
+      ? `${esc(row.seller)} <span class="what">${esc(row.name)}${perf ? `, ${perf}% performance` : ''}</span>`
+      : `${esc(row.name)}${qty}`;
+    const sub = row.locked ? lockText : row.seller ? offerLine(row) : esc(row.description || '');
+    div.insertAdjacentHTML('beforeend', `<div><strong>${title}${perk ? ` <span class="earns mono">${perk}</span>` : ''}</strong><small class="${row.seller && !row.locked ? 'offerline' : ''}">${sub}</small></div>`
+      + (row.locked
+        ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `W${row.unlockWorld}`}</button>`
+        : soldOut
+          ? `<button class="buy" aria-disabled="true" data-buy="${row.id}" data-tip="${esc(buyTip)}"><i class="ti ti-package-off" aria-hidden="true"></i>${fmt(price)}</button>`
+          : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)}${row.seller ? ` from ${esc(row.seller)}` : ''} for ${fmt(price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(price)}</button>`));
+    return div;
+  }
+
   function renderShop(s) {
+    if (s.shop !== lastShop) { lastShop = s.shop; quotedAt = performance.now(); }
     const pane = $('pane-shop');
+    const scroll = pane.scrollTop;
     pane.innerHTML = '';
-    for (const row of s.shop) {
-      const div = document.createElement('div');
-      div.className = 'row' + (row.locked ? ' locked' : '');
-      div.append(icon(row));
-      const qty = row.quantity > 1 ? `, ${row.quantity} pack` : '';
-      // what still stands between the player and this item: their XP level, then any required world
-      const needLevel = row.unlockLevel > s.user.level;
-      const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock` : `Master World ${row.unlockWorld} to unlock`;
-      const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master World ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
-      const have = store.liveCredits ? store.liveCredits() : s.user.credits;
-      const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.` : '';
-      const buyTip = `Buy the ${row.name}${qty} for ${fmt(row.price)} credits.${earns}${have < row.price ? ` You need ${fmt(row.price - have)} more: your network keeps earning while you play.` : ''}`;
-      div.insertAdjacentHTML('beforeend', `<div><strong>${esc(row.name)}${qty}${row.earns ? ` <span class="earns mono">+${rate(row.earns)}</span>` : ''}</strong><small>${row.locked ? lockText : esc(row.description || '')}</small></div>`
-        + (row.locked
-          ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `W${row.unlockWorld}`}</button>`
-          : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)} for ${fmt(row.price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(row.price)}</button>`));
-      pane.append(div);
+    const pick = s.shopGroup || 'all';
+    const groups = GROUPS.filter(([g]) => s.shop.some((r) => (r.group || 'end') === g));
+    const chips = document.createElement('div');
+    chips.className = 'chips';
+    chips.setAttribute('role', 'tablist');
+    chips.setAttribute('aria-label', 'Shop categories');
+    chips.innerHTML = [['all', 'All', 'ti-layout-grid'], ...groups].map(([g, label, ic]) =>
+      `<button type="button" role="tab" data-shop-group="${g}" aria-selected="${g === pick}" class="${g === pick ? 'on' : ''}"><i class="ti ${ic}" aria-hidden="true"></i>${label}</button>`).join('');
+    pane.append(chips);
+    for (const [g, label] of groups) {
+      if (pick !== 'all' && pick !== g) continue;
+      const rows = s.shop.filter((r) => (r.group || 'end') === g);
+      const sec = document.createElement('div');
+      sec.className = 'shop-sec';
+      sec.dataset.group = g;
+      sec.innerHTML = `<h4>${label}</h4>`;
+      if (g === 'gpu') {
+        const deal = (s.events?.buffs || []).find((b) => b.kind === 'gpu_discount');
+        sec.insertAdjacentHTML('beforeend', deal
+          ? `<p class="deal"><i class="ti ti-discount" aria-hidden="true"></i>Vex’s deal: ${deal.pct}% off every GPU, ${Math.max(1, Math.ceil(deal.secondsLeft / 60))} min left</p>`
+          : '<p class="note">Three sellers. Prices move and stock refills every 20 minutes, so shop around.</p>');
+        // rigs first, then the cards, each with its sellers
+        for (const [fam, famLabel] of [['gpu_rig', 'GPU rigs: rack devices that earn'], ['gpu_card', 'GPU cards: fit one in a server for more income']]) {
+          const famRows = rows.filter((r) => r.code.startsWith(fam));
+          if (!famRows.length) continue;
+          sec.insertAdjacentHTML('beforeend', `<h5>${famLabel}</h5>`);
+          famRows.forEach((r) => sec.append(shopRow(s, r)));
+        }
+      } else {
+        rows.forEach((r) => sec.append(shopRow(s, r)));
+      }
+      pane.append(sec);
     }
+    pane.scrollTop = scroll;
   }
 
   function renderTags(s) {
@@ -385,7 +482,18 @@ export function mountHud(store) {
         ? `<button class="act" data-upgrade="${dev.id}" aria-disabled="true" data-tip="${esc(why)}"><i class="ti ti-lock" aria-hidden="true"></i>${s.user.level < up.level ? `Lv ${up.level}` : fmt(up.cost)}</button>`
         : `<button class="act up" data-upgrade="${dev.id}" aria-label="Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits" data-tip="${esc(`Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits: ${gain}.`)}"><i class="ti ti-arrow-big-up-lines" aria-hidden="true"></i>T${up.tier}, ${fmt(up.cost)}</button>`;
     }
-    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>`;
+    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>${cardSlot(s, dev)}`;
+  }
+
+  /** Servers take a GPU card: which one is fitted, and the cards in the inventory that could go in. */
+  function cardSlot(s, dev) {
+    if (dev.item_code !== 'server') return '';
+    const fitted = dev.gpuCard && (s.shop.find((r) => r.code === dev.gpuCard) || s.inventory.find((i) => i.code === dev.gpuCard));
+    const cards = s.inventory.filter((i) => i.category === 'part' && i.quantity > 0 && i.code !== dev.gpuCard);
+    const now = fitted ? `${esc(fitted.name)}, +${dev.gpuBoost}% income` : 'empty';
+    const btns = cards.map((c) => `<button class="act up" data-card="${esc(c.code)}" data-dev="${dev.id}" data-tip="${esc(`Fit the ${c.name.toLowerCase()} in ${dev.label}: +${c.boost}% income.${fitted ? ' The card in it now goes back to your inventory.' : ''}`)}"><i class="ti ti-cpu" aria-hidden="true"></i>Fit +${c.boost}%</button>`).join('');
+    const none = cards.length ? '' : `<p class="note">${fitted ? 'No other cards to swap in.' : 'Buy a GPU card in the shop (B), under GPUs, then fit it here.'}</p>`;
+    return `<div class="cardslot"><p class="tierline ${fitted ? 'on' : ''}"><span>GPU card</span><span>${now}</span></p>${btns ? `<div class="actions">${btns}</div>` : ''}${none}</div>`;
   }
 
   function renderPlaces(s) {

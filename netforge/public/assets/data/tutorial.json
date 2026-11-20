@@ -82,5 +82,88 @@
     ["hacker", "Let’s see what you’ve learned."],
     ["hacker", "Tick tock. Better be quick."],
     ["hacker", "Found a door. Mind if I come in?"]
-  ]
+  ],
+  "_moments": "Tips the characters give along the way, each shown once. {item}, {price}, {level}, {place}, {list}, {why} are filled in by the game.",
+  "moments": {
+    "cable:copper": [
+      ["teacher", "Copper straight-through cable, the everyday one. The wires run pin 1 to pin 1, end to end."],
+      ["teacher", "Use it between unlike devices: a laptop or PC to a router’s LAN port or a switch, or your router’s WAN port to the ISP box."]
+    ],
+    "cable:crossover": [
+      ["teacher", "A crossover cable swaps the send and receive wires inside the cable."],
+      ["teacher", "That’s for like devices: switch to switch, router to router, PC to PC. Plug unlike devices with it and the link stays down."]
+    ],
+    "cable:fiber": [
+      ["teacher", "Fiber carries light, not electricity. It’s fast, goes much further than copper and ignores electrical noise."],
+      ["teacher", "It only fits fiber ports: the Gi ports on rack gear and the datacentre’s ISP panel. Either end can plug into either side."]
+    ],
+    "cable:console": [
+      ["teacher", "The console cable isn’t a network link. It plugs into a device’s console port so you can type commands into it directly."],
+      ["teacher", "That’s how you set up a new router or switch before it’s on the network. No traffic flows over it, so it earns nothing."]
+    ],
+    "port:mdi": [
+      ["teacher", "See the host-style ports? That’s MDI: laptops, PCs, servers and a router’s WAN port. They send on one pair of wires and listen on the other."],
+      ["teacher", "Host-style to switch-style takes a straight-through cable. Host to host needs a crossover."]
+    ],
+    "port:mdix": [
+      ["teacher", "Switch-style ports (MDI-X) are on switches and a home router’s LAN side. They swap send and receive for you."],
+      ["teacher", "So: host to switch, straight-through. Switch to switch, crossover."]
+    ],
+    "port:wan": [
+      ["teacher", "This one has a WAN port and LAN ports. WAN faces the outside world: run it to the ISP box. LAN ports face your own devices."]
+    ],
+    "port:fiber": [
+      ["teacher", "That Gi port is fiber: a Gigabit port that takes light. Only a fiber cable fits it."]
+    ],
+    "port:console": [
+      ["teacher", "That’s a console port, for managing the device with a console cable. It never carries network traffic."]
+    ],
+    "afford": [
+      ["teacher", "Hey {player}, you’ve saved up enough for a {item} now: {price} credits. {why}"],
+      ["teacher", "It’s in the shop (B). I’ve opened it for you."]
+    ],
+    "unlock": [
+      ["teacher", "Level {level}! That unlocks new gear in the shop: {list}."]
+    ],
+    "lease": [
+      ["teacher", "{player}, you can afford to lease the {place} now. More room means more gear, and more income."],
+      ["teacher", "Click where you are, top left, to lease it. Your garage stays yours: you can travel back any time."]
+    ],
+    "arrive:office": [
+      ["teacher", "Welcome to the office! Desks for PCs out front, and a server room behind the glass with six rack slots."],
+      ["teacher", "Run the new ISP box to a router or switch, then plug your gear into that."],
+      ["teacher", "One more thing. Word gets around when a business grows. Investors will text you, and a broker called {broker} likes to hang around new offices."],
+      ["teacher", "His deals are often good. Often. Keep an eye on your wallet."]
+    ],
+    "arrive:datacentre": [
+      ["teacher", "The datacentre! Two long rack rows and fiber straight from the provider."],
+      ["teacher", "The ISP panel here is fiber only, so you’ll need fiber cables and gear with Gi ports."]
+    ],
+    "gpu": [
+      ["teacher", "GPUs are in the shop now. Rigs go in a rack and earn on their own; cards go inside a server and boost what it earns."],
+      ["teacher", "Three sellers: ByteBay is cheap but slower, Apex is the fastest and priciest. Their prices move and stock refills every 20 minutes, so shop around."]
+    ],
+    "furniture": [
+      ["teacher", "Running out of spots? Buy furniture in the shop. A desk adds a spot for a PC, a server rack adds a slot for rack gear."],
+      ["teacher", "Click it in your inventory, then an open bit of floor. Use the remove tool to pick it up again."]
+    ],
+    "broker": [
+      ["broker", "Psst. {player}, right? Nice little operation you’ve got."],
+      ["broker", "I know people at the GPU suppliers. Cash up front and I can get you a discount. What do you say?"]
+    ],
+    "broker:deal": [
+      ["broker", "Pleasure doing business. {pct}% off every GPU for the next {minutes} minutes. Go shopping."]
+    ],
+    "broker:scam": [
+      ["broker", "Sure, sure. Hold on, I just need to check your… wallet."],
+      ["teacher", "{player}! He just lifted {amount} credits and vanished. Grey-market deals are a gamble."]
+    ],
+    "broker:refused": [
+      ["broker", "Suit yourself. You know where to find me."]
+    ],
+    "investor": [
+      ["investor", "Hi {player}, Mira from Lumen Capital. We’ve been watching your company."],
+      ["investor", "When your company’s value grows, we’ll text you a dividend. Check your phone, top right, to see your stock chart."]
+    ]
+  }
 }

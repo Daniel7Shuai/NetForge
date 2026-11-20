@@ -86,16 +86,22 @@ final class Story
     public static function tutorial(int $userId): array
     {
         $u = Db::one('SELECT tutorial_step, tutorial_done FROM users WHERE id = ?', [$userId]);
-        return ['step' => (int) ($u['tutorial_step'] ?? 0), 'done' => (bool) ($u['tutorial_done'] ?? 0)];
+        $seen = array_column(Db::all('SELECT flag FROM user_seen WHERE user_id = ?', [$userId]), 'flag');
+        return ['step' => (int) ($u['tutorial_step'] ?? 0), 'done' => (bool) ($u['tutorial_done'] ?? 0), 'seen' => $seen];
     }
 
     /** Moves the tutorial on (never back, except restart). */
-    public static function setTutorial(int $userId, string $action, int $step = 0): array
+    public static function setTutorial(int $userId, string $action, int $step = 0, string $flag = ''): array
     {
+        if ($action === 'seen' && !preg_match('/^[a-z0-9_:.-]{1,48}$/', $flag)) {
+            throw new GameError('Unknown tip.');
+        }
         match ($action) {
+            'seen'    => Db::exec('INSERT IGNORE INTO user_seen (user_id, flag) VALUES (?, ?)', [$userId, $flag]),
             'step'    => Db::exec('UPDATE users SET tutorial_step = GREATEST(tutorial_step, ?) WHERE id = ?', [max(0, min(500, $step)), $userId]),
             'done'    => Db::exec('UPDATE users SET tutorial_done = 1 WHERE id = ?', [$userId]),
-            'restart' => Db::exec('UPDATE users SET tutorial_done = 0, tutorial_step = 0 WHERE id = ?', [$userId]),
+            'restart' => Db::exec('UPDATE users SET tutorial_done = 0, tutorial_step = 0 WHERE id = ?', [$userId])
+                + Db::exec('DELETE FROM user_seen WHERE user_id = ?', [$userId]),
             default   => throw new GameError('Unknown tutorial action.'),
         };
         return self::tutorial($userId);

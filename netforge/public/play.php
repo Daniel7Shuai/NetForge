@@ -33,6 +33,10 @@ require __DIR__ . '/../src/views/head.php';
   <div class="stat xp" title="Your level and XP. Answer questions in Learn (L) for XP; each level unlocks more gear in the shop.">
     <span id="level">Lv 1</span><span class="bar"><span id="xp-fill"></span></span><small class="mono" id="xp-text">0/1000</small>
   </div>
+  <div class="phone-wrap">
+    <button class="iconbtn" id="phone-btn" aria-label="Phone: texts and your company value" aria-expanded="false" aria-controls="phone" data-tip="Phone: texts from investors, and your company’s value over time."><i class="ti ti-device-mobile" aria-hidden="true"></i><span class="badge mono" hidden>0</span></button>
+    <div class="phone" id="phone" role="dialog" aria-label="Phone" hidden></div>
+  </div>
   <div class="music-wrap">
     <button class="iconbtn" id="music-btn" aria-label="Music" aria-expanded="false" aria-controls="music-panel"><i class="ti ti-music" aria-hidden="true"></i></button>
     <div class="music-panel" id="music-panel" hidden>

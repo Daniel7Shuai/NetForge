@@ -21,7 +21,7 @@ final class Income
     public static function online(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_sec, t.shield_pct FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ?', [$userId]) as $d) {
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_sec, t.shield_pct, COALESCE(g.boost_pct, 0) gpu_boost FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
         }
         $adj = [];
@@ -78,7 +78,7 @@ final class Income
     /** What one online device earns per second: its rate times its tier bonus. */
     public static function deviceRate(array $d): float
     {
-        return (int) $d['income_per_sec'] * Rules::tierIncome((int) $d['tier']);
+        return (int) $d['income_per_sec'] * Rules::tierIncome((int) $d['tier']) * (1 + (int) ($d['gpu_boost'] ?? 0) / 100);
     }
 
     /**

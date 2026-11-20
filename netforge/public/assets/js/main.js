@@ -8,6 +8,8 @@ import { mountEconomy } from './economy.js';
 import { mountTooltips } from './tooltip.js';
 import { mountTutorial } from './tutorial.js';
 import { mountMusic } from './musicui.js';
+import { mountMoments } from './moments.js';
+import { mountEvents } from './events.js';
 import { MapScene } from './game/MapScene.js';
 import { TILE, COLS, ROWS, setLocation } from './game/layout.js';
 
@@ -43,3 +45,6 @@ new Phaser.Game({
 
 // after the map exists: the tutorial walks new students through their first network
 mountTutorial(store);
+// the characters keep turning up after it: tips along the way, the broker, investors
+mountMoments(store);
+mountEvents(store);
