@@ -1,5 +1,5 @@
-// Background music. Five original chiptune tracks are composed right here and played with the
-// Web Audio API (no audio files, no copyright questions). Staff can add uploaded tracks on the
+// Background music. Original tracks are composed right here and played with the Web Audio API
+// (no audio files, no copyright questions): five chiptune tracks and five cozy jazz-piano ones. Staff can add uploaded tracks on the
 // Music page; those play through the same volume control. The playlist comes from api/music.php.
 
 /* ---------------- the five built-in tracks ---------------- */
@@ -51,16 +51,94 @@ export const SYNTH_TRACKS = {
       'G#4 - - - B4 - - - E5 - - - D5 - B4 -',
     ],
   },
+
+  /* ---- cozy jazz piano: walking bass, comping piano, brushes, swing ---- */
+  'coffee-break': {
+    style: 'jazz', bpm: 84, swing: true,
+    prog: ['Dm7', 'G7', 'Cmaj7', 'A7', 'Dm7', 'G7', 'Cmaj7', 'Cmaj7'],
+    melody: [
+      'F5 - E5 - D5 - C5 - A4 - - - . . . .',
+      '. . B4 - D5 - F5 - - - E5 - D5 - . .',
+      'E5 - - - G5 - - - B4 - - - - - . .',
+      'C#5 - E5 - G5 - - - F5 - E5 - C#5 - . .',
+      'D5 - - F5 - A5 - - G5 - F5 - E5 - . .',
+      'D5 - - - B4 - - - G4 - A4 - B4 - . .',
+      'C5 - - - - - - - E5 - - - D5 - - -',
+      'C5 - - - - - - - - - - - . . . .',
+    ],
+  },
+  'rainy-router': {
+    style: 'jazz', bpm: 72, swing: true,
+    prog: ['Fmaj7', 'Em7', 'Dm7', 'Cmaj7', 'Bbmaj7', 'A7', 'Dm7', 'G7'],
+    melody: [
+      'A4 - C5 - E5 - - - - - D5 - C5 - . .',
+      'B4 - - - G4 - - - E4 - - - . . . .',
+      '. . F4 - A4 - C5 - - - E5 - D5 - - -',
+      'E5 - - - - - - - B4 - - - . . . .',
+      'D5 - F5 - A5 - - - G5 - F5 - D5 - . .',
+      'C#5 - - - E5 - - - G5 - - - F5 - E5 -',
+      'D5 - - - - - - - A4 - - - C5 - - -',
+      'B4 - - - D5 - F5 - - - - - . . . .',
+    ],
+  },
+  'late-night-lab': {
+    style: 'jazz', bpm: 66, swing: true, ballad: true,
+    prog: ['Am7', 'D7', 'Gmaj7', 'Cmaj7', 'F#m7b5', 'B7', 'Em7', 'Em7'],
+    melody: [
+      'E5 - - - - - D5 - C5 - - - . . . .',
+      'F#5 - - - - - E5 - D5 - - - A4 - - -',
+      'B4 - - - - - - - D5 - - - . . . .',
+      'E5 - - - G5 - - - - - - - . . . .',
+      'A5 - - - - - G5 - F#5 - - - E5 - - -',
+      'D#5 - - - - - F#5 - - - - - . . . .',
+      'G5 - - - - - - - F#5 - E5 - D5 - - -',
+      'E5 - - - - - - - - - - - . . . .',
+    ],
+  },
+  'patch-panel-blues': {
+    style: 'jazz', bpm: 96, swing: true,
+    prog: ['F7', 'Bb7', 'F7', 'F7', 'Bb7', 'Bb7', 'F7', 'D7', 'Gm7', 'C7', 'F7', 'C7'],
+    melody: [
+      '. . A4 - C5 - D5 - Eb5 - D5 - C5 - . .',
+      '. . D5 - F5 - Ab5 - - - F5 - D5 - . .',
+      'C5 - - - A4 - - - F4 - - - . . . .',
+      '. . A4 - C5 - Eb5 - - - - - . . . .',
+      'D5 - - - F5 - - - Ab5 - G5 - F5 - . .',
+      'D5 - - - Bb4 - - - . . . . . . . .',
+      '. . F5 - Eb5 - D5 - C5 - A4 - - - . .',
+      'F#5 - - - A5 - - - C6 - - - A5 - - -',
+      'Bb5 - - - G5 - - - D5 - - - . . . .',
+      'E5 - - - G5 - Bb5 - - - G5 - E5 - . .',
+      'F5 - - - - - - - A4 - - - C5 - - -',
+      '. . E5 - G5 - Bb5 - - - - - . . . .',
+    ],
+  },
+  'uptime-bossa': {
+    style: 'bossa', bpm: 104,
+    prog: ['Cmaj7', 'Am7', 'Dm7', 'G7', 'Em7', 'A7', 'Dm7', 'G7'],
+    melody: [
+      'G5 - - - E5 - - - - - D5 - E5 - - -',
+      'C5 - - - - - - - . . . . . . . .',
+      'F5 - - - D5 - - - - - C5 - D5 - - -',
+      'B4 - - - - - - - . . . . . . . .',
+      'G5 - - - B5 - - - - - A5 - G5 - - -',
+      'E5 - - - C#5 - - - . . . . . . . .',
+      'F5 - E5 - D5 - C5 - - - A4 - - - . .',
+      'D5 - - - - - - - . . . . . . . .',
+    ],
+  },
 };
 
 const NAMES = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
 const midi = (note) => { const m = /^([A-G][#b]?)(\d)$/.exec(note); return (Number(m[2]) + 1) * 12 + NAMES[m[1]]; };
 const hz = (m) => 440 * 2 ** ((m - 69) / 12);
-/** Chord tones (MIDI) for "Am", "F", "Bb", "F#m"... rooted in the given octave. */
+// chord qualities as semitones above the root
+const QUALITY = { '': [0, 4, 7], m: [0, 3, 7], 7: [0, 4, 7, 10], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], m7b5: [0, 3, 6, 10] };
+/** Chord tones (MIDI) for "Am", "F", "Dm7", "G7", "Cmaj7", "F#m7b5"... rooted in the given octave. */
 function chord(name, octave) {
-  const m = /^([A-G][#b]?)(m?)$/.exec(name);
+  const m = /^([A-G][#b]?)(m7b5|maj7|m7|m|7)?$/.exec(name);
   const root = (octave + 1) * 12 + NAMES[m[1]];
-  return [root, root + (m[2] ? 3 : 4), root + 7];
+  return QUALITY[m[2] || ''].map((i) => root + i);
 }
 
 // [step, chord tone (0 root, 1 third, 2 fifth, 3 root up an octave), length in steps]
@@ -84,8 +162,51 @@ const DRUMS = {
   tense:   { kick: 'x..x..x...x..x..', snare: '....x.......x..x', hat: 'xxxxxxxxxxxxxxxx' },
 };
 
+/**
+ * A jazz trio: a walking bass (four beats a bar, stepping chromatically into the next chord),
+ * the piano comping on the chord's 3rd, 7th and 9th, the piano melody, and brushes with a ride.
+ * A ballad walks in half notes. Bossa: a two-beat bass, syncopated comping and a rim click.
+ */
+function composeJazz(t) {
+  const notes = [], hits = [];
+  const bossa = t.style === 'bossa';
+  t.prog.forEach((name, bar) => {
+    const base = bar * 16;
+    const low = chord(name, 2), next = chord(t.prog[(bar + 1) % t.prog.length], 2);
+    const bass = (m, step, len) => notes.push({ step: base + step, len, freq: hz(m), wave: 'bass', gain: 0.22, part: 'bass' });
+    if (bossa) {
+      bass(low[0], 0, 6); bass(low[2], 6, 2); bass(low[2], 8, 6); bass(low[0], 14, 2);
+    } else if (t.ballad) {
+      bass(low[0], 0, 8); bass(low[2], 8, 8);
+    } else {
+      // root, two chord tones, then a half step into the next chord's root
+      const approach = bar % 2 ? next[0] + 1 : next[0] - 1;
+      [low[0], bar % 2 ? low[2] : low[1], bar % 2 ? (low[3] ?? low[2]) : low[2], approach].forEach((m, i) => bass(m, i * 4, 4));
+    }
+    // left-hand voicing: 3rd, 7th (or 5th) and 9th, around middle C
+    const mid = chord(name, 3);
+    const voicing = [mid[1], mid[3] ?? mid[2], mid[0] + 14];
+    const comp = bossa ? [[0, 3], [3, 3], [6, 4], [10, 2], [12, 4]] : t.ballad ? [[0, 8], [8, 8]] : bar % 2 ? [[4, 2], [10, 6]] : [[0, 3], [6, 6]];
+    for (const [s, len] of comp) for (const m of voicing) notes.push({ step: base + s, len, freq: hz(m), wave: 'piano', gain: 0.035, part: 'comp' });
+    const tokens = t.melody[bar].trim().split(/\s+/);
+    tokens.forEach((tok, i) => {
+      if (tok === '.' || tok === '-') return;
+      let len = 1;
+      while (tokens[i + len] === '-') len++;
+      notes.push({ step: base + i, len, freq: hz(midi(tok)), wave: 'piano', gain: 0.075, part: 'lead' });
+    });
+    const d = bossa
+      ? { kick: 'x.....x.x.....x.', rim: '...x..x....x..x.', shaker: 'xxxxxxxxxxxxxxxx' }
+      : t.ballad ? { ride: 'x.......x.......', brush: '....x.......x...' }
+        : { ride: 'x...x.x.x...x.x.', brush: '....x.......x...', kick: 'x.......x.......' };
+    for (let s = 0; s < 16; s++) for (const kind in d) if (d[kind][s] === 'x') hits.push({ step: base + s, kind });
+  });
+  return { notes, hits, steps: t.prog.length * 16, swing: !!t.swing, room: true };
+}
+
 /** Turns a track into one loop of timed notes. */
 function compose(t) {
+  if (t.style) return composeJazz(t);
   const notes = [], hits = [];
   t.prog.forEach((name, bar) => {
     const base = bar * 16;
@@ -125,7 +246,41 @@ function audio() {
   return ctx;
 }
 
+/** A soft piano: a struck note that rings and fades, warm rather than bright. */
+function playPiano(out, n, t, dur) {
+  const g = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(1100, t + 1.2);
+  g.connect(f).connect(out);
+  const ring = Math.min(3, dur + 0.8); // the string keeps ringing a little past the note
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(n.gain, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(n.gain * 0.35, t + 0.35);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + ring);
+  for (const [mult, type, level, detune] of [[1, 'triangle', 1, 0], [1, 'sine', 0.6, 4], [2, 'sine', 0.25, -3], [3, 'sine', 0.08, 0]]) {
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.type = type; o.frequency.value = n.freq * mult; o.detune.value = detune;
+    og.gain.value = level;
+    o.connect(og).connect(g);
+    o.start(t); o.stop(t + ring + 0.05);
+  }
+}
+
+/** An upright bass: a round, plucked low note. */
+function playBass(out, n, t, dur) {
+  const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  o.type = 'triangle'; o.frequency.value = n.freq;
+  f.type = 'lowpass'; f.frequency.value = 700;
+  o.connect(f).connect(g).connect(out);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(n.gain, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(n.gain * 0.4, t + 0.18);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.95);
+  o.start(t); o.stop(t + dur);
+}
+
 function playNote(out, n, t, dur) {
+  if (n.wave === 'piano') return playPiano(out, n, t, dur);
+  if (n.wave === 'bass') return playBass(out, n, t, dur);
   const osc = ctx.createOscillator(), g = ctx.createGain();
   osc.type = n.wave; osc.frequency.value = n.freq;
   let node = osc;
@@ -146,15 +301,21 @@ function playNote(out, n, t, dur) {
 function playHit(out, kind, t) {
   if (kind === 'kick') {
     const o = ctx.createOscillator(), g = ctx.createGain();
+    const soft = out.soft ? 0.25 : 1; // jazz feathers the kick
     o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-    g.gain.setValueAtTime(0.45, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    g.gain.setValueAtTime(0.45 * soft, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
     o.connect(g).connect(out); o.start(t); o.stop(t + 0.22);
     return;
   }
+  // [filter, peak, length]: the chiptune snare and hat, and the jazz kit (ride, brush, rim, shaker)
+  const KIT = {
+    snare: [1400, 0.16, 0.14], hat: [7000, 0.035, 0.04],
+    ride: [5200, 0.03, 0.45], brush: [900, 0.05, 0.22], rim: [2500, 0.07, 0.03], shaker: [6000, 0.012, 0.05],
+  };
+  const [cut, peak, len] = KIT[kind] || KIT.hat;
   const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
   src.buffer = noise;
-  f.type = 'highpass'; f.frequency.value = kind === 'snare' ? 1400 : 7000;
-  const peak = kind === 'snare' ? 0.16 : 0.035, len = kind === 'snare' ? 0.14 : 0.04;
+  f.type = kind === 'brush' ? 'bandpass' : 'highpass'; f.frequency.value = cut;
   g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + len);
   src.connect(f).connect(g).connect(out); src.start(t); src.stop(t + len + 0.02);
 }
@@ -172,6 +333,15 @@ function playSynth(key, onEnd) {
   const loops = Math.max(4, Math.round(120 / (loop.steps * stepDur)));
   const out = ctx.createGain();
   out.connect(master);
+  if (loop.room) { // a little room around the trio
+    out.soft = true;
+    const delay = ctx.createDelay(), fb = ctx.createGain(), wet = ctx.createGain(), tone = ctx.createBiquadFilter();
+    delay.delayTime.value = 0.19; fb.gain.value = 0.28; wet.gain.value = 0.22;
+    tone.type = 'lowpass'; tone.frequency.value = 2200;
+    out.connect(delay).connect(tone).connect(fb).connect(delay);
+    tone.connect(wet).connect(master);
+  }
+  const swing = loop.swing ? stepDur * 0.33 : 0; // swung eighths: the off-beat lands late
   let step = 0, pass = 0, next = ctx.currentTime + 0.1, stopped = false;
   const byStep = new Map();
   for (const n of loop.notes) (byStep.get(n.step) || byStep.set(n.step, []).get(n.step)).push(n);
@@ -179,9 +349,10 @@ function playSynth(key, onEnd) {
 
   const timer = setInterval(() => {
     while (!stopped && next < ctx.currentTime + 0.15) {
+      const at = next + (step % 4 === 2 ? swing : 0);
       for (const e of byStep.get(step) || []) {
-        if (e.kind) playHit(out, e.kind, next);
-        else if (!(e.part === 'lead' && pass % 4 === 0)) playNote(out, e, next, e.len * stepDur);
+        if (e.kind) playHit(out, e.kind, at);
+        else if (!(e.part === 'lead' && pass % 4 === 0)) playNote(out, e, at, e.len * stepDur);
       }
       next += stepDur;
       if (++step >= loop.steps) {
