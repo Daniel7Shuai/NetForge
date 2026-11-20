@@ -40,8 +40,8 @@ function createStage(storyData, player, background) {
 
   const stage = {
     el, skipped: false, actors: [], particles: [], fadeA: 1, flashA: 0, shakeUntil: 0, shakeMag: 0, breach: null, t0: performance.now(),
-    person(pal, tx, ty, flip = false) {
-      const a = { kind: 'person', pal, x: tx * TILE + 8, y: ty * TILE + 15, flip, walking: false, visible: true };
+    person(pal, tx, ty, flip = false, carry = null) {
+      const a = { kind: 'person', pal, x: tx * TILE + 8, y: ty * TILE + 15, flip, walking: false, visible: true, carry };
       stage.actors.push(a);
       return a;
     },
@@ -56,6 +56,10 @@ function createStage(storyData, player, background) {
     walk(a, tx, ty, speed = 48) {
       const to = { x: tx * TILE + 8, y: ty * TILE + 15 };
       return stage.move(a, to.x, to.y, (Math.hypot(to.x - a.x, to.y - a.y) / speed) * 1000, true);
+    },
+    /** Walks through tiles one after another, so nobody cuts through a rack. */
+    async path(a, tiles, speed = 48) {
+      for (const [tx, ty] of tiles) await stage.walk(a, tx, ty, speed);
     },
     /** Moves an actor to a point (map pixels) over ms, easing out for things that fly. */
     move(a, x, y, ms, walking = false, ease = (k) => k) {
@@ -143,6 +147,12 @@ function createStage(storyData, player, background) {
         c.translate(Math.round(a.x), Math.round(a.y));
         if (a.flip) c.scale(-1, 1);
         c.drawImage(f, -6, -20);
+        if (a.carry === 'laptop') { // an open laptop held in front
+          c.fillStyle = '#05070d'; c.fillRect(1, -11, 8, 6);
+          c.fillStyle = '#0a2a33'; c.fillRect(2, -10, 6, 3);
+          c.fillStyle = '#2be3ff'; c.fillRect(2, -10, 3, 1);
+          c.fillStyle = '#3a4660'; c.fillRect(1, -6, 9, 1);
+        }
         c.restore();
       } else a.draw(c, Math.round(a.x), Math.round(a.y), t, a);
     }
@@ -163,27 +173,48 @@ function createStage(storyData, player, background) {
   return stage;
 }
 
-/** The datacentre at night, with racks humming: drawn once. */
+/** The datacentre at night, busy with work: racks humming, desks with PCs, cable trays and decor. Drawn once. */
+const RACKS = LOCATIONS.datacentre.slots.filter((s) => s.kind === 'rack' && (s.x * 7 + s.y) % 5 !== 0); // most slots full, a few gaps
 function datacentreBackground() {
   const bg = document.createElement('canvas');
   bg.width = W; bg.height = H;
   const c = bg.getContext('2d');
+  const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   const was = LOC_CODE;
   setLocation('datacentre'); // the room art reads the size of the place being drawn
   art.drawRoom(c, 'datacentre', LOCATIONS.datacentre);
+  art.drawFurniture(c, 'desk', 15, 16);                    // a third desk for the night shift
+  for (const [x, y] of [[0, 12], [19, 17], [31, 18]]) art.drawFurniture(c, 'plant', x, y);
   setLocation(was);
-  const rack = art.SPRITES.rack;
-  for (const s of LOCATIONS.datacentre.slots) {
-    if (s.kind !== 'rack' || (s.x * 7 + s.y) % 5 === 0) continue; // most slots full, a few gaps
-    c.save(); c.translate(s.x * TILE + rack.off[0], s.y * TILE + rack.off[1]); rack.draw(c); c.restore();
+
+  // overhead cable trays above each rack row, with cables in them
+  for (const row of [3, 8, 13]) {
+    const y = row * TILE - 3;
+    R(3 * TILE - 2, y, 16 * TILE + 4, 3, '#2a3850'); R(3 * TILE - 2, y, 16 * TILE + 4, 1, '#3a4d6e');
+    R(3 * TILE, y + 1, 16 * TILE, 1, '#1590a6'); R(3 * TILE + 6, y + 2, 16 * TILE - 12, 1, '#a8661d');
   }
+  // the racks themselves
+  const rack = art.SPRITES.rack;
+  for (const s of RACKS) { c.save(); c.translate(s.x * TILE + rack.off[0], s.y * TILE + rack.off[1]); rack.draw(c); c.restore(); }
+  // fibre panel on the wall, and the runs from it to the rack rows
   const panel = art.SPRITES.fibrepanel;
   c.save(); c.translate(18 * TILE + panel.off[0], 1 * TILE + panel.off[1]); panel.draw(c); c.restore();
+  for (let y = 2 * TILE + 8; y < 14 * TILE; y += 4) R(19 * TILE + 4, y, 1, 2, '#d9a03a');
+  for (const row of [3, 8, 13]) R(18 * TILE + 14, row * TILE - 2, 7, 1, '#d9a03a');
+  // PCs on every desk, monitors lit
+  const tower = art.SPRITES.tower;
+  for (const [dx, dy] of [[1, 16], [8, 16], [15, 16]]) {
+    c.save(); c.translate((dx + 3) * TILE + tower.off[0], dy * TILE + tower.off[1]); tower.draw(c); c.restore();
+    art.monitorOn(c, dx, dy);
+  }
+  // the NetForge sign on the wall, a clock and a fire extinguisher
+  R(132, 8, 52, 14, '#0a1622'); R(132, 8, 52, 1, '#1d2a3c');
+  c.fillStyle = '#2be3ff'; c.font = 'bold 8px monospace'; c.textBaseline = 'top'; c.fillText('NETFORGE', 136, 11);
+  R(310, 9, 12, 12, '#1d2a3c'); R(311, 10, 10, 10, '#0a1622'); R(316, 11, 1, 5, '#e8eef4'); R(316, 15, 3, 1, '#e8eef4');
+  R(4, 22, 4, 9, '#b8232f'); R(5, 21, 2, 2, '#3a4d6e');
   return (ctx, t) => {
     ctx.drawImage(bg, 0, 0);
-    // rack lights blinking
-    for (const s of LOCATIONS.datacentre.slots) {
-      if (s.kind !== 'rack' || (s.x * 7 + s.y) % 5 === 0) continue;
+    for (const s of RACKS) { // rack lights blinking
       for (let i = 0; i < 3; i++) if (Math.sin(t * (2 + i) + s.x * 3 + i) > 0.2) { ctx.fillStyle = i ? '#7cff6b' : '#2be3ff'; ctx.fillRect(s.x * TILE + 3 + i * 4, s.y * TILE + 13 + i * 3, 1, 1); }
     }
   };
@@ -199,9 +230,13 @@ export async function playIntro(store) {
   store.set({ cutsceneOpen: true, uiFocus: true });
   const s = createStage(data, player, datacentreBackground());
   try {
-    const dad = s.person('dad', 12, 17);
-    const ada = s.person('ada', 14, 17, true);
-    const staff = [s.person('staff1', 6, 11), s.person('staff2', 10, 6, true), s.person('staff3', 15, 12)];
+    // Dad and Ada in the open floor right of the racks; the night shift at work in the aisles and at the desks
+    const dad = s.person('dad', 22, 11);
+    const ada = s.person('ada', 24, 11, true);
+    const staff = [
+      s.person('staff1', 6, 6, false, 'laptop'), s.person('staff2', 13, 11, true, 'laptop'),
+      s.person('staff3', 16, 6, true, 'laptop'), s.person('staff1', 9, 19, false),
+    ];
     s.caption('NetForge HQ datacentre. 2:13 a.m.');
     await s.fade(0, 1400);
     await s.say([
@@ -211,24 +246,23 @@ export async function playIntro(store) {
     ]);
     s.caption('');
     s.shake(1400, 1);
-    staff.forEach((p) => { p.flip = false; });
+    staff.forEach((p) => { p.flip = false; }); // everyone turns to the noise
     await s.wait(900);
     await s.say([['dad', '…What was that?']]);
 
-    // the wall goes
+    // the wall goes, and the dropship comes in over the open floor
     s.flash(); s.shake(900, 5);
-    s.breach = [470, 92, 96, 112];
-    s.debris(500, 150, 60);
+    s.breach = [486, 26, 90, 112];
+    s.debris(520, 80, 60);
     await s.wait(500);
-    const ship = s.thing((c, x, y, t, a) => story.dropship(c, x, y + Math.round(Math.sin(t * 2) * 1.5), t, a.door), 640, 104, { door: 0 });
-    ship.y = 104; // drawn from its top-left; it sorts above the people near the back
-    await s.move(ship, 400, 128, 1600, false, easeOut);
+    const ship = s.thing((c, x, y, t, a) => story.dropship(c, x, y + Math.round(Math.sin(t * 2) * 1.5), t, a.door), 640, 40, { door: 0 });
+    await s.move(ship, 430, 40, 1600, false, easeOut);
     s.shake(400, 2);
     for (let k = 0; k <= 10; k++) { ship.door = k / 10; await s.wait(50); }
 
-    // the Reapers pour out of the door and fan out round Dad
-    const door = { tx: 27, ty: 11 };
-    const spots = [[18, 14], [20, 16], [17, 18], [22, 18], [21, 13], [23, 16]];
+    // the Reapers drop from the door and surround Dad and Ada in the middle of the room
+    const door = { tx: 29, ty: 6 };
+    const spots = [[20, 9], [24, 8], [27, 10], [19, 13], [26, 13], [22, 14]];
     const reapers = [];
     for (const [tx, ty] of spots) {
       const r = s.person('reaper', door.tx, door.ty, true);
@@ -238,36 +272,36 @@ export async function playIntro(store) {
     }
     await s.wait(700);
     const lucas = s.person('lucas', door.tx, door.ty, true);
-    await s.walk(lucas, 19, 16, 40);
+    await s.walk(lucas, 26, 9, 40);
     await s.say([
-      ['reaper', 'Federal warrant! Everybody on the floor!'],
+      ['reaper', 'DataTech security! Everybody on the floor!'],
       ['lucas', 'Evening, {dad}. Sorry about the wall. My people get excited.'],
-      ['dad', 'Lucas. You brought the FBI into my building?'],
-      ['lucas', 'The bureau got a very convincing tip about your company. My auditors are thorough. Especially when I’m paying them.'],
+      ['dad', 'Lucas. You sent your Reapers into my building?'],
+      ['lucas', 'Hostile takeovers get messy, {dad}. That’s why I keep Reapers on the payroll. They don’t ask questions.'],
       ['lucas', 'Your servers, your clients, your network. As of tonight, it all belongs to DataTech. This is the end of NetForge.'],
     ]);
 
-    // everyone runs; Dad sends Ada away
-    staff.forEach((p, i) => s.walk(p, -2, 9 + i * 3, 110));
+    // everyone runs, along the aisles and out to the left; Dad sends Ada away
+    staff.forEach((p) => s.walk(p, -2, Math.round((p.y - 15) / TILE), 110));
     await s.wait(500);
     await s.say([
       ['dad', 'Ada. Go. Now.'],
       ['teacher', 'I’m not leaving you here!'],
       ['dad', 'Find my kid. Teach them everything we know. Go!'],
     ]);
-    await s.walk(ada, -2, 17, 120);
+    await s.path(ada, [[24, 12], [-2, 12]], 120); // down to the aisle, then out
     await s.say([['lucas', 'Let her run. Take him.']]);
-    await Promise.all([s.walk(reapers[0], 11, 17, 60), s.walk(reapers[1], 13, 18, 60)]);
+    await Promise.all([s.walk(reapers[0], 21, 11, 60), s.walk(reapers[3], 23, 12, 60)]);
     await s.wait(300);
     // led away into the dropship
-    for (const p of [dad, reapers[0], reapers[1]]) s.walk(p, door.tx, door.ty, 50);
-    await s.wait(3400);
-    dad.visible = false; reapers[0].visible = false; reapers[1].visible = false;
-    for (const r of reapers.slice(2)) s.walk(r, door.tx, door.ty, 80);
+    for (const p of [dad, reapers[0], reapers[3]]) s.path(p, [[p === dad ? 26 : 27, 11], [door.tx, door.ty]], 50);
+    await s.wait(3200);
+    dad.visible = false; reapers[0].visible = false; reapers[3].visible = false;
+    for (const r of [reapers[1], reapers[2], reapers[4], reapers[5]]) s.walk(r, door.tx, door.ty, 80);
     await s.walk(lucas, door.tx, door.ty, 40);
     reapers.forEach((r) => { r.visible = false; }); lucas.visible = false;
     for (let k = 10; k >= 0; k--) { ship.door = k / 10; await s.wait(40); }
-    await s.move(ship, 680, 90, 1500, false, (k) => k * k);
+    await s.move(ship, 680, 20, 1500, false, (k) => k * k);
     await s.fade(1, 1200);
     s.caption('Three days later. Your garage.');
     await s.wait(2200);

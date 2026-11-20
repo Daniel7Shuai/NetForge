@@ -773,7 +773,7 @@ button.objective:hover { border-color: var(--ink-dim); }
 
 /* cutscenes: a pixel-art stage over the whole screen */
 .cutscene { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: #000; animation: cs-in .4s ease; }
-.cutscene canvas { width: min(100vw, calc(100vh * 1.8)); max-height: 100vh; aspect-ratio: 9 / 5; image-rendering: pixelated; }
+.cutscene > canvas { width: min(100vw, calc(100vh * 1.8)); max-height: 100vh; aspect-ratio: 9 / 5; image-rendering: pixelated; } /* the scene only, not the dialogue portraits */
 .cutscene .cs-caption { position: absolute; top: 18px; left: 22px; margin: 0; font: 500 15px var(--mono); color: var(--ink); text-shadow: 0 2px 6px #000; letter-spacing: .02em; }
 .cutscene .cs-skip { position: absolute; top: 14px; right: 16px; z-index: 40; display: flex; gap: 8px; align-items: center; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: rgba(9, 14, 24, .8); color: var(--ink-dim); font-size: 13px; }
 .cutscene .cs-skip:hover { color: var(--ink); border-color: var(--ink-dim); }
