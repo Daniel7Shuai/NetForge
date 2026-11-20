@@ -59,13 +59,13 @@ require __DIR__ . '/../../src/views/staff_top.php';
 </div>
 
 <form method="get" class="filters">
-  <label>World <select name="world"><option value="0">All worlds</option>
+  <label>Topic <select name="world"><option value="0">All topics</option>
     <?php foreach ($worlds as $wid => $wl): ?><option value="<?= $wid ?>" <?= $f['world'] === $wid ? 'selected' : '' ?>><?= e($wl) ?></option><?php endforeach; ?></select></label>
   <label>Level <select name="level"><option value="0">All levels</option>
-    <?php foreach ($levels as $l): ?><option value="<?= (int) $l['id'] ?>" <?= $f['level'] === (int) $l['id'] ? 'selected' : '' ?>>W<?= (int) $l['number'] ?>.<?= (int) $l['sort_order'] ?> <?= e($l['title']) ?></option><?php endforeach; ?></select></label>
+    <?php foreach ($levels as $l): ?><option value="<?= (int) $l['id'] ?>" <?= $f['level'] === (int) $l['id'] ? 'selected' : '' ?>>T<?= (int) $l['number'] ?>.<?= (int) $l['sort_order'] ?> <?= e($l['title']) ?></option><?php endforeach; ?></select></label>
   <label>Type <select name="type"><option value="">All types</option>
     <?php foreach (QuestionInput::TYPES as $t): ?><option <?= $f['type'] === $t ? 'selected' : '' ?>><?= $t ?></option><?php endforeach; ?></select></label>
-  <label class="grow">Search <input name="q" value="<?= e($f['q']) ?>" placeholder="Prompt or topic"></label>
+  <label class="grow">Search <input name="q" value="<?= e($f['q']) ?>" placeholder="Prompt or subtopic"></label>
   <label class="check"><input type="checkbox" name="archived" <?= $f['archived'] ? 'checked' : '' ?>> Show archived</label>
   <button class="btn" type="submit">Filter</button>
 </form>
@@ -75,14 +75,14 @@ require __DIR__ . '/../../src/views/staff_top.php';
   <p class="empty">No questions match. Add one, or import a CSV.</p>
 <?php else: ?>
 <table class="data">
-  <thead><tr><th scope="col" class="num">ID</th><th scope="col">Where</th><th scope="col">Type</th><th scope="col">Prompt</th><th scope="col">Topic</th>
+  <thead><tr><th scope="col" class="num">ID</th><th scope="col">Where</th><th scope="col">Type</th><th scope="col">Prompt</th><th scope="col">Subtopic</th>
     <th scope="col" class="num">Rating</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Correct</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
   <tbody>
   <?php foreach ($rows as $r):
       $acc = $r['accuracy'] === null ? null : (int) round($r['accuracy'] * 100); ?>
     <tr<?= $r['archived'] ? ' class="dim"' : '' ?>>
       <td class="num mono"><?= (int) $r['id'] ?></td>
-      <td class="mono nowrap">W<?= (int) $r['wnum'] ?><?= $r['lpos'] !== null ? '.' . (int) $r['lpos'] : ' exam' ?></td>
+      <td class="mono nowrap">T<?= (int) $r['wnum'] ?><?= $r['lpos'] !== null ? '.' . (int) $r['lpos'] : ' exam' ?></td>
       <td><span class="type"><?= e($r['type']) ?></span></td>
       <th scope="row" class="prompt"><?= e(mb_strimwidth($r['prompt'], 0, 90, '…')) ?></th>
       <td><?= e($r['topic']) ?></td>

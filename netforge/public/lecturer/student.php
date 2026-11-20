@@ -21,10 +21,10 @@ $modeName = ['practice' => 'Lessons', 'exam' => 'Exams', 'audit' => 'Daily Secur
 
 if (in_array($_GET['format'] ?? '', ['csv', 'pdf'], true)) {
     Export::send($_GET['format'], 'netforge-student-' . $u['username'], 'Progress report: ' . $u['username'], $label, [
-        ['title' => 'Worlds', 'columns' => ['World', 'Title', 'Rating', 'Tier', 'Exam best', 'Mastered', 'Answers', 'Accuracy'],
+        ['title' => 'Topics', 'columns' => ['Topic', 'Title', 'Rating', 'Tier', 'Exam best', 'Mastered', 'Answers', 'Accuracy'],
          'widths' => [0.6, 3.2, 0.8, 0.9, 0.9, 1.2, 0.9, 0.9], 'right' => [false, false, true, false, true, false, true, true],
-         'rows' => array_map(fn ($w) => ['W' . $w['number'], $w['title'], $w['rating'], $w['tier'], Export::pct($w['exam_best']), $w['mastered'] ? date('j M Y', strtotime($w['mastered'])) : '', $w['answers'], Export::pct($w['accuracy'])], $r['worlds'])],
-        ['title' => 'Topics (weakest first)', 'columns' => ['Topic', 'Answers', 'Accuracy'], 'widths' => [4, 1, 1], 'right' => [false, true, true],
+         'rows' => array_map(fn ($w) => ['T' . $w['number'], $w['title'], $w['rating'], $w['tier'], Export::pct($w['exam_best']), $w['mastered'] ? date('j M Y', strtotime($w['mastered'])) : '', $w['answers'], Export::pct($w['accuracy'])], $r['worlds'])],
+        ['title' => 'Subtopics (weakest first)', 'columns' => ['Subtopic', 'Answers', 'Accuracy'], 'widths' => [4, 1, 1], 'right' => [false, true, true],
          'rows' => array_map(fn ($t) => [$t['topic'], $t['answers'], $t['accuracy'] . '%'], $r['topics'])],
         ['title' => 'Activity by day', 'columns' => ['Day', 'Answers', 'Correct'], 'widths' => [2, 1, 1], 'right' => [false, true, true],
          'rows' => array_map(fn ($d) => [date('D j M Y', strtotime($d['day'])), $d['answers'], $d['correct']], $r['days'])],
@@ -59,12 +59,12 @@ require __DIR__ . '/../../src/views/staff_top.php';
 
 <div class="two-col">
   <section class="panel">
-    <h2>Worlds</h2>
+    <h2>Topics</h2>
     <table class="data">
-      <thead><tr><th scope="col">World</th><th scope="col" class="num">Rating</th><th scope="col" class="num">Exam best</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Accuracy</th></tr></thead>
+      <thead><tr><th scope="col">Topic</th><th scope="col" class="num">Rating</th><th scope="col" class="num">Exam best</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Accuracy</th></tr></thead>
       <tbody>
       <?php foreach ($r['worlds'] as $w): if ($w['rating'] === null && !$w['answers']) continue; ?>
-        <tr><th scope="row"><span class="mono tag">W<?= $w['number'] ?></span> <?= e($w['title']) ?><?= $w['mastered'] ? ' <span class="verdict ok"><i class="ti ti-circle-check" aria-hidden="true"></i>Mastered</span>' : '' ?></th>
+        <tr><th scope="row"><span class="mono tag">T<?= $w['number'] ?></span> <?= e($w['title']) ?><?= $w['mastered'] ? ' <span class="verdict ok"><i class="ti ti-circle-check" aria-hidden="true"></i>Mastered</span>' : '' ?></th>
           <td class="num mono"><?= $w['rating'] ?? '–' ?><small><?= e($w['tier'] ?? '') ?></small></td>
           <td class="num mono"><?= Export::pct($w['exam_best']) ?></td>
           <td class="num mono"><?= $w['answers'] ?></td>
@@ -74,10 +74,10 @@ require __DIR__ . '/../../src/views/staff_top.php';
     </table>
   </section>
   <section class="panel">
-    <h2>Topics, weakest first</h2>
+    <h2>Subtopics, weakest first</h2>
     <?php if (!$r['topics']): ?><p class="empty">No answers in this period.</p><?php else: ?>
     <table class="data meters">
-      <thead><tr><th scope="col">Topic</th><th scope="col" class="num">Answers</th><th scope="col">Accuracy</th></tr></thead>
+      <thead><tr><th scope="col">Subtopic</th><th scope="col" class="num">Answers</th><th scope="col">Accuracy</th></tr></thead>
       <tbody>
       <?php foreach ($r['topics'] as $t): ?>
         <tr><th scope="row"><?= e($t['topic']) ?></th><td class="num mono"><?= $t['answers'] ?></td>

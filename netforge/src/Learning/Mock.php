@@ -19,7 +19,7 @@ final class Mock
     /** Score that counts as exam-ready. Only a guide: a mock exam never unlocks anything. */
     public const READY_PCT = 70;
 
-    /** Worlds a mock exam can draw from, past results and the settings, for the Learn screen. */
+    /** Topics a mock exam can draw from, past results and the settings, for the Learn screen. */
     public static function overview(int $userId, array $roadmap): array
     {
         $counts = [];
@@ -53,8 +53,8 @@ final class Mock
     }
 
     /**
-     * Builds the paper: checks the worlds, then deals questions round-robin from each
-     * world's shuffled pool so every world gets an even share.
+     * Builds the paper: checks the topics, then deals questions round-robin from each
+     * world's shuffled pool so every topic gets an even share.
      * @param list<int> $worldIds
      * @return array{queue:list<int>, worlds:array<int,int>, total:int, minutes:int}
      */
@@ -65,7 +65,7 @@ final class Mock
         }
         $worldIds = array_values(array_unique(array_map('intval', $worldIds)));
         if ($worldIds === []) {
-            throw new GameError('Pick at least one world for the mock exam.');
+            throw new GameError('Pick at least one topic for the mock exam.');
         }
         $numbers = [];
         $pools = [];
@@ -75,7 +75,7 @@ final class Mock
             $rows = Db::all('SELECT id, type FROM questions WHERE world_id = ? AND archived = 0', [$id]);
             shuffle($rows);
             if ($rows === []) {
-                throw new GameError("World {$w['number']} has no questions yet.");
+                throw new GameError("Topic {$w['number']} has no questions yet.");
             }
             $pools[$id] = $rows;
         }
@@ -108,9 +108,9 @@ final class Mock
             }
         }
         if (count($queue) < min($length, 5)) {
-            throw new GameError('Those worlds don’t have enough questions for a mock exam yet. Add another world.');
+            throw new GameError('Those topics don’t have enough questions for a mock exam yet. Add another topic.');
         }
-        shuffle($queue); // mix the worlds instead of strict rotation
+        shuffle($queue); // mix the topics instead of strict rotation
         $total = count($queue);
         return ['queue' => $queue, 'worlds' => $numbers, 'total' => $total, 'minutes' => (int) ceil($total * self::SECONDS_PER_QUESTION / 60)];
     }

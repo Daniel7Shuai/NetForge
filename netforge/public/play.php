@@ -14,7 +14,7 @@ require __DIR__ . '/../src/views/head.php';
 <body>
 <header class="top">
   <div class="top-left">
-  <div class="brand"><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</div>
+  <div class="brand"><i class="ti ti-topology-star-3" aria-hidden="true"></i><span>NetForge</span></div>
   <div class="place-wrap">
     <button type="button" class="place" id="place-btn" title="Where you are. Click to travel." aria-expanded="false" aria-controls="places">
       <i class="ti ti-map-pin" aria-hidden="true"></i><span id="loc-name">…</span><i class="ti ti-chevron-down caret" aria-hidden="true"></i>
@@ -106,7 +106,7 @@ require __DIR__ . '/../src/views/head.php';
   </aside>
 
   <section class="learn" id="learn" hidden aria-label="Learn">
-    <nav class="learn-nav" aria-label="Worlds">
+    <nav class="learn-nav" aria-label="Topics">
       <div class="learn-top">
         <h2><i class="ti ti-book-2" aria-hidden="true"></i>Learn</h2>
         <button class="iconbtn" id="learn-close" aria-label="Back to the map (Esc)"><i class="ti ti-x"></i></button>

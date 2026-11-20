@@ -40,7 +40,7 @@ final class Gear
                 throw new GameError(sprintf('You have no %s left. Buy one in the shop.', strtolower($item['name'])));
             }
             $location = Db::one('SELECT location FROM users WHERE id = ? FOR UPDATE', [$userId])['location'];
-            $data = Layout::data();
+            [$cols, $rows] = Layout::size($location);
             $blocked = Layout::staticBlocked($location);
             // other furniture (with its spot) and placed devices are in the way too
             foreach (Layout::userFurniture($userId, $location) as $f) {
@@ -54,7 +54,7 @@ final class Gear
                 }
             }
             foreach (self::tilesFor($item['furniture_type'], $x, $y) as [$tx, $ty]) {
-                if ($tx < 0 || $ty < 0 || $tx >= $data['cols'] || $ty >= $data['rows'] || isset($blocked["$tx,$ty"])) {
+                if ($tx < 0 || $ty < 0 || $tx >= $cols || $ty >= $rows || isset($blocked["$tx,$ty"])) {
                     throw new GameError(sprintf('There isn’t enough open floor there for the %s. Pick an empty area.', strtolower($item['name'])));
                 }
             }

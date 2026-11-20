@@ -8,7 +8,7 @@ use NetForge\GameError;
 use NetForge\Rules;
 
 /**
- * A challenge run (a level's practice set, or a world exam) lives in the PHP
+ * A challenge run (a level's practice set, or a topic exam) lives in the PHP
  * session, so answer keys and timers stay on the server (NFR-4).
  * Every answer updates Elo, pays credits and XP from rating gains only, and
  * sends wrong answers to the Daily Security Audit queue.
@@ -20,7 +20,7 @@ final class Challenge
 
     public static function startPractice(int $userId, int $levelId): array
     {
-        $l = Learning::lesson($userId, $levelId); // checks the world is open
+        $l = Learning::lesson($userId, $levelId); // checks the topic is open
         $w = Learning::world($userId, $l['world']['id']);
         return self::begin($userId, [
             'mode' => 'practice', 'worldId' => $w['id'], 'worldNumber' => $w['number'], 'levelId' => $levelId,
@@ -32,11 +32,11 @@ final class Challenge
     {
         $w = Learning::requireOpen($userId, $worldId);
         if (!$w['exam']['ready']) {
-            throw new GameError('Finish every level in this world to unlock its exam.');
+            throw new GameError('Finish every level in this topic to unlock its exam.');
         }
         return self::begin($userId, [
             'mode' => 'exam', 'worldId' => $w['id'], 'worldNumber' => $w['number'], 'levelId' => null,
-            'title' => "World {$w['number']} exam", 'total' => $w['exam']['questions'], 'passPct' => $w['exam']['passPct'],
+            'title' => "Topic {$w['number']} exam", 'total' => $w['exam']['questions'], 'passPct' => $w['exam']['passPct'],
             'deadline' => time() + $w['exam']['minutes'] * 60,
         ]);
     }
@@ -60,7 +60,7 @@ final class Challenge
         ]);
     }
 
-    /** Timed mock exam across the worlds the student picked (FR-3.5). */
+    /** Timed mock exam across the topics the student picked (FR-3.5). */
     public static function startMock(int $userId, array $worldIds, int $length): array
     {
         $paper = Mock::build($userId, $worldIds, $length);
@@ -305,7 +305,7 @@ final class Challenge
                     'SELECT t.name FROM shop_items s JOIN item_types t ON t.code = s.item_code WHERE s.unlock_world = ? ORDER BY s.sort_order',
                     [$run['worldNumber']]
                 ), 'name');
-                Rules::log($userId, 'ok', sprintf('World %d mastered.%s', $run['worldNumber'], $unlocked ? ' New in the shop: ' . implode(', ', $unlocked) . '.' : ''));
+                Rules::log($userId, 'ok', sprintf('Topic %d mastered.%s', $run['worldNumber'], $unlocked ? ' New in the shop: ' . implode(', ', $unlocked) . '.' : ''));
             } else {
                 Rules::log($userId, $passed ? 'ok' : 'warn', sprintf('%s: %d%%. %s', $run['title'], $pct, $passed ? 'Passed.' : sprintf('You need %d%% to pass.', $run['passPct'])));
             }

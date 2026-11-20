@@ -109,14 +109,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $wn = trim($f['world']);
         $worldId = ctype_digit($wn) ? ($worldIds[(int) $wn] ?? null) : null;
         if ($worldId === null) {
-            array_unshift($errors, "World “{$f['world']}” doesn’t exist. Use the world number, 0 to 8.");
+            array_unshift($errors, "Topic “{$f['world']}” doesn’t exist. Use a topic number: " . implode(', ', array_keys($worldIds)) . '.');
         }
         $levelId = null;
         $ln = trim($f['level']);
         if ($ln !== '' && $worldId !== null) {
             $levelId = ctype_digit($ln) ? ($levelIds[$worldId][(int) $ln] ?? null) : null;
             if ($levelId === null) {
-                $errors[] = "World $wn has no level $ln. Leave level empty for exam-only questions.";
+                $errors[] = "Topic $wn has no level $ln. Leave level empty for exam-only questions.";
             }
         }
         if ($errors) {
@@ -177,10 +177,10 @@ require __DIR__ . '/../../src/views/staff_top.php';
   <h2>Columns</h2>
   <table class="data spec">
     <tbody>
-      <tr><th scope="row" class="mono">world</th><td>World number, 0 to 8.</td></tr>
-      <tr><th scope="row" class="mono">level</th><td>Level position in that world (1 = first). Leave empty for exam-only questions.</td></tr>
+      <tr><th scope="row" class="mono">world</th><td>Topic number: <?= e(implode(', ', array_column(Db::all('SELECT number FROM worlds WHERE archived = 0 ORDER BY number'), 'number'))) ?>.</td></tr>
+      <tr><th scope="row" class="mono">level</th><td>Level position in that topic (1 = first). Leave empty for exam-only questions.</td></tr>
       <tr><th scope="row" class="mono">type</th><td>mcq, matching, ordering, fill, blitz or subnet.</td></tr>
-      <tr><th scope="row" class="mono">topic</th><td>Topic tag, used in exam and audit breakdowns.</td></tr>
+      <tr><th scope="row" class="mono">topic</th><td>Subtopic tag, used in exam and audit breakdowns.</td></tr>
       <tr><th scope="row" class="mono">rating</th><td>Starting difficulty, 400 to 2000. Empty means 1000.</td></tr>
       <tr><th scope="row" class="mono">prompt</th><td>The question. For fill, write ___ for each blank.</td></tr>
       <tr><th scope="row" class="mono">choices</th><td>Items separated by <code>|</code>. mcq: the options. matching: <code>left = right</code> pairs. ordering: items in the correct order. blitz: <code>mode=bin2dec bits=8 seconds=20</code>. subnet: <code>mode=network min=24 max=30</code>.</td></tr>

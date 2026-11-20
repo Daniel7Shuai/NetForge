@@ -8,7 +8,7 @@ use NetForge\Db;
 
 // FR-2.4 / FR-4.2: the economy. Credits come from passive income (online devices earn per hour);
 // XP from answering questions sets the student's level, and the level decides what they may buy.
-// An item can also require a mastered world on top of the level.
+// An item can also require a mastered topic on top of the level.
 $me = Staff::begin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -83,7 +83,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
       <tr>
         <th scope="row"><?= e($it['name']) ?><small><?= e($it['description']) ?></small></th>
         <td class="num"><label class="sr-only" for="l<?= $sid ?>">Level needed for <?= e($it['name']) ?></label><input class="num-in mono" id="l<?= $sid ?>" name="item[<?= $sid ?>][level]" type="number" min="1" max="100" value="<?= (int) $it['unlock_level'] ?>"></td>
-        <td><label class="sr-only" for="w<?= $sid ?>">World also required for <?= e($it['name']) ?></label>
+        <td><label class="sr-only" for="w<?= $sid ?>">Topic also required for <?= e($it['name']) ?></label>
           <select id="w<?= $sid ?>" name="item[<?= $sid ?>][world]">
             <option value="" <?= $it['unlock_world'] === null ? 'selected' : '' ?>>Nothing else</option>
             <?php foreach ($worlds as $w): ?>
@@ -107,10 +107,10 @@ require __DIR__ . '/../../src/views/staff_top.php';
       <ul><?php foreach ($pacing as $p): ?>
         <li><b><?= e($p['name']) ?></b>, <?= number_format($p['cost']) ?> credits at level <?= $p['level'] ?>: <?= e($p['setup']) ?> earns <b class="mono"><?= number_format($p['rate']) ?>/s</b>, so <?= $p['hours'] === null ? 'never' : "about <b class=\"mono\">{$p['hours']} h</b>" ?><?= $p['hours'] !== null && $p['hours'] > $cap ? ', more than one break away' : '' ?>.</li>
       <?php endforeach; ?></ul>
-      <p class="help">Upgrades (x1.5, x2) and extra gear make it faster. The office and datacentre also open new learning worlds, so long waits here hold back learning.</p>
+      <p class="help">Upgrades (x1.5, x2) and extra gear make it faster. The office and datacentre also open new learning topics, so long waits here hold back learning.</p>
     </div>
   </div>
-  <p class="help">Each level takes <?= $xpPerLevel ?> XP. A correct answer at an even rating gives about 100 XP, less as students outgrow a world. A device only earns while it’s linked back to the ISP box.</p>
+  <p class="help">Each level takes <?= $xpPerLevel ?> XP. A correct answer at an even rating gives about 100 XP, less as students outgrow a topic. A device only earns while it’s linked back to the ISP box.</p>
   <div class="actions"><button class="btn primary" type="submit">Save changes</button></div>
 </form>
 <?php require __DIR__ . '/../../src/views/staff_bottom.php'; ?>

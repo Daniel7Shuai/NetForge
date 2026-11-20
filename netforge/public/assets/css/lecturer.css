@@ -89,6 +89,13 @@ label.check input { accent-color: var(--cyan); width: 16px; height: 16px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .span2 { grid-column: span 2; }
+/* fields side by side share three rows (label, input, hint), so the inputs line up even when
+   one label wraps onto two lines or only some fields have a hint */
+.grid2 > *, .grid3 > * { grid-row: span 3; }
+.grid2 > label:not(.check), .grid3 > label:not(.check) { grid-template-rows: subgrid; row-gap: 6px; align-content: start; }
+.grid2 > label:not(.check) > input, .grid2 > label:not(.check) > select, .grid2 > label:not(.check) > textarea,
+.grid3 > label:not(.check) > input, .grid3 > label:not(.check) > select, .grid3 > label:not(.check) > textarea { grid-row: 2; }
+.grid2 > label:not(.check) > small, .grid3 > label:not(.check) > small { grid-row: 3; }
 .filters { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; padding: 14px 16px; background: var(--panel); border: 1px solid var(--grid); border-radius: var(--r); }
 .filters label { min-width: 160px; }
 .filters .grow { flex: 1; }
@@ -205,13 +212,15 @@ table.users td, table.users th { vertical-align: middle; }
 .tip[hidden] { display: none; }
 
 /* characters and music */
-.char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 0 20px; }
+.char-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
 .char { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; align-items: start; }
 .char-art { display: grid; justify-items: center; gap: 6px; padding: 10px; background: var(--void); border: 1px solid var(--grid); border-radius: var(--r); }
 .char-art img, .char-art canvas { width: 150px; height: 150px; object-fit: contain; image-rendering: pixelated; }
 .char-body h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .char-body .tag { font-size: 12px; color: var(--ink-dim); }
+.char-body { min-width: 0; }
 .char-body .form { margin-top: 12px; }
+.char-body input[type=file] { max-width: 100%; }
 .art-form { padding-top: 12px; border-top: 1px solid var(--grid); }
 table.tracks td { vertical-align: middle; }
 table.tracks input:not([type=checkbox]) { min-width: 0; }

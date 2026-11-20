@@ -17,7 +17,7 @@ $last = fn (?string $d) => $d === null ? 'Never' : date('j M Y', strtotime($d));
 if (in_array($_GET['format'] ?? '', ['csv', 'pdf'], true)) {
     Export::send($_GET['format'], 'netforge-students', 'Students', $label, [[
         'title' => 'Activity and progress',
-        'columns' => ['Student', 'Level', 'Answers', 'Accuracy', 'Worlds mastered', 'Overdue reviews', 'Last answer', 'At risk'],
+        'columns' => ['Student', 'Level', 'Answers', 'Accuracy', 'Topics mastered', 'Overdue reviews', 'Last answer', 'At risk'],
         'widths' => [1.6, 0.7, 0.9, 0.9, 1.2, 1.2, 1.3, 0.8], 'right' => [false, true, true, true, true, true, false, false],
         'rows' => array_map(fn ($s) => [$s['username'], $s['level'], $s['answers'], Export::pct($s['accuracy']), $s['mastered'], $s['audit_due'], $last($s['last']), isset($flagged[$s['id']]) ? 'Yes' : ''], $rows),
     ]]);
@@ -39,7 +39,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
 <?php else: ?>
 <table class="data">
   <thead><tr><th scope="col">Student</th><th scope="col" class="num">Level</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Accuracy</th>
-    <th scope="col" class="num">Worlds mastered</th><th scope="col" class="num">Overdue reviews</th><th scope="col">Last answer</th><th scope="col">Status</th></tr></thead>
+    <th scope="col" class="num">Topics mastered</th><th scope="col" class="num">Overdue reviews</th><th scope="col">Last answer</th><th scope="col">Status</th></tr></thead>
   <tbody>
   <?php foreach ($rows as $s): ?>
     <tr>

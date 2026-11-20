@@ -64,7 +64,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
         <?= Csrf::field() ?><input type="hidden" name="action" value="save"><input type="hidden" name="code" value="<?= e($c['code']) ?>">
         <div class="grid2">
           <label>Name <input name="name" value="<?= e($c['name']) ?>" maxlength="40" required></label>
-          <label>Role <small>Shown under the name</small><input name="role" value="<?= e($c['role']) ?>" maxlength="80"></label>
+          <label>Role <input name="role" value="<?= e($c['role']) ?>" maxlength="80"><small>Shown under the name</small></label>
         </div>
         <label>Stands on the <select name="side">
           <option value="left" <?= $c['side'] === 'left' ? 'selected' : '' ?>>Left of the dialogue box</option>

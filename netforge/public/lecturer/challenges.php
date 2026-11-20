@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($week < $thisWeek) { $errors[] = 'That week is over. Pick this week or a later one.'; }
     if ($title === '' || mb_strlen($title) > 80) { $errors[] = 'Give the challenge a title of up to 80 characters.'; }
     if ($desc === '' || mb_strlen($desc) > 255) { $errors[] = 'Describe the challenge in up to 255 characters.'; }
-    if ($world !== null && !Db::one('SELECT id FROM worlds WHERE id = ?', [$world])) { $errors[] = 'Pick a world, or Any world.'; }
+    if ($world !== null && !Db::one('SELECT id FROM worlds WHERE id = ?', [$world])) { $errors[] = 'Pick a topic, or Any topic.'; }
     if ($errors) {
         foreach ($errors as $er) { Staff::flash('error', $er); }
         Staff::back();
@@ -92,7 +92,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
     </div>
     <label>Description <input name="description" maxlength="255" required placeholder="Answer subnetting questions to break through the firewall."></label>
     <div class="grid3">
-      <label>Counts answers in <select name="world"><option value="0">Any world</option>
+      <label>Counts answers in <select name="world"><option value="0">Any topic</option>
         <?php foreach ($worlds as $wid => $wl): ?><option value="<?= $wid ?>"><?= e($wl) ?></option><?php endforeach; ?></select></label>
       <label>Target per guild <input type="number" name="target" min="5" max="5000" value="100"><small>Correct answers.</small></label>
       <label>Reward per contributor <input type="number" name="reward" min="0" max="5000" value="100"><small>XP. Helps students level up and unlock gear.</small></label>
@@ -111,7 +111,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
       <tr<?= $c['week_start'] === $thisWeek ? ' class="current"' : '' ?>>
         <td class="mono nowrap"><?= date('j M Y', strtotime($c['week_start'])) ?><?= $c['week_start'] === $thisWeek ? ' <small>this week</small>' : '' ?></td>
         <th scope="row"><?= e($c['title']) ?><small><?= e($c['description']) ?></small></th>
-        <td><?= $c['wnum'] === null ? 'Any world' : 'W' . (int) $c['wnum'] ?></td>
+        <td><?= $c['wnum'] === null ? 'Any topic' : 'T' . (int) $c['wnum'] ?></td>
         <td class="num mono"><?= (int) $c['target'] ?></td><td class="num mono"><?= (int) $c['reward_xp'] ?></td>
         <td class="num mono"><?= (int) $c['completed'] ?></td>
         <td class="act"><?php if ($c['week_start'] > $thisWeek): ?>

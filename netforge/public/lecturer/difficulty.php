@@ -17,7 +17,7 @@ $scope = $worldId ? $worlds[$worldId] ?? 'Unknown world' : 'All worlds';
 if (in_array($_GET['format'] ?? '', ['csv', 'pdf'], true)) {
     Export::send($_GET['format'], 'netforge-question-difficulty', 'Question difficulty report', $scope . ', questions with at least ' . $min . ' answer(s)', [[
         'title' => 'Observed against expected % correct',
-        'columns' => ['ID', 'World', 'Prompt', 'Rating', 'Answers', 'Expected', 'Observed', 'Gap', 'Verdict'],
+        'columns' => ['ID', 'Topic', 'Prompt', 'Rating', 'Answers', 'Expected', 'Observed', 'Gap', 'Verdict'],
         'widths' => [0.5, 0.6, 5, 0.8, 0.8, 0.9, 0.9, 0.7, 1.7], 'right' => [true, false, false, true, true, true, true, true, false],
         'rows' => array_map(fn ($r) => [$r['id'], $r['world'], $r['prompt'], $r['rating'], $r['answers'], $r['expected'] . '%', $r['observed'] . '%', sprintf('%+d', $r['gap']), $r['verdict']], $rows),
     ]], ['Expected is the average chance of a correct answer that the Elo model gave each student, from their rating when they answered and the question’s current rating. A gap of 15 points or more, with at least 5 answers, is flagged.']);
@@ -37,7 +37,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
 </div>
 
 <form method="get" class="filters">
-  <label>World <select name="world"><option value="0">All worlds</option>
+  <label>Topic <select name="world"><option value="0">All topics</option>
     <?php foreach ($worlds as $wid => $wl): ?><option value="<?= $wid ?>" <?= $worldId === $wid ? 'selected' : '' ?>><?= e($wl) ?></option><?php endforeach; ?></select></label>
   <label>At least this many answers <input type="number" name="min" min="1" max="1000" value="<?= $min ?>"></label>
   <button class="btn" type="submit">Show</button>

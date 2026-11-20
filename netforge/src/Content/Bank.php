@@ -8,7 +8,7 @@ use NetForge\Db;
 /**
  * Loads a question bank file (database/content/ccna.php) into worlds, levels and questions.
  * Every question goes through QuestionInput, the same checks as the lecturer editor and CSV import.
- * Levels are matched by world and title, questions by level and prompt, so loading twice changes
+ * Levels are matched by topic and title, questions by level and prompt, so loading twice changes
  * nothing; an edited question keeps its live Elo rating and answer count.
  */
 final class Bank
@@ -21,7 +21,7 @@ final class Bank
     }
 
     /**
-     * Checks the whole bank. Returns every problem as "World n, level: message".
+     * Checks the whole bank. Returns every problem as "Topic n, level: message".
      * @return list<string>
      */
     public static function errors(array $bank): array
@@ -30,7 +30,7 @@ final class Bank
         $titles = [];
         foreach ($bank as $world => $levels) {
             foreach ($levels as $l) {
-                $where = "World $world, {$l['title']}";
+                $where = "Topic $world, {$l['title']}";
                 if (isset($titles[$world][$l['title']])) {
                     $errors[] = "$where: two levels have this title.";
                 }
@@ -80,7 +80,7 @@ final class Bank
             foreach ($bank as $number => $levels) {
                 $world = Db::one('SELECT id FROM worlds WHERE number = ?', [$number]);
                 if ($world === null) {
-                    throw new \RuntimeException("World $number doesn’t exist. Import database/schema_content.sql first.");
+                    throw new \RuntimeException("Topic $number doesn’t exist. Import database/schema_content.sql first.");
                 }
                 $worldId = (int) $world['id'];
                 foreach ($levels as $l) {

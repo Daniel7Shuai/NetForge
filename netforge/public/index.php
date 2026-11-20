@@ -41,7 +41,7 @@ require __DIR__ . '/../src/views/head.php';
   <a class="brand" href="./"><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</a>
   <nav aria-label="Page">
     <a href="#loop">How it works</a>
-    <a href="#journeys">Worlds</a>
+    <a href="#journeys">Topics</a>
     <a href="#lecturers">For lecturers</a>
   </nav>
   <div class="nav-cta">
@@ -58,10 +58,10 @@ require __DIR__ . '/../src/views/head.php';
       <p class="lede">Start in a garage with a cracked laptop. Answer CCNA questions to level up, rent out your network to pay for gear, then cable it port to port and keep the attackers out.</p>
       <div class="hero-cta">
         <a class="btn primary big" href="register.php">Start building, it’s free</a>
-        <a class="btn ghost big" href="#journeys">See the worlds</a>
+        <a class="btn ghost big" href="#journeys">See the topics</a>
       </div>
       <dl class="hero-stats mono">
-        <div><dt>Worlds</dt><dd><?= count($worlds) ?></dd></div>
+        <div><dt>Topics</dt><dd><?= count($worlds) ?></dd></div>
         <div><dt>CCNA ITN modules</dt><dd>17</dd></div>
         <div><dt>Questions</dt><dd><?= $totalQ ?>+</dd></div>
       </dl>
@@ -82,8 +82,8 @@ require __DIR__ . '/../src/views/head.php';
 
   <section class="journeys" id="journeys" aria-labelledby="journeys-title">
     <div class="sec-head">
-      <h2 id="journeys-title">Three places, nine worlds</h2>
-      <p>The worlds follow Cisco’s CCNA Introduction to Networks course in order. Master one by passing its exam, and your network moves somewhere bigger.</p>
+      <h2 id="journeys-title">Three places, nine topics</h2>
+      <p>The topics follow Cisco’s CCNA Introduction to Networks course in order. Master one by passing its exam, and your network moves somewhere bigger.</p>
     </div>
     <?php foreach ($journeys as $j):
         $mine = array_values(array_filter($worlds, fn ($w) => $w['number'] >= $j['from'] && $w['number'] <= $j['to']));
@@ -94,7 +94,7 @@ require __DIR__ . '/../src/views/head.php';
           <i class="ti <?= $j['icon'] ?>" aria-hidden="true"></i>
           <div><h3><?= e($j['name']) ?></h3><p><?= e($j['pitch']) ?></p></div>
           <ul class="jstats mono">
-            <li><b><?= count($mine) ?></b> worlds</li>
+            <li><b><?= count($mine) ?></b> topics</li>
             <li><b><?= $q ?></b> questions</li>
             <li>modules <b><?= e($mods) ?></b></li>
           </ul>
@@ -102,7 +102,7 @@ require __DIR__ . '/../src/views/head.php';
         <ol class="worlds">
           <?php foreach ($mine as $w): $ready = (int) $w['levels'] > 0; ?>
             <li class="<?= $ready ? 'ready' : 'soon' ?>">
-              <strong><span class="wn mono">W<?= (int) $w['number'] ?></span><?= e($w['title']) ?></strong>
+              <strong><span class="wn mono">T<?= (int) $w['number'] ?></span><?= e($w['title']) ?></strong>
               <p><?= e($w['summary']) ?></p>
               <span class="meta mono">CCNA modules <?= e($w['ccna_modules']) ?><?= $ready ? ', ' . (int) $w['questions'] . ' questions' : '' ?></span>
               <span class="tag <?= $ready ? ((int) $w['number'] === 0 ? 'start' : 'open') : 'later' ?>"><?= $ready ? ((int) $w['number'] === 0 ? 'Start here' : 'Playable') : 'In progress' ?></span>
@@ -131,7 +131,7 @@ require __DIR__ . '/../src/views/head.php';
   <section class="feature flip" aria-labelledby="f2">
     <div class="f-copy">
       <h2 id="f2">Attacks built from what you’ve learned</h2>
-      <p>Master a world and its threats start showing up: phishing emails, port scans, ARP spoofing, SYN floods. Read the evidence, pick your response before the clock runs out, and keep your security rating up.</p>
+      <p>Master a topic and its threats start showing up: phishing emails, port scans, ARP spoofing, SYN floods. Read the evidence, pick your response before the clock runs out, and keep your security rating up.</p>
     </div>
     <div class="f-demo attack" aria-label="Example: an incoming port scan">
       <p class="atk-head"><i class="ti ti-radar-2" aria-hidden="true"></i>Incoming attack: Port scan <span class="mono clock">0:42</span></p>
@@ -164,12 +164,12 @@ FIREWALL 14:02:12 SYN 203.0.113.45 -> :3389</pre>
   <section class="lecturers" id="lecturers" aria-labelledby="lect-title">
     <div>
       <h2 id="lect-title">For lecturers</h2>
-      <p>See which topics your class finds hard before the test, not after.</p>
+      <p>See which subtopics your class finds hard before the test, not after.</p>
       <a class="btn" href="login.php">Lecturer sign in</a>
     </div>
     <ul>
       <li><i class="ti ti-database-import" aria-hidden="true"></i><span><strong>Question bank and CSV import.</strong> Six question types; every rejected row is reported with its reason.</span></li>
-      <li><i class="ti ti-chart-bar" aria-hidden="true"></i><span><strong>Class analytics.</strong> Accuracy by world and topic, and a report on which questions are harder than their rating says.</span></li>
+      <li><i class="ti ti-chart-bar" aria-hidden="true"></i><span><strong>Class analytics.</strong> Accuracy by topic and subtopic, and a report on which questions are harder than their rating says.</span></li>
       <li><i class="ti ti-alert-triangle" aria-hidden="true"></i><span><strong>At-risk alerts.</strong> Low accuracy, inactivity, falling ratings and review backlogs, each with the reason.</span></li>
       <li><i class="ti ti-file-type-pdf" aria-hidden="true"></i><span><strong>Reports.</strong> Class and student progress for any period, as CSV or PDF.</span></li>
     </ul>

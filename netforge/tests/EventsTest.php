@@ -40,7 +40,7 @@ function err(callable $fn): string
 }
 
 $tag = 'zt' . random_int(1000, 9999);
-Db::exec('INSERT INTO users (username, email, password_hash, role, credits, level, location) VALUES (?, ?, ?, "student", 100000000, 9, "office")',
+Db::exec('INSERT INTO users (username, email, password_hash, role, credits, level, location) VALUES (?, ?, ?, "student", 10000000000, 9, "office")',
     ["{$tag}_ev", "{$tag}_ev@netforge.test", password_hash('x-password-1', PASSWORD_DEFAULT)]);
 $uid = (int) Db::pdo()->lastInsertId();
 $give = fn (string $code, int $n = 1) => Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)', [$uid, $code, $n]);
@@ -108,7 +108,7 @@ try {
 
     echo "GPU cards\n";
     $give('server');
-    Rules::place($uid, 'server', 14, 3);
+    Rules::place($uid, 'server', 19, 3);
     $srv = (int) Db::one('SELECT id FROM devices WHERE user_id = ? AND item_code = "server"', [$uid])['id'];
     $give('gpu_card_budget');
     $give('gpu_card_pro');

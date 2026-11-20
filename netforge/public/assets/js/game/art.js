@@ -454,7 +454,7 @@ function office(c, loc) {
     } else if (tx > loc.partition.col) {
       R(c, x, y, 16, 16, '#121b29'); R(c, x, y, 16, 1, '#1a2638'); R(c, x, y, 1, 16, '#1a2638');
       R(c, x + 15, y, 1, 16, '#080c14'); R(c, x, y + 15, 16, 1, '#080c14');
-      if (ty === 5 || ty === 10) for (let py = 3; py < 14; py += 3) for (let pxx = 3; pxx < 14; pxx += 3) R(c, x + pxx, y + py, 1, 1, '#1c3d4f');
+      if ((loc.aisles || [5, 10]).includes(ty)) for (let py = 3; py < 14; py += 3) for (let pxx = 3; pxx < 14; pxx += 3) R(c, x + pxx, y + py, 1, 1, '#1c3d4f');
     } else R(c, x, y, 16, 16, '#0f1726');
   }
   const doors = loc.partition.doorRows, doorTop = doors[0] * TILE, doorBottom = (doors[doors.length - 1] + 1) * TILE;
@@ -478,12 +478,13 @@ function datacentre(c, loc) {
   for (let x = 0; x < W; x += 40) R(c, x, 2, 1, wallH - 4, '#060a12');
   R(c, 0, 0, W, 2, '#162033'); R(c, 0, wallH - 2, W, 2, '#04060b');
   R(c, 8, 6, W - 16, 1, C.cyan); R(c, 8, 5, W - 16, 1, 'rgba(43,227,255,.25)'); R(c, 8, 7, W - 16, 1, 'rgba(43,227,255,.25)');
-  for (const [sx, w] of [[24, 96], [200, 96]]) {
+  const screens = W > 400 ? [[24, 96], [W / 2 - 48, 96], [W - 120, 96]] : [[24, 96], [200, 96]]; // one more on a wide wall
+  for (const [sx, w] of screens) {
     R(c, sx, 10, w, 19, '#1a2436'); R(c, sx + 1, 11, w - 2, 17, '#04121a');
     let y = 24;
     for (let i = 0; i < w - 6; i++) { // traffic graph
       y = Math.max(14, Math.min(26, y + Math.round((hash(i, sx) - 0.5) * 4)));
-      R(c, sx + 3 + i, y, 1, 1, sx < 100 ? C.cyan : C.lime);
+      R(c, sx + 3 + i, y, 1, 1, sx < 100 ? C.cyan : sx > W - 200 ? C.amber : C.lime);
     }
   }
   // raised floor, with perforated tiles on the cold aisles
@@ -491,10 +492,10 @@ function datacentre(c, loc) {
     const x = tx * TILE, y = ty * TILE;
     R(c, x, y, 16, 16, '#111a27'); R(c, x, y, 16, 1, '#19253a'); R(c, x, y, 1, 16, '#19253a');
     R(c, x + 15, y, 1, 16, '#070b12'); R(c, x, y + 15, 16, 1, '#070b12');
-    if (ty === 5 || ty === 6) for (let py = 3; py < 14; py += 3) for (let px = 3; px < 14; px += 3) R(c, x + px, y + py, 1, 1, '#1c3d4f');
+    if ((loc.aisles || [5, 6]).includes(ty)) for (let py = 3; py < 14; py += 3) for (let px = 3; px < 14; px += 3) R(c, x + px, y + py, 1, 1, '#1c3d4f');
   }
   // yellow safety line along the walkway
-  for (let x = 0; x < W; x += 6) R(c, x, 9 * TILE + 1, 3, 1, '#6b5418');
+  for (let x = 0; x < W; x += 6) R(c, x, (loc.safetyRow ?? 9) * TILE + 1, 3, 1, '#6b5418');
   for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
 }
 
@@ -521,7 +522,8 @@ export function fansFor(loc) {
 /** Darkens the map edges. Drawn once on top of everything. */
 export function vignette(c) {
   const W = COLS * TILE, H = ROWS * TILE;
-  const g = c.createRadialGradient(W / 2, H * 0.57, 60, W / 2, H * 0.57, 230);
+  const r = Math.max(W, H) * 0.72; // scales with the size of the place
+  const g = c.createRadialGradient(W / 2, H * 0.57, r * 0.26, W / 2, H * 0.57, r);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
 }

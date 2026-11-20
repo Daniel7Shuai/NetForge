@@ -175,7 +175,7 @@ export function mountHud(store) {
     badge.hidden = !s.user.auditDue;
     learnBtn.setAttribute('aria-label', `Learn (L)${s.user.auditDue ? `, ${s.user.auditDue} audit questions due` : ''}`);
     const o = s.objective;
-    $('obj-title').textContent = o ? o.title : 'Keep learning (L) to master worlds and unlock new gear';
+    $('obj-title').textContent = o ? o.title : 'Keep learning (L) to master topics and unlock new gear';
     const objEl = $('obj-title').closest('.objective');
     objEl.classList.toggle('done', !o);
     if (s.lastEvent && s.lastEvent.at !== lastEventAt) {
@@ -283,8 +283,8 @@ export function mountHud(store) {
     const qty = row.quantity > 1 ? `, ${row.quantity} pack` : '';
     // what still stands between the player and this item: their XP level, then any required world
     const needLevel = row.unlockLevel > s.user.level;
-    const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock` : `Master World ${row.unlockWorld} to unlock`;
-    const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master World ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
+    const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock` : `Master Topic ${row.unlockWorld} to unlock`;
+    const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master Topic ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
     const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     const price = row.quote ? row.quote.price : row.price;
     const perk = row.earns ? `+${rate(row.earns)}` : row.boost ? `+${row.boost}%` : '';
@@ -300,7 +300,7 @@ export function mountHud(store) {
     const sub = row.locked ? lockText : row.seller ? offerLine(row) : esc(row.description || '');
     div.insertAdjacentHTML('beforeend', `<div><strong>${title}${perk ? ` <span class="earns mono">${perk}</span>` : ''}</strong><small class="${row.seller && !row.locked ? 'offerline' : ''}">${sub}</small></div>`
       + (row.locked
-        ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `W${row.unlockWorld}`}</button>`
+        ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `T${row.unlockWorld}`}</button>`
         : soldOut
           ? `<button class="buy" aria-disabled="true" data-buy="${row.id}" data-tip="${esc(buyTip)}"><i class="ti ti-package-off" aria-hidden="true"></i>${fmt(price)}</button>`
           : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)}${row.seller ? ` from ${esc(row.seller)}` : ''} for ${fmt(price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(price)}</button>`));

@@ -3,8 +3,9 @@
 import * as layout from './layout.js';
 import * as art from './art.js';
 
-const { TILE, COLS, ROWS } = layout;
-const W = COLS * TILE, H = ROWS * TILE;
+const { TILE } = layout;
+// the map's size depends on the place (read when the scene starts, after setLocation)
+const mapW = () => layout.COLS * TILE, mapH = () => layout.ROWS * TILE;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const LED_COLORS = [0x7cff6b, 0x2be3ff, 0xffb43d];
 
@@ -94,8 +95,8 @@ export class MapScene extends Phaser.Scene {
       draw(t.getContext());
       t.refresh();
     };
-    tex('room', W, H, (c) => art.drawRoom(c, layout.LOC_CODE, layout.LOC));
-    tex('vignette', W, H, art.vignette);
+    tex('room', mapW(), mapH(), (c) => art.drawRoom(c, layout.LOC_CODE, layout.LOC));
+    tex('vignette', mapW(), mapH(), art.vignette);
     for (const pose of art.PLAYER_FRAMES) {
       tex(`player-${pose}`, art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.playerFrame(c, this.store.state.user?.avatar, pose));
       tex(`broker-${pose}`, art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.playerFrame(c, 'broker', pose));
@@ -275,7 +276,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   walkable(x, y) {
-    return x >= 0 && y >= 0 && x < COLS && y < ROWS && !this.blocked.has(`${x},${y}`);
+    return x >= 0 && y >= 0 && x < layout.COLS && y < layout.ROWS && !this.blocked.has(`${x},${y}`);
   }
 
   /** Shortest path (4 directions) from the player to any of the goal tiles, or null. */

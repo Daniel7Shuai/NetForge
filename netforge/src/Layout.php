@@ -34,6 +34,13 @@ final class Layout
         return $loc;
     }
 
+    /** A place's size in tiles: [cols, rows]. Bigger places are bigger. Mirrors setLocation() in layout.js. */
+    public static function size(string $location): array
+    {
+        $loc = self::location($location);
+        return [(int) ($loc['cols'] ?? self::data()['cols']), (int) ($loc['rows'] ?? self::data()['rows'])];
+    }
+
     public static function kinds(?string $slotKinds): array
     {
         return array_values(array_filter(array_map('trim', explode(',', (string) $slotKinds))));
@@ -79,17 +86,18 @@ final class Layout
     {
         $loc = self::location($location);
         $data = self::data();
+        [$cols, $rows] = self::size($location);
         $b = [];
-        for ($x = 0; $x < $data['cols']; $x++) {
+        for ($x = 0; $x < $cols; $x++) {
             for ($y = 0; $y < $loc['wallRows']; $y++) {
                 $b["$x,$y"] = true;
             }
             if (!empty($loc['bottomWall'])) {
-                $b["$x," . ($data['rows'] - 1)] = true;
+                $b["$x," . ($rows - 1)] = true;
             }
         }
         if (!empty($loc['partition'])) {
-            for ($y = $loc['wallRows']; $y < $data['rows']; $y++) {
+            for ($y = $loc['wallRows']; $y < $rows; $y++) {
                 if (!in_array($y, $loc['partition']['doorRows'], true)) {
                     $b[$loc['partition']['col'] . ",$y"] = true;
                 }

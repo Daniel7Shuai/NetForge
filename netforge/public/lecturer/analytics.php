@@ -19,12 +19,12 @@ if (in_array($_GET['format'] ?? '', ['csv', 'pdf'], true)) {
     Export::send($_GET['format'], 'netforge-class-report', 'Class progress report', $label, [
         ['title' => 'Summary', 'columns' => ['Measure', 'Value'], 'widths' => [3, 1], 'right' => [false, true], 'rows' => [
             ['Students', $ov['students']], ['Active in period', $ov['active']], ['Answers', $ov['answers']],
-            ['Accuracy', Export::pct($ov['accuracy'])], ['Worlds mastered in period', $ov['mastered']],
+            ['Accuracy', Export::pct($ov['accuracy'])], ['Topics mastered in period', $ov['mastered']],
         ]],
-        ['title' => 'Accuracy by world', 'columns' => ['World', 'Title', 'Answers', 'Students', 'Accuracy'],
+        ['title' => 'Accuracy by topic', 'columns' => ['Topic', 'Title', 'Answers', 'Students', 'Accuracy'],
          'widths' => [0.7, 4, 1, 1, 1], 'right' => [false, false, true, true, true],
-         'rows' => array_map(fn ($w) => ['W' . $w['number'], $w['title'], $w['answers'], $w['students'], Export::pct($w['accuracy'])], $worlds)],
-        ['title' => 'Accuracy by topic (weakest first)', 'columns' => ['Topic', 'Worlds', 'Answers', 'Students', 'Accuracy'],
+         'rows' => array_map(fn ($w) => ['T' . $w['number'], $w['title'], $w['answers'], $w['students'], Export::pct($w['accuracy'])], $worlds)],
+        ['title' => 'Accuracy by subtopic (weakest first)', 'columns' => ['Subtopic', 'Topics', 'Answers', 'Students', 'Accuracy'],
          'widths' => [3, 1.2, 1, 1, 1], 'right' => [false, false, true, true, true],
          'rows' => array_map(fn ($t) => [$t['topic'], $t['worlds'], $t['answers'], $t['students'], $t['accuracy'] . '%'], $topics)],
         ['title' => 'At-risk students', 'columns' => ['Student', 'Last answer', 'Reasons'], 'widths' => [1.2, 1.3, 5],
@@ -53,7 +53,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
   <div class="tile"><span class="k">Active students</span><span class="v mono"><?= $ov['active'] ?><small>/<?= $ov['students'] ?></small></span></div>
   <div class="tile"><span class="k">Answers</span><span class="v mono"><?= number_format($ov['answers']) ?></span></div>
   <div class="tile"><span class="k">Accuracy</span><span class="v mono"><?= $ov['accuracy'] === null ? '–' : $ov['accuracy'] . '%' ?></span></div>
-  <div class="tile"><span class="k">Worlds mastered</span><span class="v mono"><?= $ov['mastered'] ?></span></div>
+  <div class="tile"><span class="k">Topics mastered</span><span class="v mono"><?= $ov['mastered'] ?></span></div>
 </div>
 
 <section class="panel risk">
@@ -71,20 +71,20 @@ require __DIR__ . '/../../src/views/staff_top.php';
     <?php endforeach; ?>
     </ul>
   <?php endif; ?>
-  <p class="help">Flagged when accuracy is under <?= Reports::RISK_LOW_ACCURACY ?>% over at least <?= Reports::RISK_MIN_ANSWERS ?> answers, after <?= Reports::RISK_INACTIVE_DAYS ?> days without answering, when a world rating falls <?= Reports::RISK_RATING_DROP ?>+ points, or with <?= Reports::RISK_AUDIT_BACKLOG ?>+ overdue reviews.</p>
+  <p class="help">Flagged when accuracy is under <?= Reports::RISK_LOW_ACCURACY ?>% over at least <?= Reports::RISK_MIN_ANSWERS ?> answers, after <?= Reports::RISK_INACTIVE_DAYS ?> days without answering, when a topic rating falls <?= Reports::RISK_RATING_DROP ?>+ points, or with <?= Reports::RISK_AUDIT_BACKLOG ?>+ overdue reviews.</p>
 </section>
 
 <div class="two-col">
   <section class="panel">
-    <h2>Accuracy by world</h2>
+    <h2>Accuracy by topic</h2>
     <table class="data meters">
-      <thead><tr><th scope="col">World</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Students</th><th scope="col">Accuracy</th></tr></thead>
+      <thead><tr><th scope="col">Topic</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Students</th><th scope="col">Accuracy</th></tr></thead>
       <tbody>
       <?php foreach ($worlds as $w): ?>
         <tr<?= $w['answers'] ? '' : ' class="dim"' ?>>
-          <th scope="row"><span class="mono tag">W<?= $w['number'] ?></span> <?= e($w['title']) ?></th>
+          <th scope="row"><span class="mono tag">T<?= $w['number'] ?></span> <?= e($w['title']) ?></th>
           <td class="num mono"><?= $w['answers'] ?></td><td class="num mono"><?= $w['students'] ?></td>
-          <td><?= $bar($w['accuracy'], 'W' . $w['number']) ?></td>
+          <td><?= $bar($w['accuracy'], 'T' . $w['number']) ?></td>
         </tr>
       <?php endforeach; ?>
       </tbody>
@@ -92,12 +92,12 @@ require __DIR__ . '/../../src/views/staff_top.php';
   </section>
 
   <section class="panel">
-    <h2>Weakest topics</h2>
+    <h2>Weakest subtopics</h2>
     <?php if (!$topics): ?>
       <p class="empty">No answers in this period.</p>
     <?php else: ?>
     <table class="data meters">
-      <thead><tr><th scope="col">Topic</th><th scope="col" class="num">Answers</th><th scope="col">Accuracy</th></tr></thead>
+      <thead><tr><th scope="col">Subtopic</th><th scope="col" class="num">Answers</th><th scope="col">Accuracy</th></tr></thead>
       <tbody>
       <?php foreach ($topics as $t): ?>
         <tr><th scope="row"><?= e($t['topic']) ?> <small class="mono"><?= e($t['worlds']) ?></small></th>

@@ -1,4 +1,4 @@
-// The Learn screen (module 3.0): roadmap of worlds, lessons, challenge runs and exams.
+// The Learn screen (module 3.0): roadmap of topics, lessons, challenge runs and exams.
 // It only shows what the server sends; marking, Elo and rewards all happen in PHP.
 import { api } from './api.js';
 
@@ -111,13 +111,13 @@ export function mountLearn(store) {
     const last = mock.history[0];
     const mockRow = `<button class="world audit-row mock-row${worldId === 'mock' ? ' on' : ''}" data-mock="1">
         <i class="ti ti-clipboard-check wnum" aria-hidden="true"></i>
-        <span class="wtitle">Mock exam<small>${last ? `Last score ${last.pct}%` : 'Timed, from the worlds you pick'}</small></span>
+        <span class="wtitle">Mock exam<small>${last ? `Last score ${last.pct}%` : 'Timed, from the topics you pick'}</small></span>
         <i class="ti ti-chevron-right" aria-hidden="true"></i></button>`;
     list.innerHTML = auditRow + mockRow + worlds.map((w) => {
       const icon = { mastered: 'ti-circle-check', open: 'ti-player-play', locked: 'ti-lock', area: 'ti-building', soon: 'ti-clock' }[w.status];
       const meta = w.status === 'soon' ? 'Coming soon' : w.status === 'locked' ? 'Locked' : w.status === 'area' ? `Lease the ${w.needs.name.toLowerCase()}` : w.tier;
       return `<button class="world ${w.status}${w.id === worldId ? ' on' : ''}" data-world="${w.id}" ${w.status === 'soon' ? 'aria-disabled="true"' : ''}>
-        <span class="wnum mono">W${w.number}</span>
+        <span class="wnum mono">T${w.number}</span>
         <span class="wtitle">${esc(w.title)}<small>${meta}</small></span>
         <i class="ti ${icon}" aria-hidden="true"></i></button>`;
     }).join('');
@@ -172,25 +172,25 @@ export function mountLearn(store) {
     // a paper can't be longer than the chosen worlds' questions, unless one of them generates fresh ones
     const pool = chosen.some((w) => w.generated) ? Infinity : chosen.reduce((sum, w) => sum + w.questions, 0);
     const n = Math.min(mockPick.length, pool), minutes = Math.ceil((n * mock.secondsPerQuestion) / 60);
-    const short = chosen.length && n < mockPick.length ? ` ${chosen.length > 1 ? 'These worlds only have' : 'This world only has'} ${n} questions, so that’s the paper.` : '';
+    const short = chosen.length && n < mockPick.length ? ` ${chosen.length > 1 ? 'These topics only have' : 'This topic only has'} ${n} questions, so that’s the paper.` : '';
     const worldBtns = mock.worlds.map((w) => `<button type="button" class="wpick" data-mock-world="${w.id}" aria-pressed="${mockPick.worlds.has(w.id)}">
-        <i class="ti ${mockPick.worlds.has(w.id) ? 'ti-square-check' : 'ti-square'}" aria-hidden="true"></i><span class="mono">W${w.number}</span>${esc(w.title)}</button>`).join('');
+        <i class="ti ${mockPick.worlds.has(w.id) ? 'ti-square-check' : 'ti-square'}" aria-hidden="true"></i><span class="mono">T${w.number}</span>${esc(w.title)}</button>`).join('');
     const lenBtns = mock.lengths.map((l) => `<button type="button" role="radio" aria-checked="${l === mockPick.length}" data-mock-len="${l}">${l}</button>`).join('');
     const hist = mock.history.map((h) => `<tr><td>${esc(new Date(h.at.replace(' ', 'T')).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }))}</td>
-        <td class="mono">${h.worlds.map((x) => `W${x}`).join(' ')}</td><td class="mono">${h.correct}/${h.total}</td>
+        <td class="mono">${h.worlds.map((x) => `T${x}`).join(' ')}</td><td class="mono">${h.correct}/${h.total}</td>
         <td class="mono">${clock(h.seconds)}${h.timedOut ? ' (time)' : ''}</td><td class="mono pct">${h.pct}%</td></tr>`).join('');
     view.innerHTML = `<header class="whead"><div>
         <p class="crumb mono">Exam practice</p>
         <h2>Mock exam</h2>
-        <p class="sum">Questions from the worlds you pick, shared evenly, on one clock. Like the real thing, you only see answers at the end, with your score by topic. Answers still earn XP and count toward your rating.</p>
+        <p class="sum">Questions from the topics you pick, shared evenly, on one clock. Like the real thing, you only see answers at the end, with your score by subtopic. Answers still earn XP and count toward your rating.</p>
       </div></header>
-      ${mock.worlds.length ? `<h3 class="sub">Worlds</h3><div class="wpicks">${worldBtns}</div>
+      ${mock.worlds.length ? `<h3 class="sub">Topics</h3><div class="wpicks">${worldBtns}</div>
       <h3 class="sub" id="mock-len">Questions</h3><div class="seg" role="radiogroup" aria-labelledby="mock-len">${lenBtns}</div>
       <div class="exam ready mock-go"><i class="ti ti-clock-hour-4" aria-hidden="true"></i>
-        <div><strong>${n} questions, ${minutes} minutes</strong><small>${chosen.length ? `From ${chosen.length > 1 ? `worlds ${chosen.slice(0, -1).map((w) => w.number).join(', ')} and ${chosen.at(-1).number}` : `world ${chosen[0].number}`}. Score ${mock.readyPct}% to count as exam-ready.${short}` : 'Pick at least one world.'}</small></div>
+        <div><strong>${n} questions, ${minutes} minutes</strong><small>${chosen.length ? `From ${chosen.length > 1 ? `topics ${chosen.slice(0, -1).map((w) => w.number).join(', ')} and ${chosen.at(-1).number}` : `topic ${chosen[0].number}`}. Score ${mock.readyPct}% to count as exam-ready.${short}` : 'Pick at least one topic.'}</small></div>
         <button class="btn primary" data-mock-start="1" ${chosen.length ? '' : 'disabled'}>Start mock exam</button></div>`
-        : '<p class="empty">Open a world in Learn first. Mock exams draw from the worlds you can play.</p>'}
-      ${hist ? `<h3 class="sub">Past attempts</h3><table class="hist"><thead><tr><th>Date</th><th>Worlds</th><th>Right</th><th>Time</th><th>Score</th></tr></thead><tbody>${hist}</tbody></table>` : ''}`;
+        : '<p class="empty">Open a topic in Learn first. Mock exams draw from the topics you can play.</p>'}
+      ${hist ? `<h3 class="sub">Past attempts</h3><table class="hist"><thead><tr><th>Date</th><th>Topics</th><th>Right</th><th>Time</th><th>Score</th></tr></thead><tbody>${hist}</tbody></table>` : ''}`;
   }
 
   function showWorld(id) {
@@ -212,18 +212,18 @@ export function mountLearn(store) {
       : 'Finish every level to unlock the exam.';
     view.innerHTML = `
       <header class="whead">
-        <div><p class="crumb mono">World ${w.number}${w.needs ? `, in the ${esc(w.needs.name.toLowerCase())}` : ''}: ${esc(w.ccnaModules)}</p>
+        <div><p class="crumb mono">Topic ${w.number}${w.needs ? `, in the ${esc(w.needs.name.toLowerCase())}` : ''}: ${esc(w.ccnaModules)}</p>
         <h2>${esc(w.title)}</h2><p class="sum">${esc(w.summary)}</p></div>
         ${w.status === 'soon' ? '' : tierChip(w.tier, w.rating)}
       </header>
-      ${w.status === 'soon' ? '<p class="empty">Lessons for this world haven’t been written yet. Lecturers add them in the question bank.</p>'
-        : w.status === 'locked' ? `<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier worlds to open this one.${w.needs ? ` You’ll also need to lease the ${esc(w.needs.name.toLowerCase())}.` : ''}</p>`
+      ${w.status === 'soon' ? '<p class="empty">Lessons for this topic haven’t been written yet. Lecturers add them in the question bank.</p>'
+        : w.status === 'locked' ? `<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier topics to open this one.${w.needs ? ` You’ll also need to lease the ${esc(w.needs.name.toLowerCase())}.` : ''}</p>`
         : w.status === 'area' ? `<div class="area-gate"><i class="ti ti-building" aria-hidden="true"></i><div><strong>Taught in the ${esc(w.needs.name.toLowerCase())}</strong>
           <small>Lease it from the place menu in the top bar to open these lessons: level ${w.needs.unlockLevel} and ${w.needs.leaseCost.toLocaleString('en-US')} credits.${store.state.user.level < w.needs.unlockLevel ? ` You’re level ${store.state.user.level}, so keep learning for XP.` : ''}</small></div></div>` : ''}
       ${w.levels.length ? `<ol class="levels">${levels}</ol>` : ''}
       ${w.levels.length ? `<div class="exam${ex.ready && !locked ? ' ready' : ''}">
         <i class="ti ti-certificate" aria-hidden="true"></i>
-        <div><strong>World ${w.number} exam</strong><small>${examNote}</small></div>
+        <div><strong>Topic ${w.number} exam</strong><small>${examNote}</small></div>
         <button class="btn primary" data-exam="${w.id}" ${ex.ready && !locked ? '' : 'disabled'}>${w.status === 'mastered' ? 'Retake' : 'Take exam'}</button>
       </div>` : ''}`;
   }
@@ -252,7 +252,7 @@ export function mountLearn(store) {
   async function showLesson(levelId) {
     const { lesson } = await api.learn.lesson(levelId);
     view.innerHTML = `
-      <header class="whead"><div><p class="crumb mono">World ${lesson.world.number} · Lesson</p><h2>${esc(lesson.title)}</h2></div></header>
+      <header class="whead"><div><p class="crumb mono">Topic ${lesson.world.number} · Lesson</p><h2>${esc(lesson.title)}</h2></div></header>
       <article class="lesson">${renderLesson(lesson.lesson)}</article>
       <div class="actions">
         <button class="btn" data-back="1">Back</button>
@@ -428,14 +428,14 @@ export function mountLearn(store) {
       <section class="summary ${s.passed ? 'pass' : 'fail'}">
         <p class="crumb mono">${s.mode === 'exam' ? 'Exam result' : 'Level result'}${s.timedOut ? ' · time ran out' : ''}</p>
         <p class="score mono">${s.pct}%</p>
-        <h2>${s.mastered ? `World mastered` : s.passed ? (s.mode === 'exam' ? 'Exam passed' : 'Level complete') : `Not yet: ${s.passPct}% needed`}</h2>
+        <h2>${s.mastered ? `Topic mastered` : s.passed ? (s.mode === 'exam' ? 'Exam passed' : 'Level complete') : `Not yet: ${s.passPct}% needed`}</h2>
         <p>${s.correct} of ${s.total} correct. Rating ${s.ratingBefore} → ${s.ratingAfter} (${delta >= 0 ? '+' : ''}${delta}), now ${tierChip(s.tier, s.ratingAfter)}</p>
         <p class="gain mono">+${s.xp} XP</p>
         ${s.unlocked.length ? `<p class="unlock"><i class="ti ti-lock-open" aria-hidden="true"></i>New in the shop: ${s.unlocked.map(esc).join(', ')}</p>` : ''}
-        ${s.mode === 'exam' && s.topics.length ? `<table class="topics"><caption>By topic</caption><tbody>${s.topics.map((t) =>
+        ${s.mode === 'exam' && s.topics.length ? `<table class="topics"><caption>By subtopic</caption><tbody>${s.topics.map((t) =>
           `<tr><th scope="row">${esc(t.topic)}</th><td class="mono">${t.correct}/${t.total}</td></tr>`).join('')}</tbody></table>` : ''}
       </section>
-      <div class="actions"><button class="btn primary" data-back="1">Back to World</button></div>`;
+      <div class="actions"><button class="btn primary" data-back="1">Back to Topic</button></div>`;
     view.querySelector('[data-back]').focus();
     loadRoadmap().then(renderList);
   }
@@ -463,13 +463,13 @@ export function mountLearn(store) {
         <p>${s.correct} of ${s.total} correct in ${clock(s.seconds ?? 0)}.${unanswered}</p>
         <p class="gain mono">+${s.xp} XP</p>
       </section>
-      <h3 class="sub">By topic, weakest first</h3>
+      <h3 class="sub">By subtopic, weakest first</h3>
       <ul class="scores" aria-label="Score by topic">${scoreRows(s.topics, (t) => t.topic)}</ul>
-      ${s.byWorld.length > 1 ? `<h3 class="sub">By world</h3><ul class="scores" aria-label="Score by world">${scoreRows(s.byWorld, (w) => `World ${w.world}`)}</ul>` : ''}
+      ${s.byWorld.length > 1 ? `<h3 class="sub">By topic</h3><ul class="scores" aria-label="Score by topic">${scoreRows(s.byWorld, (w) => `Topic ${w.world}`)}</ul>` : ''}
       <p class="legend-note"><span class="line-key" aria-hidden="true"></span>${s.passPct}% exam-ready line</p>
       ${s.missed.length ? `<h3 class="sub">Review your mistakes</h3><ol class="missed">${s.missed.map((m) => `<li>
         <p class="mq">${rich(m.prompt)}</p>
-        <p class="ma">${m.late ? 'Out of time. ' : ''}Answer: <b>${esc(m.answer)}</b> <span class="mono">W${m.world}, ${esc(m.topic)}</span></p>
+        <p class="ma">${m.late ? 'Out of time. ' : ''}Answer: <b>${esc(m.answer)}</b> <span class="mono">T${m.world}, ${esc(m.topic)}</span></p>
         ${m.why ? `<p class="why">${rich(m.why)}</p>` : ''}</li>`).join('')}</ol>` : ''}
       <p class="note">Wrong answers also go to your Daily Security Audit.</p>
       <div class="actions"><button class="btn primary" data-back="1">Back to mock exams</button></div>`;

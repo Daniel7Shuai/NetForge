@@ -11,7 +11,7 @@ $me = Staff::begin();
 $id = (int) ($_GET['id'] ?? 0);
 $w = Db::one('SELECT * FROM worlds WHERE id = ?', [$id]);
 if ($w === null) {
-    Staff::flash('error', 'That world doesn’t exist.');
+    Staff::flash('error', 'That topic doesn’t exist.');
     Staff::redirect('index.php');
 }
 
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = trim((string) ($_POST['title'] ?? ''));
         $summary = trim((string) ($_POST['summary'] ?? ''));
         if ($title === '' || mb_strlen($title) > 80 || $summary === '' || mb_strlen($summary) > 255) {
-            Staff::flash('error', 'Give the world a title (up to 80 characters) and a summary (up to 255).');
+            Staff::flash('error', 'Give the topic a title (up to 80 characters) and a summary (up to 255).');
             Staff::back();
         }
         Db::exec(
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Staff::int($_POST['exam_pass_pct'] ?? '', 1, 100, 70), isset($_POST['archived']) ? 1 : 0, $id,
             ]
         );
-        Staff::flash('ok', 'World saved.');
+        Staff::flash('ok', 'Topic saved.');
     } elseif ($action === 'move') {
         // swap sort_order with the neighbouring level
         $lvl = Db::one('SELECT id, sort_order FROM levels WHERE id = ? AND world_id = ?', [(int) ($_POST['level'] ?? 0), $id]);
@@ -67,20 +67,20 @@ $levels = Db::all(
 );
 $examPool = (int) Db::one('SELECT COUNT(*) n FROM questions WHERE world_id = ? AND archived = 0', [$id])['n'];
 
-$title = 'W' . $w['number'] . ' ' . $w['title'];
+$title = 'T' . $w['number'] . ' ' . $w['title'];
 $active = 'index';
 require __DIR__ . '/../../src/views/staff_top.php';
 ?>
-<p class="crumbs"><a href="index.php">Content</a> / World <?= (int) $w['number'] ?></p>
+<p class="crumbs"><a href="index.php">Content</a> / Topic <?= (int) $w['number'] ?></p>
 <div class="page-head">
-  <h1><span class="mono tag">W<?= (int) $w['number'] ?></span> <?= e($w['title']) ?></h1>
-  <a class="btn" href="questions.php?world=<?= $id ?>"><i class="ti ti-list-details" aria-hidden="true"></i>Questions in this world</a>
+  <h1><span class="mono tag">T<?= (int) $w['number'] ?></span> <?= e($w['title']) ?></h1>
+  <a class="btn" href="questions.php?world=<?= $id ?>"><i class="ti ti-list-details" aria-hidden="true"></i>Questions in this topic</a>
 </div>
 
 <section class="panel">
   <h2>Levels</h2>
   <?php if (!$levels): ?>
-    <p class="empty">No levels yet. Students see this world as “coming soon” until it has one.</p>
+    <p class="empty">No levels yet. Students see this topic as “coming soon” until it has one.</p>
   <?php else: ?>
   <table class="data">
     <thead><tr><th scope="col" class="num">#</th><th scope="col">Title</th><th scope="col" class="num">Questions</th><th scope="col" class="num">Per run</th><th scope="col" class="num">Pass</th><th scope="col" class="num">Completed by</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
@@ -112,27 +112,27 @@ require __DIR__ . '/../../src/views/staff_top.php';
 </section>
 
 <section class="panel">
-  <h2>World settings and exam</h2>
+  <h2>Topic settings and exam</h2>
   <form method="post" class="form">
     <?= Csrf::field() ?><input type="hidden" name="action" value="save">
     <div class="grid2">
       <label>Title <input name="title" value="<?= e($w['title']) ?>" maxlength="80" required></label>
-      <label>CCNA topics <input name="ccna_modules" value="<?= e($w['ccna_modules']) ?>" maxlength="80"><small>The blueprint domains it covers, for example Network Access.</small></label>
+      <label>CCNA modules <input name="ccna_modules" value="<?= e($w['ccna_modules']) ?>" maxlength="80"><small>The blueprint domains it covers, for example Network Access.</small></label>
     </div>
     <label>Taught in <select name="requires_location">
       <?php foreach (\NetForge\Layout::data()['locations'] as $code => $loc): ?>
         <option value="<?= e($code) ?>" <?= ($w['requires_location'] ?? 'garage') === $code ? 'selected' : '' ?>><?= e($loc['name']) ?><?= $loc['leaseCost'] ? ', students must lease it first' : '' ?></option>
       <?php endforeach; ?></select>
-      <small>Students only open this world once they’ve leased that area in the game (and mastered the worlds before it).</small></label>
+      <small>Students only open this topic once they’ve leased that area in the game (and mastered the topics before it).</small></label>
     <label>Summary <input name="summary" value="<?= e($w['summary']) ?>" maxlength="255" required></label>
     <div class="grid3">
       <label>Exam questions <input name="exam_questions" type="number" min="3" max="50" value="<?= (int) $w['exam_questions'] ?>"></label>
       <label>Exam minutes <input name="exam_minutes" type="number" min="1" max="120" value="<?= (int) $w['exam_minutes'] ?>"></label>
-      <label>Pass mark (%) <input name="exam_pass_pct" type="number" min="1" max="100" value="<?= (int) $w['exam_pass_pct'] ?>"><small>Passing the exam masters the world and unlocks its gear.</small></label>
+      <label>Pass mark (%) <input name="exam_pass_pct" type="number" min="1" max="100" value="<?= (int) $w['exam_pass_pct'] ?>"><small>Passing the exam masters the topic and unlocks its gear.</small></label>
     </div>
-    <p class="help">The exam draws from all <?= $examPool ?> questions in this world.<?= $examPool < (int) $w['exam_questions'] ? ' That’s fewer than the exam length, so some questions will repeat.' : '' ?></p>
-    <label class="check"><input type="checkbox" name="archived" <?= $w['archived'] ? 'checked' : '' ?>> Archive this world (students won’t see it)</label>
-    <div class="actions"><button class="btn primary" type="submit">Save world</button></div>
+    <p class="help">The exam draws from all <?= $examPool ?> questions in this topic.<?= $examPool < (int) $w['exam_questions'] ? ' That’s fewer than the exam length, so some questions will repeat.' : '' ?></p>
+    <label class="check"><input type="checkbox" name="archived" <?= $w['archived'] ? 'checked' : '' ?>> Archive this topic (students won’t see it)</label>
+    <div class="actions"><button class="btn primary" type="submit">Save topic</button></div>
   </form>
 </section>
 <?php require __DIR__ . '/../../src/views/staff_bottom.php'; ?>

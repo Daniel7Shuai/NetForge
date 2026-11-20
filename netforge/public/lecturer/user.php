@@ -73,7 +73,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
     <h2>Details and role</h2>
     <form method="post" class="form">
       <?= Csrf::field() ?><input type="hidden" name="action" value="save">
-      <label>Display name <small>Optional. Shown instead of the username.</small><input name="display_name" value="<?= e($u['display_name']) ?>" maxlength="40"></label>
+      <label>Display name <input name="display_name" value="<?= e($u['display_name']) ?>" maxlength="40"><small>Optional. Shown instead of the username.</small></label>
       <label>Email <input type="email" name="email" value="<?= e($u['email']) ?>"></label>
       <label>Role <select name="role" <?= $self ? 'disabled' : '' ?>>
         <?php foreach (Accounts::ROLES as $r): ?><option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= ucfirst($r) ?></option><?php endforeach; ?></select>

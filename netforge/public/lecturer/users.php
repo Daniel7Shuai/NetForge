@@ -90,11 +90,11 @@ require __DIR__ . '/../../src/views/staff_top.php';
   <form method="post" class="form">
     <?= Csrf::field() ?><input type="hidden" name="action" value="create">
     <div class="grid2">
-      <label>Username <small>3 to 32 letters, numbers or underscores</small><input name="username" value="<?= e($form['username']) ?>" required autocomplete="off"></label>
-      <label>Email <small>For password reset links</small><input type="email" name="email" value="<?= e($form['email']) ?>" required autocomplete="off"></label>
+      <label>Username <input name="username" value="<?= e($form['username']) ?>" required autocomplete="off"><small>3 to 32 letters, numbers or underscores</small></label>
+      <label>Email <input type="email" name="email" value="<?= e($form['email']) ?>" required autocomplete="off"><small>For password reset links</small></label>
       <label>Role <select name="role">
         <?php foreach (Accounts::ROLES as $r): ?><option value="<?= $r ?>" <?= $form['role'] === $r ? 'selected' : '' ?>><?= ucfirst($r) ?></option><?php endforeach; ?></select></label>
-      <label>Temporary password <small>At least 8 characters. They can change it in their profile.</small><input type="text" name="password" required autocomplete="off" minlength="8"></label>
+      <label>Temporary password <input type="text" name="password" required autocomplete="off" minlength="8"><small>At least 8 characters. They can change it in their profile.</small></label>
     </div>
     <p class="help">Students start in the garage with the busted laptop, like anyone who signs up. Lecturers and admins land on these pages.</p>
     <div class="actions"><button class="btn primary">Create account</button></div>

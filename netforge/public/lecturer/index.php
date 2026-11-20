@@ -5,7 +5,7 @@ require __DIR__ . '/../../src/bootstrap.php';
 use NetForge\Content\Staff;
 use NetForge\Db;
 
-// Content overview: every world with its levels, question count and how students are doing.
+// Content overview: every topic with its levels, question count and how students are doing.
 $me = Staff::begin();
 
 $worlds = Db::all(
@@ -28,22 +28,22 @@ require __DIR__ . '/../../src/views/staff_top.php';
 ?>
 <div class="page-head">
   <div>
-    <h1>Worlds and levels</h1>
-    <p class="lede">Worlds follow the CCNA Introduction to Networks modules. Open one to edit its lessons, exam and level order.</p>
+    <h1>Topics and levels</h1>
+    <p class="lede">Topics follow the CCNA Introduction to Networks modules. Open one to edit its lessons, exam and level order.</p>
   </div>
   <p class="stat mono"><?= (int) $totals['questions'] ?> questions · <?= (int) $totals['students'] ?> students</p>
 </div>
 
 <table class="data">
   <thead><tr>
-    <th scope="col">World</th><th scope="col">CCNA modules</th><th scope="col" class="num">Levels</th>
+    <th scope="col">Topic</th><th scope="col">CCNA modules</th><th scope="col" class="num">Levels</th>
     <th scope="col" class="num">Questions</th><th scope="col" class="num">Answers</th><th scope="col" class="num">Accuracy</th>
     <th scope="col" class="num">Mastered by</th><th scope="col"><span class="sr-only">Actions</span></th>
   </tr></thead>
   <tbody>
   <?php foreach ($worlds as $w): ?>
     <tr<?= $w['archived'] ? ' class="dim"' : '' ?>>
-      <th scope="row"><span class="mono tag">W<?= (int) $w['number'] ?></span> <?= e($w['title']) ?><?= $w['archived'] ? ' <small>(archived)</small>' : '' ?></th>
+      <th scope="row"><span class="mono tag">T<?= (int) $w['number'] ?></span> <?= e($w['title']) ?><?= $w['archived'] ? ' <small>(archived)</small>' : '' ?></th>
       <td class="mono"><?= e($w['ccna_modules']) ?></td>
       <td class="num mono"><?= (int) $w['levels'] ?></td>
       <td class="num mono"><?= (int) $w['questions'] ?></td>

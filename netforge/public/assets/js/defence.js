@@ -163,7 +163,7 @@ export function mountDefence(store) {
             <p class="atk-why">${esc(h.explanation)}</p>
             ${h.penalty ? `<p class="mono">−${h.penalty} credits</p>` : ''}
           </details></li>`).join('')
-        : '<li class="empty">No attacks yet. Once you master a world, attacks built from its topics can hit your network.</li>';
+        : '<li class="empty">No attacks yet. Once you master a topic, attacks built from its subtopics can hit your network.</li>';
       box.innerHTML = `
         <div class="atk-card hist">
           <header class="atk-head"><i class="ti ti-shield-half" aria-hidden="true"></i>

@@ -206,7 +206,7 @@ final class Rules
                 throw new GameError(sprintf('Reach level %d to buy the %s. Earn XP by answering questions in Learn.', $row['unlock_level'], $row['name']));
             }
             if ($row['unlock_world'] !== null && !in_array((int) $row['unlock_world'], \NetForge\Learning\Learning::masteredNumbers($userId), true)) {
-                throw new GameError(sprintf('Master World %d to unlock the %s.', $row['unlock_world'], $row['name']));
+                throw new GameError(sprintf('Master Topic %d to unlock the %s.', $row['unlock_world'], $row['name']));
             }
             $credits = (int) $me['credits'];
             $price = (int) $row['price'];
@@ -466,7 +466,7 @@ final class Rules
     }
 
     /**
-     * Checks the current objective against the world and pays out if met.
+     * Checks the current objective against the topic and pays out if met.
      * Call after anything that changes the map. Returns the finished objective, if any.
      * Add new goal types to goalMet().
      */
@@ -494,7 +494,7 @@ final class Rules
         switch ($goal['type'] ?? '') {
             case 'place':
                 return Db::one('SELECT 1 FROM devices WHERE user_id = ? AND item_code = ?', [$userId, $goal['item']]) !== null;
-            case 'level': // {"world": number, "level": position in that world}
+            case 'level': // {"world": number, "level": position in that topic}
                 return Db::one(
                     'SELECT 1 FROM level_progress lp JOIN levels l ON l.id = lp.level_id JOIN worlds w ON w.id = l.world_id
                       WHERE lp.user_id = ? AND w.number = ? AND l.sort_order = ? AND lp.completed_at IS NOT NULL',

@@ -44,9 +44,9 @@ final class QuestionInput
             $e[] = 'Keep the prompt under 1000 characters.';
         }
         if ($topic === '') {
-            $e[] = 'Add a topic tag, for example "Subnetting".';
+            $e[] = 'Add a subtopic tag, for example "Subnetting".';
         } elseif (mb_strlen($topic) > 64) {
-            $e[] = 'Keep the topic under 64 characters.';
+            $e[] = 'Keep the subtopic under 64 characters.';
         }
         if ($explanation === '') {
             $e[] = 'Add an explanation. Students see it after answering.';

@@ -55,7 +55,7 @@ $title = $l ? $l['title'] : 'New level';
 $active = 'index';
 require __DIR__ . '/../../src/views/staff_top.php';
 ?>
-<p class="crumbs"><a href="index.php">Content</a> / <a href="world.php?id=<?= $worldId ?>">World <?= (int) $w['number'] ?></a> / <?= $l ? 'Edit level' : 'New level' ?></p>
+<p class="crumbs"><a href="index.php">Content</a> / <a href="world.php?id=<?= $worldId ?>">Topic <?= (int) $w['number'] ?></a> / <?= $l ? 'Edit level' : 'New level' ?></p>
 <div class="page-head">
   <h1><?= $l ? e($l['title']) : 'New level in W' . (int) $w['number'] ?></h1>
   <?php if ($l): ?><a class="btn" href="questions.php?level=<?= $id ?>"><i class="ti ti-list-details" aria-hidden="true"></i><?= $qCount ?> questions</a><?php endif; ?>

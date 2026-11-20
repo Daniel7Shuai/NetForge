@@ -5,8 +5,9 @@
 const L = await (await fetch(new URL('../../data/layout.json', import.meta.url))).json(); // relative to this file, so any page can import it
 
 export const TILE = L.tile;
-export const COLS = L.cols;
-export const ROWS = L.rows;
+/** Size of the place on screen, in tiles. Bigger places are bigger; set by setLocation(). */
+export let COLS = L.cols;
+export let ROWS = L.rows;
 export const FOOTPRINTS = L.footprints;
 export const LOCATIONS = L.locations;
 
@@ -17,6 +18,8 @@ export let LOC_CODE = null;
 export function setLocation(code) {
   LOC_CODE = LOCATIONS[code] ? code : 'garage';
   LOC = LOCATIONS[LOC_CODE];
+  COLS = LOC.cols || L.cols;
+  ROWS = LOC.rows || L.rows;
 }
 
 const key = (x, y) => `${x},${y}`;

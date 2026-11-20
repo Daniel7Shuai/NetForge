@@ -33,10 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $parsed = QuestionInput::parse($form);
     $errors = $parsed['errors'];
     if (!Db::one('SELECT id FROM worlds WHERE id = ?', [$form['world']])) {
-        $errors[] = 'Pick the world this question belongs to.';
+        $errors[] = 'Pick the topic this question belongs to.';
     }
     if ($form['level'] && !Db::one('SELECT id FROM levels WHERE id = ? AND world_id = ?', [$form['level'], $form['world']])) {
-        $errors[] = 'That level isn’t in the chosen world.';
+        $errors[] = 'That level isn’t in the chosen topic.';
     }
     if (!$errors) {
         $r = $parsed['row'];
@@ -78,7 +78,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
 <form method="post" class="form" id="qform">
   <?= Csrf::field() ?>
   <div class="grid3">
-    <label>World <select name="world" id="world" required><option value="">Choose…</option>
+    <label>Topic <select name="world" id="world" required><option value="">Choose…</option>
       <?php foreach ($worlds as $wid => $wl): ?><option value="<?= $wid ?>" <?= $form['world'] === $wid ? 'selected' : '' ?>><?= e($wl) ?></option><?php endforeach; ?></select></label>
     <label>Level <select name="level" id="level"><option value="0">None: exam pool only</option>
       <?php foreach ($levels as $l): ?><option value="<?= (int) $l['id'] ?>" data-world="<?= (int) $l['world_id'] ?>" <?= $form['level'] === (int) $l['id'] ? 'selected' : '' ?>>W<?= (int) $l['number'] ?>.<?= (int) $l['sort_order'] ?> <?= e($l['title']) ?></option><?php endforeach; ?></select></label>
@@ -95,7 +95,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
       <small id="help-answer"></small></label>
   </div>
   <div class="grid3">
-    <label>Topic tag <input name="topic" value="<?= e($form['topic']) ?>" maxlength="64" required><small>Used for exam and audit breakdowns.</small></label>
+    <label>Subtopic tag <input name="topic" value="<?= e($form['topic']) ?>" maxlength="64" required><small>Used for exam and audit breakdowns.</small></label>
     <label>Difficulty rating <input name="rating" type="number" min="400" max="2000" value="<?= e($form['rating']) ?>"><small>Starting Elo: 800 easy, 1000 medium, 1300 hard.</small></label>
   </div>
   <label>Explanation <textarea name="explanation" rows="3" required><?= e($form['explanation']) ?></textarea><small>Shown to students right after they answer.</small></label>

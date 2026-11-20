@@ -152,9 +152,9 @@ final class Social
               WHERE p.user_id = ? AND p.mastered_at IS NOT NULL ORDER BY w.number',
             [$userId]
         ) as $w) {
-            $out['world' . $w['number']] = sprintf('Mastered World %d: %s', $w['number'], $w['title']);
+            $out['world' . $w['number']] = sprintf('Mastered Topic %d: %s', $w['number'], $w['title']);
             if ((int) $w['exam_best'] === 100) {
-                $out['ace' . $w['number']] = sprintf('Scored 100%% on the World %d exam', $w['number']);
+                $out['ace' . $w['number']] = sprintf('Scored 100%% on the Topic %d exam', $w['number']);
             }
         }
         $u = Db::one('SELECT level FROM users WHERE id = ?', [$userId]);
@@ -312,7 +312,7 @@ final class Social
         return [
             'week' => ['start' => $week, 'end' => $weekEnd],
             'challenge' => $c ? ['title' => $c['title'], 'description' => $c['description'], 'target' => (int) $c['target'],
-                'reward' => (int) $c['reward_xp'], 'world' => $c['world_number'] === null ? null : 'W' . $c['world_number'] . ' ' . $c['world_title']] : null,
+                'reward' => (int) $c['reward_xp'], 'world' => $c['world_number'] === null ? null : 'T' . $c['world_number'] . ' ' . $c['world_title']] : null,
             'guild' => $guild,
             'guilds' => $m ? [] : self::openGuilds($week),
             'milestones' => $m ? self::milestones($userId) : [],

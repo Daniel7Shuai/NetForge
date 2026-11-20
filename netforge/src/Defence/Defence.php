@@ -85,7 +85,7 @@ final class Defence
             $types = [$type];
         }
         if ($types === []) {
-            throw new GameError('This student hasn’t mastered any world with an attack type yet.');
+            throw new GameError('This student hasn’t mastered any topic with an attack type yet.');
         }
         if (self::pending($userId) !== null) {
             throw new GameError('An attack is already in progress for this student.');

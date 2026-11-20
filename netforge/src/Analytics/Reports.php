@@ -17,7 +17,7 @@ final class Reports
     public const RISK_MIN_ANSWERS = 10;     // need this many answers before judging accuracy
     public const RISK_LOW_ACCURACY = 50;    // % correct in the period
     public const RISK_INACTIVE_DAYS = 7;    // days since the last answer
-    public const RISK_RATING_DROP = 50;     // Elo points lost in one world during the period
+    public const RISK_RATING_DROP = 50;     // Elo points lost in one topic during the period
     public const RISK_AUDIT_BACKLOG = 10;   // review questions overdue
 
     /** Reads ?from=&to= (defaults to the last 30 days, today included). */
@@ -59,7 +59,7 @@ final class Reports
         ];
     }
 
-    /** Accuracy per world in the period (FR-7.1). */
+    /** Accuracy per topic in the period (FR-7.1). */
     public static function byWorld(array $p): array
     {
         return array_map(fn ($r) => [
@@ -84,7 +84,7 @@ final class Reports
             'topic' => $r['topic'], 'worlds' => $r['worlds'], 'answers' => (int) $r['answers'],
             'students' => (int) $r['students'], 'accuracy' => (int) round($r['accuracy'] * 100),
         ], Db::all(
-            'SELECT q.topic, GROUP_CONCAT(DISTINCT CONCAT("W", w.number) ORDER BY w.number) worlds,
+            'SELECT q.topic, GROUP_CONCAT(DISTINCT CONCAT("T", w.number) ORDER BY w.number) worlds,
                     COUNT(a.id) answers, COUNT(DISTINCT a.user_id) students, AVG(a.correct) accuracy
                FROM attempts a JOIN questions q ON q.id = a.question_id JOIN worlds w ON w.id = q.world_id
                JOIN users u ON u.id = a.user_id
@@ -140,7 +140,7 @@ final class Reports
                FROM users u WHERE u.role = "student" AND u.active = 1 ORDER BY u.username',
             [$from, $to, $from, $to]
         );
-        // biggest rating fall in one world during the period: first rating_before vs last rating_after
+        // biggest rating fall in one topic during the period: first rating_before vs last rating_after
         $drops = [];
         foreach (Db::all(
             'SELECT a.user_id, w.number, a.rating_before, a.rating_after
@@ -152,7 +152,7 @@ final class Reports
             $drops[$k]['first'] ??= (int) $a['rating_before'];
             $drops[$k]['last'] = (int) $a['rating_after'];
             $drops[$k]['user'] = (int) $a['user_id'];
-            $drops[$k]['world'] = 'W' . $a['number'];
+            $drops[$k]['world'] = 'T' . $a['number'];
         }
         $worst = [];
         foreach ($drops as $d) {
@@ -236,7 +236,7 @@ final class Reports
             $gap = $obs - $exp;
             $verdict = (int) $r['answers'] < 5 ? 'Too few answers'
                 : ($gap <= -15 ? 'Harder than rated' : ($gap >= 15 ? 'Easier than rated' : 'As expected'));
-            return ['id' => (int) $r['id'], 'world' => 'W' . $r['number'], 'type' => $r['type'], 'prompt' => $r['prompt'],
+            return ['id' => (int) $r['id'], 'world' => 'T' . $r['number'], 'type' => $r['type'], 'prompt' => $r['prompt'],
                 'topic' => $r['topic'], 'rating' => (int) $r['rating'], 'tier' => Elo::tier((int) $r['rating']),
                 'answers' => (int) $r['answers'], 'observed' => $obs, 'expected' => $exp, 'gap' => $gap, 'verdict' => $verdict];
         }, $rows);

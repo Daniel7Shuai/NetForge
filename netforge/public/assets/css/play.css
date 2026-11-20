@@ -1,12 +1,12 @@
 body { display: grid; grid-template-rows: 60px auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); height: 100vh; overflow: hidden; }
 
 /* top bar */
-.top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--grid); }
+.top { display: grid; grid-template-columns: auto 1fr auto; /* the wallet takes the space between, so it never covers either side */ align-items: center; gap: 20px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--grid); }
 .top-left, .top-right { display: flex; align-items: center; gap: 18px; min-width: 0; }
 .top-right { justify-content: flex-end; }
 
 /* the wallet: the middle of the top bar, so earnings are always in view */
-.wallet { display: flex; align-items: center; gap: 12px; padding: 6px 18px 6px 14px; border: 1px solid rgba(255, 180, 61, .35); border-radius: 999px; background: linear-gradient(180deg, rgba(255, 180, 61, .08), rgba(255, 180, 61, .02)); }
+.wallet { justify-self: center; display: flex; align-items: center; gap: 12px; padding: 6px 18px 6px 14px; border: 1px solid rgba(255, 180, 61, .35); border-radius: 999px; background: linear-gradient(180deg, rgba(255, 180, 61, .08), rgba(255, 180, 61, .02)); }
 .wallet > i { font-size: 24px; color: var(--amber); }
 .wallet .amount { font-size: 24px; font-weight: 500; color: var(--amber); letter-spacing: -.01em; font-variant-numeric: tabular-nums; min-width: 6ch; text-align: right; }
 .wallet .rate { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--lime); padding-left: 12px; border-left: 1px solid rgba(255, 180, 61, .25); white-space: nowrap; }
@@ -522,6 +522,22 @@ button.objective:hover { border-color: var(--ink-dim); }
   .lvl .ok { display: none; }
 }
 
+/* mid-size windows: the wallet in the middle needs room, so the right-hand stats drop their
+   extra text (the numbers stay in their tooltips) */
+@media (max-width: 1240px) {
+  .top, .top-left, .top-right { gap: 12px; }
+  .security .pct, .xp small { display: none; }
+  .xp .bar { width: 56px; }
+}
+@media (max-width: 1100px) {
+  .brand span { display: none; } /* the logo stays */
+  .wallet { gap: 8px; padding: 5px 14px 5px 12px; }
+  .wallet .amount { font-size: 20px; min-width: 0; }
+  .wallet .rate { font-size: 13px; padding-left: 8px; }
+}
+@media (max-width: 960px) and (min-width: 901px) {
+  .streak { display: none; } /* still on the Social screen; under 900px the bar wraps and it comes back */
+}
 @media (max-width: 900px) {
   body { overflow-y: auto; overflow-x: hidden; height: auto; grid-template-rows: auto auto auto; }
   .top { display: flex; flex-wrap: wrap; padding: 8px 16px; gap: 10px; }

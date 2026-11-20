@@ -8,7 +8,7 @@ use NetForge\Db;
 use NetForge\Defence\Defence;
 use NetForge\GameError;
 
-// Module 5.0 settings. Admins change how often attacks happen (FR-5.1), which world
+// Module 5.0 settings. Admins change how often attacks happen (FR-5.1), which topic
 // unlocks each attack type, and can send a test attack for demos. Lecturers can view.
 $me = Staff::begin();
 $isAdmin = $me['role'] === 'admin';
@@ -80,7 +80,7 @@ require __DIR__ . '/../../src/views/staff_top.php';
 ?>
 <div class="page-head">
   <div><h1>Cyber attacks</h1>
-  <p class="lede">Students face random attacks built from worlds they’ve mastered: a timed defence, a credit penalty if it gets through, and a security rating from their recent results.<?= $isAdmin ? '' : ' Only an administrator can change these settings.' ?></p></div>
+  <p class="lede">Students face random attacks built from topics they’ve mastered: a timed defence, a credit penalty if it gets through, and a security rating from their recent results.<?= $isAdmin ? '' : ' Only an administrator can change these settings.' ?></p></div>
 </div>
 
 <div class="two-col">
@@ -124,8 +124,8 @@ require __DIR__ . '/../../src/views/staff_top.php';
       <?php foreach ($types as $i => $t): $st = $stats[$i]; ?>
         <tr>
           <th scope="row"><?= e($t['name']) ?><small><?= e($t['summary']) ?></small></th>
-          <td><select name="type[<?= e($t['code']) ?>][world]" aria-label="World that unlocks <?= e($t['name']) ?>" <?= $dis ?>>
-            <?php foreach ($worlds as $w): ?><option value="<?= (int) $w['number'] ?>" <?= (int) $w['number'] === (int) $t['unlock_world'] ? 'selected' : '' ?>>W<?= (int) $w['number'] ?> <?= e($w['title']) ?></option><?php endforeach; ?></select></td>
+          <td><select name="type[<?= e($t['code']) ?>][world]" aria-label="Topic that unlocks <?= e($t['name']) ?>" <?= $dis ?>>
+            <?php foreach ($worlds as $w): ?><option value="<?= (int) $w['number'] ?>" <?= (int) $w['number'] === (int) $t['unlock_world'] ? 'selected' : '' ?>>T<?= (int) $w['number'] ?> <?= e($w['title']) ?></option><?php endforeach; ?></select></td>
           <td class="num mono"><?= (int) $t['scenarios'] ?></td>
           <td class="num mono"><?= (int) $st['total'] ?></td>
           <td class="num mono"><?= (int) $st['total'] ? round($st['defended'] / $st['total'] * 100) . '%' : '–' ?></td>

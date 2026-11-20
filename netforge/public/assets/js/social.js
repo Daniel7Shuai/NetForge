@@ -135,7 +135,7 @@ export function mountSocial(store) {
       <div class="cols">
         <section class="card"><h3><i class="ti ti-target" aria-hidden="true"></i>Guild goal</h3>${goal}
           ${leader ? `<form class="sform inline" data-form="goal">
-            <label>Goal <input name="title" maxlength="80" required placeholder="Clear World 1" value="${esc(g.goal?.title || '')}"></label>
+            <label>Goal <input name="title" maxlength="80" required placeholder="Clear Topic 1" value="${esc(g.goal?.title || '')}"></label>
             <label>Correct answers <input name="target" type="number" min="5" max="2000" required value="${g.goal?.target || 50}"></label>
             <button class="btn" type="submit">${g.goal ? 'Update' : 'Set goal'}</button></form>` : ''}
         </section>
@@ -144,7 +144,7 @@ export function mountSocial(store) {
       <div class="cols">
         <section class="card"><h3><i class="ti ti-speakerphone" aria-hidden="true"></i>Share a milestone</h3>
           ${ms.length ? `<form class="sform inline" data-form="share"><label>Milestone <select name="milestone">${ms.map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('')}</select></label>
-            <button class="btn" type="submit">Share</button></form>` : '<p class="muted">Master a world or level up to earn milestones you can share.</p>'}
+            <button class="btn" type="submit">Share</button></form>` : '<p class="muted">Master a topic or level up to earn milestones you can share.</p>'}
         </section>
         <section class="card"><h3><i class="ti ti-news" aria-hidden="true"></i>Guild news</h3><ul class="feed">${feed}</ul></section>
       </div>`;
@@ -166,7 +166,7 @@ export function mountSocial(store) {
   function renderFriends() {
     const list = data.friends.length ? data.friends.map((f) => `
       <li><span class="mname">${esc(f.username)}${f.guild ? ` <span class="gtag mono">[${esc(f.guild)}]</span>` : ''}</span>
-        <span class="mono muted">Lv ${f.level}</span><span class="mono muted">${f.mastered} world${f.mastered === 1 ? '' : 's'} mastered</span>
+        <span class="mono muted">Lv ${f.level}</span><span class="mono muted">${f.mastered} topic${f.mastered === 1 ? '' : 's'} mastered</span>
         <span class="mono">${f.weekXp} XP this week</span><span class="muted">active ${ago(f.last)}</span>
         <button type="button" class="mini-btn" data-unfriend="${f.id}" aria-label="Remove ${esc(f.username)} from friends">Remove</button></li>`).join('')
       : '<li class="muted">No friends yet. Add a classmate by their username.</li>';

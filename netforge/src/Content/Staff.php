@@ -62,12 +62,12 @@ final class Staff
         return ctype_digit($s) ? max($min, min($max, (int) $s)) : $default;
     }
 
-    /** "W0 Networking basics" style labels for every world, keyed by id. */
+    /** "W0 Networking basics" style labels for every topic, keyed by id. */
     public static function worldOptions(): array
     {
         $out = [];
         foreach (\NetForge\Db::all('SELECT id, number, title FROM worlds ORDER BY number') as $w) {
-            $out[(int) $w['id']] = 'W' . $w['number'] . ' ' . $w['title'];
+            $out[(int) $w['id']] = 'T' . $w['number'] . ' ' . $w['title'];
         }
         return $out;
     }

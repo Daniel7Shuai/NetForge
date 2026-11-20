@@ -6,7 +6,7 @@ namespace NetForge\Learning;
 use NetForge\Db;
 use NetForge\GameError;
 
-/** The roadmap: which worlds and levels a student can see, and their progress. */
+/** The roadmap: which topics and levels a student can see, and their progress. */
 final class Learning
 {
     /** Full roadmap for the Learn screen. */
@@ -28,7 +28,7 @@ final class Learning
         $areas = \NetForge\Layout::data()['locations'];
 
         $out = [];
-        $open = true; // a world is open once every earlier world that has content is mastered
+        $open = true; // a topic is open once every earlier topic that has content is mastered
         foreach ($worlds as $w) {
             $wid = (int) $w['id'];
             $mine = array_values(array_filter($levels, fn ($l) => (int) $l['world_id'] === $wid));
@@ -64,7 +64,7 @@ final class Learning
                 'title'       => $w['title'],
                 'summary'     => $w['summary'],
                 'ccnaModules' => $w['ccna_modules'],
-                'status'      => $status,      // open | mastered | locked (earlier world first) | area (lease the area first) | soon
+                'status'      => $status,      // open | mastered | locked (earlier topic first) | area (lease the area first) | soon
                 'needs'       => $needs,
                 'rating'      => $rating,
                 'tier'        => Elo::tier($rating),
@@ -91,21 +91,21 @@ final class Learning
                 return $w;
             }
         }
-        throw new GameError('That world doesn’t exist.');
+        throw new GameError('That topic doesn’t exist.');
     }
 
-    /** Throws unless the student may play in this world. */
+    /** Throws unless the student may play in this topic. */
     public static function requireOpen(int $userId, int $worldId): array
     {
         $w = self::world($userId, $worldId);
         if ($w['status'] === 'locked') {
-            throw new GameError('Master the earlier worlds first.');
+            throw new GameError('Master the earlier topics first.');
         }
         if ($w['status'] === 'area') {
             throw new GameError(sprintf('These lessons are taught in the %s. Lease it from the place menu to start.', strtolower($w['needs']['name'])));
         }
         if ($w['status'] === 'soon') {
-            throw new GameError('This world has no lessons yet.');
+            throw new GameError('This topic has no lessons yet.');
         }
         return $w;
     }
@@ -167,7 +167,7 @@ final class Learning
         )['n'];
     }
 
-    /** World numbers this student has mastered (used for shop unlocks). */
+    /** Topic numbers this student has mastered (used for shop unlocks). */
     public static function masteredNumbers(int $userId): array
     {
         return array_map('intval', array_column(Db::all(
