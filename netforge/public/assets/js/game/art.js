@@ -606,6 +606,9 @@ function investorPortrait(c) {
 
 const PORTRAITS = { teacher: teacherPortrait, hacker: hackerPortrait, broker: brokerPortrait, investor: investorPortrait };
 
+/** Adds built-in portraits for more characters (the story's are in story-art.js). */
+export function registerPortraits(more) { Object.assign(PORTRAITS, more); }
+
 /** Draws the built-in portrait for a character code. */
 export function portrait(c, code) {
   (PORTRAITS[code] || genericPortrait)(c);

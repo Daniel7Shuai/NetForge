@@ -23,6 +23,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_events.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_scale.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_balance.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_datatech.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -177,6 +178,14 @@ Cyber attack and defence (module 5.0) done:
 
 
 The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.
+## The story
+
+- **The opening** (first sign-in, skippable; replay it from the menu with **Watch the intro**): your dad Marcus runs NetForge's datacentre with Ada and his staff. DataTech's armoured Reapers blow open the wall and land a VTOL dropship inside, riding along with an FBI raid that DataTech's CEO, Lucas, set up with fake evidence. The staff run, Dad sends Ada to find you, and he's taken. Three days later, in your garage, Ada explains what happened: learn everything your dad knew, grow your own datacentre and buy DataTech out to get him back. Then the tutorial carries on as before.
+- **The ending**: **DataTech** is in the shop (the DataTech category) for 999B and needs every topic mastered (every topic exam passed). Ada warns that buying it ends the game. Buying it plays the rescue: you and Ada walk into DataTech's prison and free Dad. An end card then offers **Go back and keep playing** (to just before buying it, with the 999B returned) or **Stay at the ending**; the menu offers the same way back later. `src/Ending.php`, `api/ending.php`, `users.game_ended_at`.
+- Cutscenes are drawn in code like the rest of the game, all original pixel art (`public/assets/js/cutscene.js`, art in `game/story-art.js`): characters walk with the player's stride animation, plus the dropship, shakes, flashes, debris, fades and captions, with the usual dialogue box. Skip or Esc ends a scene at any point. Ada's lines in the garage are the first tutorial step in `tutorial.json`; the scene dialogue is in `cutscene.js`. `{dad}`, `{lucas}` and the other character codes become names, and staff can rename Marcus, Lucas and the Reapers on the Characters page.
+- **Cisco equipment**: the shop sells the real kit students meet in CCNA labs and Packet Tracer: Linksys WRT300N router, Catalyst 2960 switch (on a shelf or in a rack), ISR 4331 router, ASA 5506-X firewall and UCS C220 server. Placement hints list every kind of spot an item fits.
+- Tests: `php tests/StoryTest.php`.
+
 ## Tutorial, characters, movement and music
 
 - **Tutorial**: new students meet the network teacher in a dialogue box along the bottom of the map, with the speaker standing on top of it. She walks them from placing the laptop to buying a router, cabling the ISP box and linking the laptop; each step waits until the game shows the task is done, with a small task card and a glow on the right button. The hacker appears at the end. Every line can be skipped (Esc), the whole tutorial can be skipped, and it can be replayed from the menu. Progress is saved per student (`users.tutorial_step`, `tutorial_done`). The script is `public/assets/data/tutorial.json`: edit the lines there; `{player}`, `{teacher}` and `{hacker}` become names.

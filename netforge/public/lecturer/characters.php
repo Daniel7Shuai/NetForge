@@ -35,6 +35,11 @@ $chars = Story::characters();
 $uses = [
     'teacher' => 'Guides new students through the tutorial: placing the laptop, buying a router and cabling the ISP.',
     'hacker' => 'Appears in the tutorial and taunts the student when a cyber attack starts.',
+    'dad' => 'The student’s dad, founder of NetForge. Taken in the opening cutscene; rescued in the ending.',
+    'lucas' => 'CEO of DataTech, the rival who has Dad arrested in the opening cutscene.',
+    'reaper' => 'DataTech’s armoured security, who raid the datacentre in the opening cutscene.',
+    'broker' => 'Vex: turns up after the office is leased, offering GPU deals (or picking pockets).',
+    'investor' => 'Mira: texts investment offers to the student’s phone.',
 ];
 
 $title = 'Characters';
@@ -84,5 +89,5 @@ require __DIR__ . '/../../src/views/staff_top.php';
   </section>
 <?php endforeach; ?>
 </div>
-<script type="module">import { paintPortraits } from '../assets/js/game/art.js'; paintPortraits();</script>
+<script type="module">import { paintPortraits } from '../assets/js/game/art.js'; import '../assets/js/game/story-art.js'; paintPortraits();</script>
 <?php require __DIR__ . '/../../src/views/staff_bottom.php'; ?>

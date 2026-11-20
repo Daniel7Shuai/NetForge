@@ -1,5 +1,6 @@
 // Everything outside the map canvas: top bar, tool rail, drawer, console, tags.
 import { drawIcon } from './game/art.js';
+import { datatechIcon } from './game/story-art.js';
 import { CABLE_FITS } from './rules.js';
 import { devicePixel } from './game/MapScene.js';
 import { TILE, COLS, ROWS } from './game/layout.js';
@@ -14,6 +15,7 @@ const tipOf = (el) => el.dataset.tip || el.title || '';
 const GROUPS = [
   ['end', 'End devices', 'ti-device-desktop'], ['network', 'Network devices', 'ti-router'], ['security', 'Security', 'ti-shield-lock'],
   ['gpu', 'GPUs', 'ti-cpu'], ['cable', 'Cables', 'ti-plug'], ['furniture', 'Furniture', 'ti-armchair'],
+  ['company', 'DataTech', 'ti-building-skyscraper'],
 ];
 const groupOf = (i) => i.group || (i.category === 'cable' ? 'cable' : i.category === 'part' ? 'gpu' : i.category === 'furniture' ? 'furniture' : 'end');
 const HOW = {
@@ -32,7 +34,8 @@ const DETAIL = {
 function icon(item) {
   const c = document.createElement('canvas');
   c.width = 16; c.height = 16;
-  drawIcon(c.getContext('2d'), item);
+  if (item.code === 'datatech') datatechIcon(c.getContext('2d'));
+  else drawIcon(c.getContext('2d'), item);
   return c;
 }
 
@@ -100,6 +103,8 @@ export function mountHud(store) {
     const btn = e.target.closest('[data-buy]');
     if (!btn) return;
     if (btn.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(btn)); return; }
+    const row = store.state.shop.find((r) => r.id === Number(btn.dataset.buy));
+    if (row?.code === 'datatech' && store.buyDataTech) { store.buyDataTech(row); return; } // the ending: Ada checks first
     store.buy(Number(btn.dataset.buy));
   });
 
@@ -175,7 +180,8 @@ export function mountHud(store) {
     badge.hidden = !s.user.auditDue;
     learnBtn.setAttribute('aria-label', `Learn (L)${s.user.auditDue ? `, ${s.user.auditDue} audit questions due` : ''}`);
     const o = s.objective;
-    $('obj-title').textContent = o ? o.title : 'Keep learning (L) to master topics and unlock new gear';
+    $('obj-title').textContent = s.user.gameEnded ? 'You saved your dad and bought DataTech. The end! (Menu: go back to keep playing.)'
+      : o ? o.title : 'Keep learning (L) to master topics and unlock new gear';
     const objEl = $('obj-title').closest('.objective');
     objEl.classList.toggle('done', !o);
     if (s.lastEvent && s.lastEvent.at !== lastEventAt) {
@@ -283,8 +289,12 @@ export function mountHud(store) {
     const qty = row.quantity > 1 ? `, ${row.quantity} pack` : '';
     // what still stands between the player and this item: their XP level, then any required world
     const needLevel = row.unlockLevel > s.user.level;
-    const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock` : `Master Topic ${row.unlockWorld} to unlock`;
-    const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master Topic ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
+    const topicsLeft = row.topicsLeft || [];
+    const lockText = needLevel ? `Reach level ${row.unlockLevel} to unlock`
+      : topicsLeft.length ? `Master every topic first: ${topicsLeft.map((n) => `T${n}`).join(', ')} to go` : `Master Topic ${row.unlockWorld} to unlock`;
+    const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.`
+      : topicsLeft.length ? `To buy DataTech, pass every topic exam in Learn (L). Still to master: ${topicsLeft.map((n) => `Topic ${n}`).join(', ')}.`
+      : `Master Topic ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
     const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     const price = row.quote ? row.quote.price : row.price;
     const net = row.group === 'network' && row.boost > 0;
@@ -303,7 +313,7 @@ export function mountHud(store) {
     const sub = row.locked ? lockText : row.seller ? offerLine(row) : esc(row.description || '');
     div.insertAdjacentHTML('beforeend', `<div><strong>${title}${perk ? ` <span class="earns mono">${perk}</span>` : ''}</strong><small class="${row.seller && !row.locked ? 'offerline' : ''}">${sub}</small></div>`
       + (row.locked
-        ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : `T${row.unlockWorld}`}</button>`
+        ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : topicsLeft.length ? 'Topics' : `T${row.unlockWorld}`}</button>`
         : soldOut
           ? `<button class="buy" aria-disabled="true" data-buy="${row.id}" data-tip="${esc(buyTip)}"><i class="ti ti-package-off" aria-hidden="true"></i>${fmt(price)}</button>`
           : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)}${row.seller ? ` from ${esc(row.seller)}` : ''} for ${fmt(price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(price)}</button>`));

@@ -6,13 +6,20 @@ namespace NetForge;
 /** Server-side view of public/assets/data/layout.json (floor plans per location). */
 final class Layout
 {
-    /** Player-facing hint for each slot kind. Mirrors KIND_HINTS in store.js. */
-    public const KIND_HINTS = [
-        'bench' => 'That goes on the workbench.',
-        'shelf' => 'That goes on the shelf.',
-        'desk'  => 'PCs go on the spot beside a desk.',
-        'rack'  => 'Racks go in the marked slots in the server room.',
+    /** Where each slot kind is, for hints. Mirrors SPOTS in store.js. */
+    public const SPOTS = [
+        'bench' => 'on the workbench',
+        'shelf' => 'on a shelf',
+        'desk'  => 'on the spot beside a desk',
+        'rack'  => 'in a rack slot (the office server room, the datacentre rows, or a server rack you buy)',
     ];
+
+    /** "It goes on a shelf or in a rack slot (...)": every place an item with these slot kinds fits. */
+    public static function hint(array $kinds): string
+    {
+        $where = array_values(array_filter(array_map(fn ($k) => self::SPOTS[$k] ?? null, $kinds)));
+        return $where ? 'It goes ' . implode(' or ', $where) . '. Pick one of the glowing spots.' : 'That spot doesn’t fit this item.';
+    }
 
     private static ?array $data = null;
 

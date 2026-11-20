@@ -22,7 +22,7 @@ export async function mountMoments(store) {
   const player = () => store.state.user?.name || store.state.user?.username || 'you';
   const blocked = () => {
     const s = store.state;
-    return s.learnOpen || s.socialOpen || s.attackOpen || s.phoneOpen || document.querySelector('.dlg') || document.hidden;
+    return s.learnOpen || s.socialOpen || s.attackOpen || s.phoneOpen || s.cutsceneOpen || document.querySelector('.dlg') || document.hidden;
   };
   const until = (ok) => new Promise((resolve) => {
     const t = setInterval(() => { if (ok()) { clearInterval(t); resolve(); } }, 400);
@@ -128,7 +128,7 @@ export async function mountMoments(store) {
         : want.group === 'network' && want.boost ? `Put it between your devices and the ISP box and they all earn ${want.boost}% more.`
         : want.boost ? `Fit it in a server for +${want.boost}% income.` : (want.description || '');
       const name = want.seller ? want.name.replace(/ \((budget|pro)\)$/, '') : want.name;
-      return tip(`afford:${family(want.code)}`, 'afford', { item: name.toLowerCase(), price: fmt(want.quote ? want.quote.price : want.price), why },
+      return tip(`afford:${family(want.code)}`, 'afford', { item: name === name[0] + name.slice(1).toLowerCase() ? name.toLowerCase() : name /* keep model names like Catalyst 2960 */, price: fmt(want.quote ? want.quote.price : want.price), why },
         () => showShop(want.group));
     }
   }

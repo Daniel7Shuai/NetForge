@@ -4,6 +4,7 @@
 import { api } from './api.js';
 import { loadStory, character, fill } from './story.js';
 import { playDialogue, portraitEl } from './dialogue.js';
+import { playIntro } from './cutscene.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
@@ -27,7 +28,7 @@ export async function mountTutorial(store) {
   let { step, done } = story.tutorial;
   let busy = false, card = null;
   const player = () => store.state.user?.name || store.state.user?.username || 'you';
-  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.attackOpen || document.querySelector('.dlg');
+  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.attackOpen || store.state.cutsceneOpen || document.querySelector('.dlg');
 
   // "Replay tutorial" in the menu
   document.getElementById('tutorial-replay')?.addEventListener('click', async () => {
@@ -35,8 +36,18 @@ export async function mountTutorial(store) {
     location.reload();
   });
 
+  // "Watch the intro" in the menu
+  document.getElementById('intro-replay')?.addEventListener('click', () => { if (!store.state.cutsceneOpen) playIntro(store); });
+
   store.tutorialDone = done; // the characters' other tips wait until the tutorial is over
   if (done) return;
+  // a brand-new student: the story starts with the raid on Dad's datacentre
+  if (step === 0 && !(story.tutorial.seen || []).includes('intro')) {
+    api.seen('intro').catch(() => {});
+    busy = true;
+    await playIntro(store);
+    busy = false;
+  }
   store.subscribe(() => tick());
   setInterval(() => tick(), 1000); // also catch up after Learn, an attack or a conversation closes
   tick();

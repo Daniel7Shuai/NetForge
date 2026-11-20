@@ -10,6 +10,8 @@ import { mountTutorial } from './tutorial.js';
 import { mountMusic } from './musicui.js';
 import { mountMoments } from './moments.js';
 import { mountEvents } from './events.js';
+import { mountEnding } from './ending.js';
+import './game/story-art.js'; // the story's characters and their portraits
 import { MapScene } from './game/MapScene.js';
 import { TILE, COLS, ROWS, setLocation } from './game/layout.js';
 
@@ -48,3 +50,4 @@ mountTutorial(store);
 // the characters keep turning up after it: tips along the way, the broker, investors
 mountMoments(store);
 mountEvents(store);
+mountEnding(store);

@@ -770,3 +770,23 @@ button.objective:hover { border-color: var(--ink-dim); }
 .chat-send input:focus-visible { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
 .share-row { margin-top: 4px; }
 @media (max-width: 640px) { .chat-send { grid-template-columns: minmax(0, 1fr) auto; } .chat-send [data-share-open] { grid-column: 1 / -1; } }
+
+/* cutscenes: a pixel-art stage over the whole screen */
+.cutscene { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: #000; animation: cs-in .4s ease; }
+.cutscene canvas { width: min(100vw, calc(100vh * 1.8)); max-height: 100vh; aspect-ratio: 9 / 5; image-rendering: pixelated; }
+.cutscene .cs-caption { position: absolute; top: 18px; left: 22px; margin: 0; font: 500 15px var(--mono); color: var(--ink); text-shadow: 0 2px 6px #000; letter-spacing: .02em; }
+.cutscene .cs-skip { position: absolute; top: 14px; right: 16px; z-index: 40; display: flex; gap: 8px; align-items: center; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: rgba(9, 14, 24, .8); color: var(--ink-dim); font-size: 13px; }
+.cutscene .cs-skip:hover { color: var(--ink); border-color: var(--ink-dim); }
+.cutscene .cs-skip kbd { font: 11px var(--mono); border: 1px solid var(--line); padding: 0 4px; border-radius: 3px; }
+.cutscene .dlg { z-index: 30; }
+.cutscene.out { opacity: 0; transition: opacity .4s; }
+@keyframes cs-in { from { opacity: 0; } }
+
+/* the end */
+.end-card { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 40%, #10192a, #000 70%); animation: cs-in .8s ease; }
+.end-card > div { max-width: 520px; text-align: center; }
+.end-card h2 { margin: 0 0 12px; font-size: 44px; letter-spacing: .04em; color: var(--amber); }
+.end-card p { margin: 0 0 10px; font-size: 17px; }
+.end-card .muted { color: var(--ink-dim); font-size: 15px; }
+.end-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+@media (prefers-reduced-motion: reduce) { .cutscene, .end-card { animation: none; } }

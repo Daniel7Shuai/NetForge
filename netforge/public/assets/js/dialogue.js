@@ -27,11 +27,12 @@ export function portraitEl(c, scale = 5) {
 /**
  * Plays a list of [speaker, text] lines. Resolves 'done' after the last line, or 'skipped'.
  * Options: player (name for {player}), skipLabel, choices: [{label, value}] offered on the last
- * line instead of Done (resolves with the chosen value; Esc or Skip still resolve 'skipped').
+ * line instead of Done (resolves with the chosen value; Esc or Skip still resolve 'skipped'),
+ * host: the element to show it in (the map by default).
  */
-export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip', choices = null } = {}) {
+export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip', choices = null, host: into = null } = {}) {
   return new Promise((resolve) => {
-    const host = document.querySelector('.stage');
+    const host = into || document.querySelector('.stage'); // a cutscene passes its own stage
     const root = document.createElement('div');
     root.className = 'dlg';
     root.innerHTML = `<div class="dlg-shade"></div><div class="dlg-cast"></div>

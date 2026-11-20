@@ -208,6 +208,10 @@ final class Rules
             if ($row['unlock_world'] !== null && !in_array((int) $row['unlock_world'], \NetForge\Learning\Learning::masteredNumbers($userId), true)) {
                 throw new GameError(sprintf('Master Topic %d to unlock the %s.', $row['unlock_world'], $row['name']));
             }
+            $isEnding = $row['item_code'] === Ending::ITEM;
+            if ($isEnding) {
+                Ending::checkCanBuy($userId);
+            }
             $credits = (int) $me['credits'];
             $price = (int) $row['price'];
             if ($row['seller'] !== null) {
@@ -222,6 +226,11 @@ final class Rules
                 throw new GameError(sprintf('You need %s more credits. Your online devices earn them every second.', Money::short($price - $credits)));
             }
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$price, $userId]);
+            if ($isEnding) { // a company, not something to carry around
+                self::log($userId, 'ok', sprintf('Bought %s for %s credits.', $row['name'], Money::short($price)));
+                Ending::finish($userId);
+                return $row['name'];
+            }
             Db::exec(
                 'INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, ?)
                  ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)',
@@ -265,7 +274,7 @@ final class Rules
 
             $slot = Layout::slotAnchoredAt($location, $kinds, $x, $y, $userId);
             if ($slot === null) {
-                throw new GameError(Layout::KIND_HINTS[$kinds[0]] ?? 'That spot doesn’t fit this item.');
+                throw new GameError(Layout::hint($kinds));
             }
 
             // Any device in this location already covering one of the slot's tiles?
@@ -375,7 +384,7 @@ final class Rules
             $kinds = Layout::kinds($d['slot_kinds']);
             $slot = Layout::slotAnchoredAt($d['location'], $kinds, $x, $y, $userId);
             if ($slot === null) {
-                throw new GameError(Layout::KIND_HINTS[$kinds[0]] ?? 'That spot doesn’t fit this device.');
+                throw new GameError(Layout::hint($kinds));
             }
             $taken = Db::one(
                 'SELECT d.label FROM devices d JOIN item_types t ON t.code = d.item_code

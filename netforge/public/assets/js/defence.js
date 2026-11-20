@@ -42,7 +42,7 @@ export function mountDefence(store) {
   }
 
   async function poll() {
-    if (current || document.hidden) return;
+    if (current || document.hidden || store.state.cutsceneOpen) return; // no attacks in the middle of a cutscene
     try {
       const d = await call('GET');
       showSecurity(d.security);

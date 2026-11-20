@@ -3,12 +3,16 @@
 import { api } from './api.js';
 import { slotAt, slotsFor, LOC, setFurniture, furnitureProblem, userFurnitureAt, FOOTPRINTS } from './game/layout.js';
 
-/** Player-facing hint for each slot kind. Mirrors Layout::KIND_HINTS in PHP. */
-const KIND_HINTS = {
-  bench: 'That goes on the workbench.',
-  shelf: 'That goes on the shelf.',
-  desk: 'PCs go on the spot beside a desk.',
-  rack: 'Racks go in the marked slots in the server room.',
+/** Where each slot kind is, for hints. Mirrors Layout::SPOTS in PHP. */
+const SPOTS = {
+  bench: 'on the workbench',
+  shelf: 'on a shelf',
+  desk: 'on the spot beside a desk',
+  rack: 'in a rack slot (the office server room, the datacentre rows, or a server rack you buy)',
+};
+const hint = (kinds) => {
+  const where = kinds.map((k) => SPOTS[k]).filter(Boolean);
+  return where.length ? `It goes ${where.join(' or ')}. Pick one of the glowing spots.` : 'That spot doesn’t fit this item.';
 };
 
 export function createStore() {
@@ -182,10 +186,10 @@ export function createStore() {
         return { slot: { x: tile.x, y: tile.y, w, h }, problem: furnitureProblem(item.furniture, tile.x, tile.y, store.state.devices, store.state.playerTile) };
       }
       if (!slotsFor(item.slotKinds).length) {
-        return { slot: null, problem: `There’s no spot for a ${item.name} in the ${LOC.name.toLowerCase()}. You’ll need a bigger place.` };
+        return { slot: null, problem: `There’s no spot for a ${item.name} in the ${LOC.name.toLowerCase()}. ${hint(item.slotKinds)}` };
       }
       const slot = slotAt(item.slotKinds, tile);
-      if (!slot) return { slot: null, problem: KIND_HINTS[item.slotKinds[0]] || 'That spot doesn’t fit this item.' };
+      if (!slot) return { slot: null, problem: hint(item.slotKinds) };
       const taken = store.occupant(slot);
       if (taken) return { slot, problem: `${taken.label} is already there. Pick a free spot.` };
       const p = store.state.playerTile;

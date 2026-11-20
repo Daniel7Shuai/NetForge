@@ -22,6 +22,7 @@ final class GameState
         $location = $user['location'];
         $user['locationName'] = Layout::location($location)['name'];
         $user['auditDue'] = \NetForge\Learning\Learning::auditDue($userId);
+        $user['gameEnded'] = Ending::ended($userId);
 
         $inventory = array_map(fn ($r) => ['quantity' => (int) $r['quantity'], 'slotKinds' => Layout::kinds($r['slot_kinds']),
                 'group' => $r['shop_group'], 'furniture' => $r['furniture_type'], 'boost' => (int) $r['boost_pct']] + $r, Db::all(
@@ -32,6 +33,7 @@ final class GameState
         ));
 
         $mastered = \NetForge\Learning\Learning::masteredNumbers($userId);
+        $topicsLeft = Ending::topicsLeft($userId);
         $shop = array_map(fn ($r) => ($r['seller'] ? ['seller' => $r['seller'], 'quote' => Market::quote($r, $userId)] : ['seller' => null, 'quote' => null]) + [
             'id'          => (int) $r['id'],
             'group'       => $r['shop_group'],
@@ -49,7 +51,9 @@ final class GameState
             'unlockWorld' => $r['unlock_world'] === null ? null : (int) $r['unlock_world'],
             // locked until the student's XP level is high enough (and any required world is mastered)
             'locked'      => (int) $r['unlock_level'] > $user['level']
-                || ($r['unlock_world'] !== null && !in_array((int) $r['unlock_world'], $mastered, true)),
+                || ($r['unlock_world'] !== null && !in_array((int) $r['unlock_world'], $mastered, true))
+                || ($r['code'] === Ending::ITEM && $topicsLeft),
+            'topicsLeft'  => $r['code'] === Ending::ITEM ? $topicsLeft : null, // topics to master before DataTech can be bought
         ], Db::all(
             'SELECT s.id, s.item_code, s.seller, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec,
                     t.shop_group, t.boost_pct, t.furniture_type, t.sprite

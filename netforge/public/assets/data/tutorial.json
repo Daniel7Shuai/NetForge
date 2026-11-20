@@ -4,8 +4,11 @@
     {
       "id": "welcome",
       "say": [
-        ["teacher", "Hey, {player}! I’m {teacher}. Welcome to your garage: every great network starts somewhere."],
-        ["teacher", "Right now it’s just you and a busted laptop. Let’s get it online, so it starts earning credits for you."]
+        ["teacher", "{player}! Thank goodness I found you. It’s me, {teacher}, from your dad’s datacentre."],
+        ["teacher", "Three nights ago DataTech raided us. {lucas} fed the FBI fake evidence, and his Reapers took your dad. NetForge is gone."],
+        ["teacher", "Lawyers won’t beat DataTech. Networks will. Learn everything your dad knew, build your own datacentre, and grow big enough to buy DataTech out from under {lucas}."],
+        ["teacher", "Then we walk in the front door and bring {dad} home."],
+        ["teacher", "It starts here, in your garage, with one laptop. Let’s get it online, so it starts earning credits for you."]
       ]
     },
     {
