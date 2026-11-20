@@ -185,6 +185,16 @@ export function drawIcon(c, item) {
   if (item.sprite === 'gpucard' || item.category === 'part') return gpuCard(c, 0, 0);
   switch (item.sprite) {
     case 'gpurig': c.save(); c.scale(0.5, 0.5); gpuRig(c, 8, 0); c.restore(); return;
+    case 'rack': case 'rack2u': c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore(); return;
+  }
+  // any other device: its map sprite, scaled down to fit and centred
+  const sp = SPRITES[item.sprite];
+  if (sp) {
+    const k = Math.min(1, 16 / sp.w, 16 / sp.h);
+    c.save(); c.translate(Math.floor((16 - sp.w * k) / 2), Math.floor((16 - sp.h * k) / 2)); c.scale(k, k); sp.draw(c); c.restore();
+    return;
+  }
+  switch (item.sprite) {
     default: c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore();
   }
 }

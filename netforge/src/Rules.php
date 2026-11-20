@@ -268,7 +268,7 @@ final class Rules
             $user = Db::one('SELECT location FROM users WHERE id = ? FOR UPDATE', [$userId]);
             $location = $user['location'];
             $locName = Layout::location($location)['name'];
-            if (Layout::slotsFor($location, $kinds, $userId) === []) {
+            if (!in_array('floor', $kinds, true) && Layout::slotsFor($location, $kinds, $userId) === []) {
                 throw new GameError(sprintf('There’s no spot for a %s in the %s. You’ll need a bigger place.', $item['name'], strtolower($locName)));
             }
 
@@ -294,7 +294,7 @@ final class Rules
                 [$userId, $itemCode, $label, $location, $x, $y]
             );
             Db::exec('UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_code = ?', [$userId, $itemCode]);
-            $where = ['bench' => 'on the workbench', 'shelf' => 'on the shelf', 'desk' => 'at a desk', 'rack' => 'in the server room'];
+            $where = ['bench' => 'on the workbench', 'shelf' => 'on the shelf', 'desk' => 'at a desk', 'rack' => 'in the server room', 'floor' => 'on the floor'];
             self::log($userId, 'ok', sprintf('Placed %s %s.', $label, $where[$slot['kind']] ?? 'on the map'));
             return $label;
         });

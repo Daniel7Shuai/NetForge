@@ -115,6 +115,12 @@ export async function mountMoments(store) {
     if (open('gpu') && !seen.has('gpu')) return tip('gpu', 'gpu', {}, () => showShop('gpu'));
     if (open('furniture') && !seen.has('furniture')) return tip('furniture');
 
+    // Wi-Fi devices and lightweight APs, explained the first time one is bought
+    const radioOf = (code) => s.shop.find((r) => r.code === code)?.radio;
+    const ownRadio = (radio) => s.inventory.some((i) => i.quantity > 0 && radioOf(i.code) === radio) || s.devices.some((d) => d.radio === radio);
+    if (ownRadio('client') && !seen.has('wifi')) return tip('wifi');
+    if (ownRadio('lap') && !seen.has('lap')) return tip('lap');
+
     // something new they can now afford: someone tells them to go and buy it
     if (Date.now() - lastAfford < AFFORD_GAP) return;
     const family = (code) => code.replace(/_(budget|std|pro)$/, '');
@@ -125,7 +131,7 @@ export async function mountMoments(store) {
     if (want) {
       lastAfford = Date.now();
       const why = want.earns ? `It earns ${rate(want.earns)} once it’s online.`
-        : want.group === 'network' && want.boost ? `Put it between your devices and the ISP box and they all earn ${want.boost}% more.`
+        : ['network', 'wireless', 'security'].includes(want.group) && want.boost ? `Put it between your devices and the ISP box and they all earn ${want.boost}% more.`
         : want.boost ? `Fit it in a server for +${want.boost}% income.` : (want.description || '');
       const name = want.seller ? want.name.replace(/ \((budget|pro)\)$/, '') : want.name;
       return tip(`afford:${family(want.code)}`, 'afford', { item: name === name[0] + name.slice(1).toLowerCase() ? name.toLowerCase() : name /* keep model names like Catalyst 2960 */, price: fmt(want.quote ? want.quote.price : want.price), why },

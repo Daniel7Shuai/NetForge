@@ -151,6 +151,14 @@
       ["teacher", "Running out of spots? Buy furniture in the shop. A desk adds a spot for a PC, a server rack adds a slot for rack gear."],
       ["teacher", "Click it in your inventory, then an open bit of floor. Use the remove tool to pick it up again."]
     ],
+    "wifi": [
+      ["teacher", "That one connects over Wi-Fi, so there's no cable to run. It needs an access point online in the same room: a wireless router, an AP-PT, or a lightweight AP with its controller."],
+      ["teacher", "Small devices like phones, sensors and access points can stand on any open bit of floor. Click it in your inventory, then a free tile."]
+    ],
+    "lap": [
+      ["teacher", "A lightweight access point is clever but helpless on its own. It needs a Wireless LAN Controller online in the same building to give it its settings."],
+      ["teacher", "Put a WLC in a rack, cable both to your switch, and every LAP in the building comes alive."]
+    ],
     "broker": [
       ["broker", "Psst. {player}, right? Nice little operation you’ve got."],
       ["broker", "I know people at the GPU suppliers. A little cash up front and I can get you a discount on every GPU. Want my help?"]

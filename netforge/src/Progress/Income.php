@@ -23,7 +23,7 @@ final class Income
     public static function online(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct,
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, d.location, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct, t.radio, t.site_boost,
                                  COALESCE(g.boost_pct, 0) gpu_boost
                             FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
@@ -57,16 +57,46 @@ final class Income
             for ($p = $parent[$id] ?? null; $p !== null && isset($devices[$p]); $p = $parent[$p] ?? null) {
                 $boost *= 1 + self::networkBoost($devices[$p]) / 100;
             }
-            $out[] = $d + ['path_boost' => $boost];
+            $out[$id] = $d + ['path_boost' => $boost];
         }
-        return $out;
+
+        // Wi-Fi: a wireless-only device is online when an access point in the same place is online.
+        // A lightweight AP (LAP) only works while a Wireless LAN Controller there is online too.
+        $wlc = [];
+        foreach ($out as $d) {
+            if ($d['radio'] === 'wlc') {
+                $wlc[$d['location']] = true;
+            }
+        }
+        $wifi = []; // location -> the best path boost a client can get through an access point there
+        foreach ($out as $d) {
+            if ($d['radio'] === 'ap' || ($d['radio'] === 'lap' && isset($wlc[$d['location']]))) {
+                $via = $d['path_boost'] * (1 + self::networkBoost($d) / 100);
+                $wifi[$d['location']] = max($wifi[$d['location']] ?? 0, $via);
+            }
+        }
+        foreach ($devices as $id => $d) {
+            if ($d['radio'] === 'client' && !isset($out[$id]) && isset($wifi[$d['location']])) {
+                $out[$id] = $d + ['path_boost' => $wifi[$d['location']], 'wireless' => true];
+            }
+        }
+
+        // a Network Controller online lifts every device in its place (site_boost percent)
+        $site = [];
+        foreach ($out as $d) {
+            $site[$d['location']] = ($site[$d['location']] ?? 0) + (int) $d['site_boost'];
+        }
+        foreach ($out as $id => $d) {
+            $out[$id]['path_boost'] *= 1 + ($site[$d['location']] ?? 0) / 100;
+        }
+        return array_values($out);
     }
 
     /** How much a network device boosts the end devices behind it, in percent: boost_pct, x1.5 at tier 2, x2 at tier 3. */
     public static function networkBoost(array $d): float
     {
-        if (($d['shop_group'] ?? '') !== 'network') {
-            return 0.0;
+        if (!in_array($d['shop_group'] ?? '', ['network', 'wireless', 'security'], true)) {
+            return 0.0; // routers, switches, hubs, access points and modems boost; end devices and GPUs don't
         }
         return (int) $d['boost_pct'] * Rules::tierIncome((int) $d['tier']);
     }

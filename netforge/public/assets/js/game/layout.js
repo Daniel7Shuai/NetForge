@@ -77,6 +77,15 @@ export function staticBlocked() {
   return b;
 }
 
+/** Is a tile open floor (not a wall, furniture, a built-in spot or bought furniture)? Mirrors Layout::openFloor(). */
+export function openFloor(x, y) {
+  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
+  const b = staticBlocked();
+  for (const s of LOC.slots) for (let j = 0; j < s.h; j++) b.add(key(s.x, s.y + j));
+  for (const f of USER_FURNITURE) for (const [tx, ty] of furnitureTiles(f.type, f.x, f.y)) b.add(key(tx, ty));
+  return !b.has(key(x, y));
+}
+
 /** Spots in this location that accept any of the given slot kinds. Mirrors NetForge\Layout::slotsFor(). */
 export function slotsFor(kinds) {
   const list = Array.isArray(kinds) ? kinds : String(kinds || '').split(',');
@@ -84,9 +93,12 @@ export function slotsFor(kinds) {
   return [...LOC.slots, ...mine].filter((s) => list.includes(s.kind));
 }
 
-/** The slot covering a tile, if any. */
+/** The slot covering a tile, if any. Small devices that go 'floor' can stand on any open tile. */
 export function slotAt(kinds, tile) {
-  return slotsFor(kinds).find((s) => s.x === tile.x && tile.y >= s.y && tile.y < s.y + s.h) || null;
+  const s = slotsFor(kinds).find((sl) => sl.x === tile.x && tile.y >= sl.y && tile.y < sl.y + sl.h);
+  if (s) return s;
+  const list = Array.isArray(kinds) ? kinds : String(kinds || '').split(',');
+  return list.includes('floor') && openFloor(tile.x, tile.y) ? { kind: 'floor', x: tile.x, y: tile.y, h: 1 } : null;
 }
 
 export const furnitureOf = (type) => [...LOC.furniture, ...USER_FURNITURE].filter((f) => f.type === type);

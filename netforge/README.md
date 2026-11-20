@@ -25,6 +25,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_balance.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_datatech.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_music.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_catalog.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -185,6 +186,13 @@ The database is pre-release: after pulling schema changes, drop `netforge` and r
 - **The ending**: **DataTech** is in the shop (the DataTech category) for 999B and needs every topic mastered (every topic exam passed). Ada warns that buying it ends the game. Buying it plays the rescue: you and Ada walk into DataTech's prison and free Dad. An end card then offers **Go back and keep playing** (to just before buying it, with the 999B returned) or **Stay at the ending**. It asks only there (again on the next visit if the game was closed before choosing); staying is final. `src/Ending.php`, `api/ending.php`, `users.game_ended_at`.
 - Cutscenes are drawn in code like the rest of the game, all original pixel art (`public/assets/js/cutscene.js`, art in `game/story-art.js`): characters walk with the player's stride animation, plus the dropship, shakes, flashes, debris, fades and captions, with the usual dialogue box. Skip or Esc ends a scene at any point. Ada's lines in the garage are the first tutorial step in `tutorial.json`; the scene dialogue is in `cutscene.js`. `{dad}`, `{lucas}` and the other character codes become names, and staff can rename Marcus, Lucas and the Reapers on the Characters page.
 - **Cisco equipment**: the shop sells the real kit students meet in CCNA labs and Packet Tracer: Linksys WRT300N router, Catalyst 2960 switch (on a shelf or in a rack), ISR 4331 router, ASA 5506-X firewall and UCS C220 server. Placement hints list every kind of spot an item fits.
+- **The Packet Tracer catalogue** (`schema_catalog.sql`, 42 devices, each with its real ports and a description of what it is), in shop sections End devices, Network devices, Wireless, Security & WAN and IoT:
+  - Routers: 2620XM, 2621XM, 1841, PT-Router, 2811 (with a wireless card, so it's also an access point), 1941, ISR 4321, 2901, 2911 and the Catalyst 8200 edge router. Switches: PT-Hub, PT-Switch, Catalyst 2950, 3560-24PS (Layer 3, PoE) and 3650. Switches and routers are 1U, one tile tall; servers are 2U.
+  - Wireless: AP-PT, LAP-PT and the Wireless LAN Controller. Security & WAN: DSL and cable modems, ASA 5505 and the Network Controller.
+  - End devices: smartphone, tablet, printer, smart TV, IP phone, and DHCP, DNS, email, file and database servers. IoT: smart light, smart plug, thermostat, IP camera, waste, environment and parking sensors, smart street light, traffic light controller and an industrial controller (PLC).
+- **Wi-Fi** (`Income::online`): phones, tablets and most IoT devices have no ports. They're online when an access point in the same place is online (a wireless router, an AP-PT, a 2811, or a LAP with a Wireless LAN Controller online in the same building), and earn through it (the AP's boost applies). The Network Controller lifts every device in its building by 10%; the IP camera and ASA 5505 add to the firewall shield. Ada explains Wi-Fi and the LAP/WLC pairing the first time they come up.
+- **Floor spots**: small devices (`slot_kinds` includes `floor`) stand on any open tile: not a wall, furniture, a built-in spot or another device.
+- Coming in later phases: rack view with U-slots, interface modules, Misc rack gear (UPS, PDU, patch panel...), electricity, cooling and temperature, and the new office and datacentre maps.
 - Tests: `php tests/StoryTest.php`.
 
 ## Tutorial, characters, movement and music

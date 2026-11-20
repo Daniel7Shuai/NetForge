@@ -37,6 +37,7 @@ final class GameState
         $shop = array_map(fn ($r) => ($r['seller'] ? ['seller' => $r['seller'], 'quote' => Market::quote($r, $userId)] : ['seller' => null, 'quote' => null]) + [
             'id'          => (int) $r['id'],
             'group'       => $r['shop_group'],
+            'radio'       => $r['radio'],
             'sprite'      => $r['sprite'],
             'boost'       => (int) $r['boost_pct'],
             'furniture'   => $r['furniture_type'],
@@ -56,7 +57,7 @@ final class GameState
             'topicsLeft'  => $r['code'] === Ending::ITEM ? $topicsLeft : null, // topics to master before DataTech can be bought
         ], Db::all(
             'SELECT s.id, s.item_code, s.seller, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec,
-                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite
+                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite, t.radio
                FROM shop_items s JOIN item_types t ON t.code = s.item_code ORDER BY s.sort_order, s.id'
         ));
 
@@ -75,6 +76,8 @@ final class GameState
             'earning'   => $income['byDevice'][(int) $r['id']] ?? 0, // credits per second, now (0 if offline)
             'rate'      => (int) round((int) $r['income_per_sec'] * Rules::tierIncome((int) $r['tier']) * (1 + (int) $r['gpu_boost'] / 100)), // per second when online
             'netBoost'  => (int) round(\NetForge\Progress\Income::networkBoost($r)), // % boost to end devices behind it (network gear)
+            'radio'     => $r['radio'],      // ap, lap, wlc, client (Wi-Fi only) or none
+            'siteBoost' => (int) $r['site_boost'],
             'gpuCard'   => $r['gpu_card'],
             'gpuBoost'  => (int) $r['gpu_boost'],
             'maxTier'   => (int) $r['max_tier'],
@@ -83,7 +86,7 @@ final class GameState
             'ports'     => json_decode((string) $r['ports'], true) ?: [],
         ], Db::all(
             'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, COALESCE(g.boost_pct, 0) gpu_boost,
-                    t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct
+                    t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct, t.radio, t.site_boost
                FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ? AND d.location = ?',
             [$userId, $location]
         ));

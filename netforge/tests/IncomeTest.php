@@ -35,8 +35,11 @@ $dev = function (string $code, int $tier = 1) use ($uid, &$n): int {
         [$uid, $code, $code . '-' . ++$n, $n, $tier]);
     return (int) Db::pdo()->lastInsertId();
 };
-$link = fn (int $a, int $b) => Db::exec('INSERT INTO cables (user_id, cable_code, a_device_id, a_port, b_device_id, b_port, status) VALUES (?, "copper", ?, "p", ?, "p", "up")',
-    [$uid, $a, $b]);
+$port = 0;
+$link = function (int $a, int $b) use ($uid, &$port): void { // each cable on its own port (one cable per port)
+    Db::exec('INSERT INTO cables (user_id, cable_code, a_device_id, a_port, b_device_id, b_port, status) VALUES (?, "copper", ?, ?, ?, ?, "up")',
+        [$uid, $a, 'p' . ++$port, $b, 'p' . ++$port]);
+};
 $rate = fn () => round(Income::summary($uid)['perSec'], 2);
 $laptop = (int) Db::one('SELECT income_per_sec r FROM item_types WHERE code = "laptop"')['r'];
 
@@ -66,6 +69,36 @@ try {
     $link($switch, $lap);
     check('router and switch in a row multiply (x1.25 x1.4)', $rate(), round($laptop * 1.25 * 1.4, 2));
     check('only the laptop shows coins', array_keys(Income::summary($uid)['byDevice']), [$lap]);
+
+    echo "Wi-Fi\n";
+    Db::exec('DELETE FROM cables WHERE user_id = ?', [$uid]);
+    Db::exec('DELETE FROM devices WHERE user_id = ? AND id <> ?', [$uid, $isp]);
+    $phoneRate = (int) Db::one('SELECT income_per_sec r FROM item_types WHERE code = "smartphone"')['r'];
+    $phone = $dev('smartphone');
+    check('a phone with no access point is offline', $rate(), 0.0);
+    $ap = $dev('ap_pt');
+    check('an access point that isn’t cabled gives no Wi-Fi', $rate(), 0.0);
+    $link($isp, $ap);
+    check('an online AP-PT puts the phone online (+15%)', $rate(), round($phoneRate * 1.15, 2));
+    Db::exec('DELETE FROM cables WHERE user_id = ?', [$uid]);
+    Db::exec('DELETE FROM devices WHERE id = ?', [$ap]);
+    $lap = $dev('lap_pt');
+    $link($isp, $lap);
+    check('a lightweight AP alone gives no Wi-Fi', $rate(), 0.0);
+    $wlc = $dev('wlc_pt');
+    $link($isp, $wlc);
+    check('with a WLC online it works (+30%)', $rate(), round($phoneRate * 1.3, 2));
+    $nc = $dev('net_ctrl');
+    $link($isp, $nc);
+    check('a Network Controller lifts everything by 10%', $rate(), round($phoneRate * 1.3 * 1.1, 2));
+
+    echo "Standing on the floor\n";
+    Db::exec('UPDATE users SET location = "garage" WHERE id = ?', [$uid]);
+    Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, "iot_light", 2)', [$uid]);
+    $err = function (callable $fn): string { try { $fn(); return 'no error'; } catch (\NetForge\GameError $e) { return $e->getMessage(); } };
+    check('a smart light can stand on open floor', str_starts_with(\NetForge\Rules::place($uid, 'iot_light', 8, 8), 'LGT'), true);
+    check('but not on a wall', str_starts_with($err(fn () => \NetForge\Rules::place($uid, 'iot_light', 8, 0)), 'It goes on any open bit of floor'), true);
+    check('nor on top of another device', str_contains($err(fn () => \NetForge\Rules::place($uid, 'iot_light', 8, 8)), 'already there'), true);
 
     echo "Money in messages\n";
     check('thousands', Money::short(4000), '4k');

@@ -12,6 +12,7 @@ final class Layout
         'shelf' => 'on a shelf',
         'desk'  => 'on the spot beside a desk',
         'rack'  => 'in a rack slot (the office server room, the datacentre rows, or a server rack you buy)',
+        'floor' => 'on any open bit of floor',
     ];
 
     /** "It goes on a shelf or in a rack slot (...)": every place an item with these slot kinds fits. */
@@ -134,6 +135,32 @@ final class Layout
                 return $s;
             }
         }
+        if (in_array('floor', $kinds, true) && self::openFloor($location, $x, $y, $userId)) {
+            return ['kind' => 'floor', 'x' => $x, 'y' => $y, 'h' => 1]; // small devices stand anywhere free
+        }
         return null;
+    }
+
+    /**
+     * Is (x, y) open floor: not a wall, furniture, a built-in spot or bought furniture with its spot?
+     * (Devices standing there are checked by the caller.) Mirrors openFloor() in layout.js.
+     */
+    public static function openFloor(string $location, int $x, int $y, ?int $userId = null): bool
+    {
+        [$cols, $rows] = self::size($location);
+        if ($x < 0 || $y < 0 || $x >= $cols || $y >= $rows || isset(self::staticBlocked($location)["$x,$y"])) {
+            return false;
+        }
+        foreach ($userId === null ? [] : self::userFurniture($userId, $location) as $f) {
+            [$w, $h] = self::data()['footprints'][$f['type']] ?? [1, 1];
+            if ($x >= $f['x'] && $x < $f['x'] + $w && $y >= $f['y'] && $y < $f['y'] + $h) {
+                return false;
+            }
+            $s = self::furnitureSlot($f['type'], $f['x'], $f['y']);
+            if ($s && $x === $s['x'] && $y >= $s['y'] && $y < $s['y'] + $s['h']) {
+                return false;
+            }
+        }
+        return true;
     }
 }

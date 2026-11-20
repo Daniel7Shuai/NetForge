@@ -12,6 +12,7 @@ import { mountMoments } from './moments.js';
 import { mountEvents } from './events.js';
 import { mountEnding } from './ending.js';
 import './game/story-art.js'; // the story's characters and their portraits
+import './game/device-art.js'; // sprites for the Packet Tracer device catalogue
 import { MapScene } from './game/MapScene.js';
 import { TILE, COLS, ROWS, setLocation } from './game/layout.js';
 

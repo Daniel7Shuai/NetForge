@@ -13,7 +13,8 @@ const tipOf = (el) => el.dataset.tip || el.title || '';
 
 /** Shop and inventory categories, in Packet Tracer's order. */
 const GROUPS = [
-  ['end', 'End devices', 'ti-device-desktop'], ['network', 'Network devices', 'ti-router'], ['security', 'Security', 'ti-shield-lock'],
+  ['end', 'End devices', 'ti-device-desktop'], ['network', 'Network devices', 'ti-router'], ['wireless', 'Wireless', 'ti-wifi'],
+  ['security', 'Security & WAN', 'ti-shield-lock'], ['iot', 'IoT', 'ti-bulb'],
   ['gpu', 'GPUs', 'ti-cpu'], ['cable', 'Cables', 'ti-plug'], ['furniture', 'Furniture', 'ti-armchair'],
   ['company', 'DataTech', 'ti-building-skyscraper'],
 ];
@@ -297,7 +298,7 @@ export function mountHud(store) {
       : `Master Topic ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
     const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     const price = row.quote ? row.quote.price : row.price;
-    const net = row.group === 'network' && row.boost > 0;
+    const net = ['network', 'wireless', 'security'].includes(row.group) && row.boost > 0;
     const perk = row.earns ? `+${rate(row.earns)}` : net ? `boost +${row.boost}%` : row.boost ? `+${row.boost}%` : '';
     const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.`
       : net ? ` Earns nothing itself: every device connected through it earns ${row.boost}% more.`
@@ -443,8 +444,10 @@ export function mountHud(store) {
       }
       foot = 'Esc to close';
     } else {
-      sub = 'ports';
-      rows = dev.ports.map((p) => {
+      sub = dev.ports.length ? 'ports' : 'Wi-Fi';
+      rows = !dev.ports.length // wireless only: no ports to cable
+        ? `<p class="note">${dev.earning > 0 ? 'Connected over Wi-Fi.' : 'No Wi-Fi here yet: put an access point or wireless router online in this room.'}</p>`
+        : dev.ports.map((p) => {
         const c = used.get(p.name);
         const what = c ? `→ ${peer(c)}, ${c.kind}, link ${c.status}` : `free, ${role(p)}`;
         return `<div class="port ${c ? c.status : 'free'}"><span class="led"></span><span class="pname">${esc(p.name)}</span><span class="to">${esc(what)}</span></div>`;
@@ -472,6 +475,7 @@ export function mountHud(store) {
       perk = dev.earning > 0 ? `earning ${rate(dev.earning)}` : `${rate(dev.rate)} when online`;
       tip = dev.earning > 0
         ? `${dev.label} is online and earns ${rate(dev.earning)}. Upgrades raise that: x1.5 at tier 2, x2 at tier 3.`
+        : dev.radio === 'client' ? `${dev.label} earns ${rate(dev.rate)} once it’s on Wi-Fi: it needs an access point or wireless router online in this room.`
         : `${dev.label} earns ${rate(dev.rate)} once it’s online: cable it to the ISP box, ideally through a router or switch, which boost what it earns.`;
     } else {
       perk = 'no income';
