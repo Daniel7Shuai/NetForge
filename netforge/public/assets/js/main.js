@@ -6,6 +6,8 @@ import { mountSocial } from './social.js';
 import { mountDefence } from './defence.js';
 import { mountEconomy } from './economy.js';
 import { mountTooltips } from './tooltip.js';
+import { mountTutorial } from './tutorial.js';
+import { mountMusic } from './musicui.js';
 import { MapScene } from './game/MapScene.js';
 import { TILE, COLS, ROWS, setLocation } from './game/layout.js';
 
@@ -22,6 +24,7 @@ setLocation(store.state.user.location);
 mountHud(store);
 mountEconomy(store);
 mountTooltips();
+mountMusic();
 mountLearn(store);
 mountSocial(store);
 mountDefence(store);
@@ -37,3 +40,6 @@ new Phaser.Game({
   scene: [new MapScene(store)],
   banner: false,
 });
+
+// after the map exists: the tutorial walks new students through their first network
+mountTutorial(store);

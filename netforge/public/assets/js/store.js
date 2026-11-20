@@ -187,6 +187,18 @@ export function createStore() {
       if (!item || store.state.busy) return;
       const { slot, problem } = store.placementCheck(item, tile);
       if (problem) { store.log('error', problem); return; }
+      // carry it over: the character walks up to the spot, then sets it down
+      if (store.scene?.walkNear) {
+        if (store.walking) return;
+        store.walking = true;
+        const arrived = await store.scene.walkNear(slot);
+        store.walking = false;
+        const still = store.placingItem();
+        if (!still || still.code !== item.code || still.moveId !== item.moveId) return; // cancelled on the way
+        if (!arrived && store.scene.pathTo([{ x: slot.x, y: slot.y + (slot.h || 1) }]) === null) {
+          // no path at all (boxed in): place it anyway rather than leave the student stuck
+        } else if (!arrived) return; // another click took over
+      }
       store.set({ busy: true });
       if (item.moveId) {
         try {

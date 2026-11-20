@@ -1,0 +1,86 @@
+{
+  "_about": "The tutorial script. Each step: what the characters say, then (optionally) a task the player must do before the next step. Speakers are character codes from the Characters page; {player}, {teacher} and {hacker} become names. Goals: placed:<item>, owns:<item>, link:<item>:<item>.",
+  "steps": [
+    {
+      "id": "welcome",
+      "say": [
+        ["teacher", "Hey, {player}! I’m {teacher}. Welcome to your garage: every great network starts somewhere."],
+        ["teacher", "Right now it’s just you and a busted laptop. Let’s get it online, so it starts earning credits for you."]
+      ]
+    },
+    {
+      "id": "laptop",
+      "say": [
+        ["teacher", "First, the laptop. Open your inventory (I), click the laptop, then click the glowing spot on the workbench. You’ll carry it over yourself."]
+      ],
+      "task": "Place your laptop on the workbench.",
+      "goal": "placed:laptop",
+      "glow": "#pane-inv [data-item=\"laptop\"], .rail [data-tab=\"inv\"]"
+    },
+    {
+      "id": "buy-router",
+      "say": [
+        ["teacher", "Nice! A laptop on its own can’t reach the internet, though. It needs a router."],
+        ["teacher", "Open the shop (B) and buy a home router. You started with enough credits for one."]
+      ],
+      "task": "Buy a home router in the shop.",
+      "goal": "owns:home_router",
+      "glow": ".rail [data-tab=\"shop\"], .drawer [data-tab=\"shop\"]"
+    },
+    {
+      "id": "place-router",
+      "say": [
+        ["teacher", "Got it. Put it on the shelf: pick it in your inventory, then click the glowing shelf spot."]
+      ],
+      "task": "Place the home router on the shelf.",
+      "goal": "placed:home_router",
+      "glow": "#pane-inv [data-item=\"home_router\"], .rail [data-tab=\"inv\"]"
+    },
+    {
+      "id": "buy-copper",
+      "say": [
+        ["teacher", "Devices talk through cables. Buy a pack of copper cable: that’s the straight-through kind, for joining a router to the ISP box and your laptop."]
+      ],
+      "task": "Buy a pack of copper cable.",
+      "goal": "owns:copper",
+      "glow": ".rail [data-tab=\"shop\"], .drawer [data-tab=\"shop\"]"
+    },
+    {
+      "id": "link-isp",
+      "say": [
+        ["teacher", "Now the important bit. That box on the wall is the ISP box: your connection to the internet."],
+        ["teacher", "Pick the cable tool (C). Click the ISP box and choose its LAN port, then click your router and choose its WAN port."]
+      ],
+      "task": "Cable the ISP box’s LAN port to the router’s WAN port.",
+      "goal": "link:isp_box:home_router",
+      "glow": ".rail [data-tool=\"cable\"]"
+    },
+    {
+      "id": "link-laptop",
+      "say": [
+        ["teacher", "The router’s online! Last link: plug your laptop’s Eth0 port into one of the router’s LAN ports."]
+      ],
+      "task": "Cable the laptop to a router LAN port.",
+      "goal": "link:laptop:home_router",
+      "glow": ".rail [data-tool=\"cable\"]"
+    },
+    {
+      "id": "online",
+      "say": [
+        ["teacher", "You’re online! See the coins popping out? Your network now earns credits every second. Watch the wallet at the top."],
+        ["teacher", "Spend them in the shop, but it only sells what your level allows. You level up by learning: press L for lessons."],
+        ["hacker", "Heh. Cute little network, {player}."],
+        ["hacker", "Be a shame if someone… came knocking."],
+        ["teacher", "Ignore them. That’s {hacker}, and they’ll be back. Learn your lessons and you’ll stop every attack."],
+        ["teacher", "That’s the basics. Open Learn (L) whenever you’re ready. Good luck!"]
+      ]
+    }
+  ],
+  "attack": [
+    ["hacker", "Knock knock, {player}."],
+    ["hacker", "Your network looks… delicious."],
+    ["hacker", "Let’s see what you’ve learned."],
+    ["hacker", "Tick tock. Better be quick."],
+    ["hacker", "Found a door. Mind if I come in?"]
+  ]
+}

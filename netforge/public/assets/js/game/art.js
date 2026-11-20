@@ -176,11 +176,26 @@ export const AVATARS = {
 };
 export const PLAYER_SIZE = { w: 12, h: 21 };
 export function player(c, avatar = 'cyan') {
+  playerFrame(c, avatar, 'idle0');
+}
+
+// Legs (rows 14-18) for the walk cycle: standing, left foot lifted, right foot lifted.
+const LEGS = {
+  stand: PLAYER.slice(14),
+  left:  ['...knnnnk...', '...knkknk...', '...kbk.knk..', '...kkk.kbk..', '.......kkk..'],
+  right: ['...knnnnk...', '...knkknk...', '...knk.kbk..', '...kbk.kkk..', '...kkk......'],
+};
+/** The player animation frames: idle0/idle1 (breathing: the head bobs a pixel), walk0-2 (stride). */
+export const PLAYER_FRAMES = ['idle0', 'idle1', 'walk0', 'walk1', 'walk2'];
+export function playerFrame(c, avatar = 'cyan', pose = 'idle0') {
   const pal = { ...PLAYER_PAL, ...(AVATARS[avatar] || {}) };
-  c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(6, 19, 6, 2, 0, 0, 7); c.fill();
-  PLAYER.forEach((row, j) => {
-    for (let i = 0; i < row.length; i++) if (row[i] !== '.') R(c, i, j, 1, 1, pal[row[i]]);
-  });
+  const row = (text, y) => { for (let i = 0; i < text.length; i++) if (text[i] !== '.') R(c, i, y, 1, 1, pal[text[i]]); };
+  c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.ellipse(6, 19, pose === 'walk0' || pose.startsWith('idle') ? 6 : 5, 2, 0, 0, 7); c.fill();
+  const legs = pose === 'walk1' ? LEGS.left : pose === 'walk2' ? LEGS.right : LEGS.stand;
+  legs.forEach((r, j) => row(r, 14 + j));
+  for (let j = 8; j <= 13; j++) row(PLAYER[j], j);                // body
+  const bob = pose === 'idle1' ? 1 : 0;                            // breathing: the head dips a pixel
+  for (let j = 0; j <= 7; j++) row(PLAYER[j], j + bob);
 }
 
 /** Draws an avatar into every <canvas data-avatar="..."> on the page, scaled up crisp. */
@@ -459,4 +474,65 @@ export function vignette(c) {
   const g = c.createRadialGradient(W / 2, H * 0.57, 60, W / 2, H * 0.57, 230);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.45)');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
+}
+
+/* ======================= dialogue portraits ======================= */
+// Built-in 32x32 pixel portraits, used until staff upload their own art for a character.
+export const PORTRAIT_SIZE = 32;
+
+function teacherPortrait(c) {
+  const skin = '#e8b48c', skinS = '#c48a66', hair = '#3a2418', hairL = '#5a3a26', card = '#1f7f8f', cardD = '#155a66';
+  R(c, 3, 24, 26, 8, card); R(c, 5, 22, 22, 2, card); R(c, 3, 28, 4, 4, cardD); R(c, 25, 28, 4, 4, cardD);
+  R(c, 13, 22, 6, 10, '#e9eef2');                                  // blouse
+  R(c, 12, 22, 1, 8, C.amber); R(c, 19, 22, 1, 8, C.amber);        // lanyard
+  R(c, 14, 27, 4, 3, '#f0f6fa'); R(c, 15, 28, 2, 1, C.cyan);       // badge
+  R(c, 14, 19, 4, 4, skinS);                                       // neck
+  R(c, 11, 6, 10, 1, skin); R(c, 10, 7, 12, 12, skin); R(c, 11, 19, 10, 1, skinS);
+  R(c, 13, 1, 6, 4, hair); R(c, 14, 0, 4, 1, hair);                // bun
+  R(c, 9, 4, 14, 4, hair); R(c, 8, 6, 3, 11, hair); R(c, 21, 6, 3, 11, hair);
+  R(c, 10, 7, 12, 2, hair); R(c, 12, 5, 5, 1, hairL); R(c, 9, 7, 1, 6, hairL);
+  // glasses
+  for (const x of [11, 17]) { R(c, x, 11, 4, 1, C.cyan); R(c, x, 14, 4, 1, C.cyan); R(c, x, 11, 1, 4, C.cyan); R(c, x + 3, 11, 1, 4, C.cyan); }
+  R(c, 15, 12, 2, 1, C.cyan);
+  R(c, 12, 12, 2, 2, '#1a2233'); R(c, 18, 12, 2, 2, '#1a2233'); R(c, 12, 12, 1, 1, '#f0f6fa'); R(c, 18, 12, 1, 1, '#f0f6fa');
+  R(c, 11, 16, 1, 1, '#f08a8a'); R(c, 20, 16, 1, 1, '#f08a8a');  // blush
+  R(c, 14, 17, 4, 1, '#9e4a4a'); R(c, 13, 16, 1, 1, '#9e4a4a'); R(c, 18, 16, 1, 1, '#9e4a4a'); // smile
+}
+
+function hackerPortrait(c) {
+  const hood = '#1b1f2e', hoodL = '#2a3044', dark = '#0b0d14', mask = '#05070c';
+  R(c, 2, 24, 28, 8, hood); R(c, 5, 21, 22, 3, hood);
+  R(c, 8, 3, 16, 20, hood); R(c, 7, 6, 18, 16, hood); R(c, 9, 2, 14, 1, hoodL); R(c, 8, 3, 1, 4, hoodL);
+  R(c, 10, 6, 12, 15, dark);                                       // inside the hood
+  R(c, 11, 9, 10, 11, mask);
+  R(c, 11, 12, 10, 2, C.magenta); R(c, 15, 12, 2, 2, mask);        // visor
+  R(c, 12, 12, 2, 1, '#ffb3d6'); R(c, 18, 12, 2, 1, '#ffb3d6');    // glinting eyes
+  R(c, 13, 17, 6, 1, '#1a1f2c');                                   // mask seam
+  R(c, 13, 21, 1, 4, '#9fb3c8'); R(c, 18, 21, 1, 4, '#9fb3c8');    // drawstrings
+  // a little "</>" glowing on the chest
+  R(c, 12, 27, 1, 1, C.lime); R(c, 11, 28, 1, 1, C.lime); R(c, 12, 29, 1, 1, C.lime);
+  R(c, 16, 26, 1, 1, C.lime); R(c, 15, 28, 1, 1, C.lime); R(c, 14, 30, 1, 1, C.lime);
+  R(c, 19, 27, 1, 1, C.lime); R(c, 20, 28, 1, 1, C.lime); R(c, 19, 29, 1, 1, C.lime);
+}
+
+function genericPortrait(c) {
+  R(c, 4, 24, 24, 8, '#3a4a5e'); R(c, 11, 7, 10, 13, '#c9a27e'); R(c, 10, 5, 12, 4, '#2a2a33'); R(c, 13, 12, 2, 2, '#1a2233'); R(c, 17, 12, 2, 2, '#1a2233');
+}
+
+const PORTRAITS = { teacher: teacherPortrait, hacker: hackerPortrait };
+
+/** Draws the built-in portrait for a character code. */
+export function portrait(c, code) {
+  (PORTRAITS[code] || genericPortrait)(c);
+}
+
+/** Fills every <canvas data-portrait="code"> on the page with its built-in portrait, scaled up crisp. */
+export function paintPortraits(root = document) {
+  root.querySelectorAll('canvas[data-portrait]').forEach((cv) => {
+    const scale = Number(cv.dataset.scale || 4);
+    cv.width = PORTRAIT_SIZE * scale; cv.height = PORTRAIT_SIZE * scale;
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.save(); ctx.scale(scale, scale); portrait(ctx, cv.dataset.portrait); ctx.restore();
+  });
 }

@@ -19,6 +19,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_content.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_economy.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_security.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_story.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -172,3 +173,9 @@ Cyber attack and defence (module 5.0) done:
 
 
 The database is pre-release: after pulling schema changes, drop `netforge` and re-import `schema.sql` and `seed.sql`.
+## Tutorial, characters, movement and music
+
+- **Tutorial**: new students meet the network teacher in a dialogue box along the bottom of the map, with the speaker standing on top of it. She walks them from placing the laptop to buying a router, cabling the ISP box and linking the laptop; each step waits until the game shows the task is done, with a small task card and a glow on the right button. The hacker appears at the end. Every line can be skipped (Esc), the whole tutorial can be skipped, and it can be replayed from the menu. Progress is saved per student (`users.tutorial_step`, `tutorial_done`). The script is `public/assets/data/tutorial.json`: edit the lines there; `{player}`, `{teacher}` and `{hacker}` become names.
+- **Characters** (lecturer pages → Characters): change each character's name, role and side, and upload portrait art (PNG, JPEG, GIF or WebP, up to 700 KB, stored in the `characters` table). With no art the game draws a built-in pixel portrait. To add a character, insert a row in `characters` and use its code in the script. The hacker also taunts the student at the top of every cyber attack (the `attack` lines in the script).
+- **Point and click**: click the floor to walk there; placing or moving gear walks the character up to the spot first. No keyboard movement. The character has a 2-frame idle (breathing) and a 3-frame walk cycle, in the student's avatar colours (`playerFrame` in `art.js`).
+- **Music** (top bar ♪, and lecturer pages → Music): five original chiptune tracks composed in `public/assets/js/music.js` and played with Web Audio, so there's no copyright to worry about. Staff can upload more (MP3, OGG, WAV, M4A or WebM up to 30 MB, with a required source and licence note), switch any track off and set the order. Uploads are stored in `storage/music/` (blocked from the browser; served through `api/music.php`). Students turn music on or off and set the volume; it starts on their first click, as browsers require.

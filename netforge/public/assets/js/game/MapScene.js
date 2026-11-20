@@ -68,18 +68,14 @@ export class MapScene extends Phaser.Scene {
 
     const { pos_x, pos_y } = this.store.state.user;
     this.tile = { x: pos_x, y: pos_y };
-    this.player = this.add.image(0, 0, 'player').setOrigin(0.5, 1);
+    // the player: point-and-click, with idle (breathing) and walking animations
+    this.anims.create({ key: 'idle', frames: [{ key: 'player-idle0' }, { key: 'player-idle1' }], frameRate: 2, repeat: -1 });
+    this.anims.create({ key: 'walk', frames: [{ key: 'player-walk1' }, { key: 'player-walk0' }, { key: 'player-walk2' }, { key: 'player-walk0' }], frameRate: 9, repeat: -1 });
+    this.player = this.add.sprite(0, 0, 'player-idle0').setOrigin(0.5, 1);
+    if (!reduceMotion) this.player.play('idle');
+    this.walkId = 0;
     this.placePlayer();
 
-    // no key capture, so typing W/A/S/D into Learn's answer boxes still works
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT', false);
-    // A quick tap can start and end between two frames; queue it so it still steps.
-    const dirs = { w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1], a: [-1, 0], arrowleft: [-1, 0], d: [1, 0], arrowright: [1, 0] };
-    this.input.keyboard.on('keydown', (e) => {
-      if (this.store.state.uiFocus || e.target?.closest?.('input, textarea, select')) return;
-      const d = dirs[e.key.toLowerCase()];
-      if (d) this.queued = d;
-    });
     this.input.on('pointermove', (p) => this.hover(p));
     this.input.on('pointerout', () => this.clearHover());
     this.input.on('pointerdown', (p) => this.click(p));
@@ -97,7 +93,9 @@ export class MapScene extends Phaser.Scene {
     };
     tex('room', W, H, (c) => art.drawRoom(c, layout.LOC_CODE, layout.LOC));
     tex('vignette', W, H, art.vignette);
-    tex('player', art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.player(c, this.store.state.user?.avatar));
+    for (const pose of art.PLAYER_FRAMES) {
+      tex(`player-${pose}`, art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.playerFrame(c, this.store.state.user?.avatar, pose));
+    }
     for (const [name, s] of Object.entries(art.SPRITES)) tex(`dev-${name}`, s.w, s.h, s.draw);
   }
 
@@ -219,7 +217,6 @@ export class MapScene extends Phaser.Scene {
   /* ---------- per-frame ---------- */
 
   update(time) {
-    this.movePlayer();
     this.drawLinks(time / 1000);
     if (!this.nextLed || time > this.nextLed) {
       this.nextLed = time + 140;
@@ -261,28 +258,76 @@ export class MapScene extends Phaser.Scene {
     this.player.setPosition(this.tile.x * TILE + 8, this.tile.y * TILE + 15).setDepth(this.tile.y * TILE + 16);
   }
 
-  movePlayer() {
-    if (this.moving || this.store.state.uiFocus) return;
-    const k = this.keys;
-    let dx = 0, dy = 0;
-    if (k.A.isDown || k.LEFT.isDown) dx = -1;
-    else if (k.D.isDown || k.RIGHT.isDown) dx = 1;
-    else if (k.W.isDown || k.UP.isDown) dy = -1;
-    else if (k.S.isDown || k.DOWN.isDown) dy = 1;
-    else if (this.queued) [dx, dy] = this.queued;
-    this.queued = null;
-    if (!dx && !dy) return;
-    if (dx) this.player.setFlipX(dx < 0);
-    const nx = this.tile.x + dx, ny = this.tile.y + dy;
-    if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || this.blocked.has(`${nx},${ny}`)) return;
-    this.tile = { x: nx, y: ny };
-    this.moving = true;
-    this.tweens.add({
-      targets: this.player,
-      x: nx * TILE + 8, y: ny * TILE + 15,
-      duration: reduceMotion ? 0 : 130,
-      onComplete: () => { this.moving = false; this.player.setDepth(ny * TILE + 16); this.store.playerMoved(this.tile); },
+  walkable(x, y) {
+    return x >= 0 && y >= 0 && x < COLS && y < ROWS && !this.blocked.has(`${x},${y}`);
+  }
+
+  /** Shortest path (4 directions) from the player to any of the goal tiles, or null. */
+  pathTo(goals) {
+    const want = new Set(goals.filter((g) => this.walkable(g.x, g.y)).map((g) => `${g.x},${g.y}`));
+    if (!want.size) return null;
+    const start = `${this.tile.x},${this.tile.y}`;
+    if (want.has(start)) return [];
+    const prev = new Map([[start, null]]);
+    const queue = [this.tile];
+    while (queue.length) {
+      const cur = queue.shift();
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        const nx = cur.x + dx, ny = cur.y + dy, key = `${nx},${ny}`;
+        if (prev.has(key) || !this.walkable(nx, ny)) continue;
+        prev.set(key, `${cur.x},${cur.y}`);
+        if (want.has(key)) {
+          const path = [];
+          for (let k = key; k !== start; k = prev.get(k)) { const [x, y] = k.split(',').map(Number); path.unshift({ x, y }); }
+          return path;
+        }
+        queue.push({ x: nx, y: ny });
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Walks the player to the nearest of the goal tiles. Resolves true on arrival, false if
+   * there's no way there or another walk replaced this one.
+   */
+  walkTo(goals) {
+    const path = this.pathTo(Array.isArray(goals) ? goals : [goals]);
+    if (path === null) return Promise.resolve(false);
+    const id = ++this.walkId;
+    this.tweens.killTweensOf(this.player);
+    if (!path.length) { this.stopWalking(); return Promise.resolve(true); }
+    if (!reduceMotion) this.player.play('walk', true);
+    return new Promise((resolve) => {
+      const step = (i) => {
+        if (id !== this.walkId) { resolve(false); return; }       // a newer click took over
+        if (i >= path.length) { this.stopWalking(); this.store.playerMoved(this.tile); resolve(true); return; }
+        const t = path[i];
+        if (t.x !== this.tile.x) this.player.setFlipX(t.x < this.tile.x);
+        this.tile = t;
+        this.tweens.add({
+          targets: this.player, x: t.x * TILE + 8, y: t.y * TILE + 15, duration: reduceMotion ? 0 : 120,
+          onUpdate: () => this.player.setDepth(this.player.y + 1),
+          onComplete: () => step(i + 1),
+        });
+      };
+      step(0);
     });
+  }
+
+  stopWalking() {
+    if (reduceMotion) { this.player.setTexture('player-idle0'); return; }
+    this.player.play('idle', true);
+    this.player.setDepth(this.tile.y * TILE + 16);
+  }
+
+  /** Walks up to a slot (in front of it if possible) so the player can set something down there. */
+  walkNear(slot) {
+    const h = slot.h || 1, around = [];
+    for (let y = slot.y; y < slot.y + h; y++) around.push({ x: slot.x - 1, y }, { x: slot.x + 1, y });
+    // in front (below) first, then the sides, then behind
+    const goals = [{ x: slot.x, y: slot.y + h }, ...around, { x: slot.x, y: slot.y - 1 }];
+    return this.walkTo(goals);
   }
 
   /* ---------- pointer ---------- */
@@ -350,7 +395,23 @@ export class MapScene extends Phaser.Scene {
   }
 
   click(p) {
+    if (this.store.state.uiFocus) return;
     const tile = this.tileAt(p);
-    this.store.tileClicked(tile, this.deviceAt(tile));
+    const device = this.deviceAt(tile);
+    // point and click: open floor with nothing in hand means "walk there"
+    if (!device && !this.store.placingItem() && this.store.state.tool === 'select' && !this.store.state.cableDraft) {
+      this.store.set({ picker: null });
+      this.walkTo(tile).then((ok) => { if (!ok && !this.walkable(tile.x, tile.y)) this.flashBlocked(tile); });
+      return;
+    }
+    this.store.tileClicked(tile, device);
+  }
+
+  /** A quick cross on a tile the player can't walk to. */
+  flashBlocked(tile) {
+    const g = this.add.graphics().setDepth(6100);
+    const x = tile.x * TILE, y = tile.y * TILE;
+    g.lineStyle(1, 0xff3d9a, 0.9).lineBetween(x + 4, y + 4, x + 12, y + 12).lineBetween(x + 12, y + 4, x + 4, y + 12);
+    this.tweens.add({ targets: g, alpha: 0, duration: reduceMotion ? 0 : 450, delay: 150, onComplete: () => g.destroy() });
   }
 }

@@ -11,6 +11,8 @@ $nav = [
     'challenges' => ['challenges.php', 'Weekly challenges'],
     'attacks'   => ['attacks.php', 'Cyber attacks'],
     'analytics' => ['analytics.php', 'Analytics'],
+    'characters' => ['characters.php', 'Characters'],
+    'music'     => ['music.php', 'Music'],
 ];
 if ($me['role'] === 'admin') {
     $nav['users'] = ['users.php', 'Users']; // FR-1.5: admins only

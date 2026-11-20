@@ -33,11 +33,23 @@ require __DIR__ . '/../src/views/head.php';
   <div class="stat xp" title="Your level and XP. Answer questions in Learn (L) for XP; each level unlocks more gear in the shop.">
     <span id="level">Lv 1</span><span class="bar"><span id="xp-fill"></span></span><small class="mono" id="xp-text">0/1000</small>
   </div>
+  <div class="music-wrap">
+    <button class="iconbtn" id="music-btn" aria-label="Music" aria-expanded="false" aria-controls="music-panel"><i class="ti ti-music" aria-hidden="true"></i></button>
+    <div class="music-panel" id="music-panel" hidden>
+      <p class="np"><small>Now playing</small><b id="music-title">Music is off</b><span id="music-artist"></span></p>
+      <div class="music-row">
+        <button type="button" class="iconbtn" id="music-toggle" aria-label="Play music"><i class="ti ti-player-play" aria-hidden="true"></i></button>
+        <button type="button" class="iconbtn" id="music-next" aria-label="Next track"><i class="ti ti-player-skip-forward" aria-hidden="true"></i></button>
+        <label class="vol"><i class="ti ti-volume" aria-hidden="true"></i><input type="range" id="music-volume" min="0" max="100" step="1" aria-label="Music volume"></label>
+      </div>
+    </div>
+  </div>
   <div class="menu-wrap">
     <button class="iconbtn" id="menu-btn" aria-label="Menu: profile and sign out" aria-expanded="false" aria-controls="menu"><i class="ti ti-menu-2"></i></button>
     <div class="menu" id="menu" hidden>
       <p class="who mono" id="who"></p>
       <a href="profile.php"><i class="ti ti-user-circle" aria-hidden="true"></i>Profile</a>
+      <button type="button" id="tutorial-replay"><i class="ti ti-school" aria-hidden="true"></i>Replay tutorial</button>
       <form method="post" action="logout.php">
         <?= Csrf::field() ?>
         <button type="submit"><i class="ti ti-logout" aria-hidden="true"></i>Sign out</button>

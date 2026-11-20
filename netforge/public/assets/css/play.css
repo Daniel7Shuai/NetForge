@@ -557,3 +557,72 @@ button.objective:hover { border-color: var(--ink-dim); }
 /* earnings shown on gear */
 .drawer .row .earns { font-size: 11px; font-weight: 500; color: var(--lime); padding: 1px 6px; margin-left: 4px; border: 1px solid rgba(124, 255, 107, .35); border-radius: 999px; vertical-align: 1px; }
 .picker .tierline.on span:last-child { color: var(--lime); }
+
+/* ---------- dialogue (tutorial and story) ---------- */
+.dlg { position: absolute; inset: 0; z-index: 30; pointer-events: none; }
+.dlg > * { pointer-events: auto; }
+.dlg-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(4, 7, 13, .55)); }
+.dlg-box { position: absolute; left: 16px; right: 16px; bottom: 14px; min-height: 120px; padding: 22px 22px 14px; background: rgba(9, 14, 24, .96); border: 1px solid var(--line); border-top: 2px solid var(--cyan); border-radius: var(--r); box-shadow: 0 12px 40px rgba(0, 0, 0, .6); cursor: pointer; animation: dlg-in .22s cubic-bezier(.16, 1, .3, 1); }
+.dlg-box[data-side="right"] { border-top-color: var(--magenta); }
+.dlg-name { position: absolute; top: -15px; left: 190px; display: flex; align-items: baseline; gap: 8px; padding: 4px 14px; background: var(--cyan); color: var(--void); border-radius: var(--r-sm); font-weight: 600; font-size: 15px; }
+.dlg-name small { font-weight: 500; font-size: 12px; opacity: .75; }
+.dlg-box[data-side="right"] .dlg-name { left: auto; right: 190px; background: var(--magenta); color: #fff; }
+.dlg-text { margin: 4px 0 10px; min-height: 52px; font-size: 17px; line-height: 1.55; color: var(--ink); }
+.dlg-box.has-left .dlg-text { padding-left: 172px; }
+.dlg-box.has-right .dlg-text, .dlg-box.has-right .dlg-actions { padding-right: 172px; }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg-actions button { padding: 6px 12px; border-radius: var(--r-sm); font-size: 13px; color: var(--ink-dim); border: 1px solid var(--line); }
+.dlg-actions button:hover { color: var(--ink); border-color: var(--ink-dim); }
+.dlg-actions .dlg-next { color: var(--void); background: var(--cyan); border-color: var(--cyan); font-weight: 600; }
+.dlg-actions .dlg-next:hover { color: var(--void); background: #7ef0ff; }
+.dlg-actions kbd { margin-left: 6px; font-size: 11px; opacity: .75; }
+.dlg-cast { position: absolute; left: 16px; right: 16px; bottom: 14px; height: 0; z-index: 1; pointer-events: none; }
+.dlg-portrait { position: absolute; bottom: 0; margin: 0; width: 160px; height: 160px; display: grid; place-items: end center; transition: opacity .2s, transform .2s, filter .2s; }
+.dlg-portrait.left { left: 12px; }
+.dlg-portrait.right { right: 12px; }
+.dlg-portrait img, .dlg-portrait canvas { width: 160px; height: 160px; object-fit: contain; object-position: bottom; image-rendering: pixelated; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .6)); }
+.dlg-portrait:not(.on) { opacity: .45; filter: grayscale(.6) brightness(.7); transform: scale(.94); transform-origin: bottom; }
+.dlg-portrait.on { z-index: 1; }
+.dlg.out { opacity: 0; transition: opacity .18s; }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .dlg-box { animation: none; } .dlg-portrait { transition: none; } }
+@media (max-width: 700px) {
+  .dlg-portrait { width: 96px; height: 96px; } .dlg-portrait img, .dlg-portrait canvas { width: 96px; height: 96px; }
+  .dlg-box .dlg-text, .dlg-box.has-left .dlg-text, .dlg-box.has-right .dlg-text { padding: 0; font-size: 15px; margin-top: 10px; }
+  .dlg-box.has-right .dlg-actions { padding-right: 0; }
+  .dlg-cast { bottom: calc(14px + var(--dlg-h, 150px)); }
+  .dlg-portrait:not(.on) { display: none; }
+  .dlg-name, .dlg-box[data-side="right"] .dlg-name { left: 116px; right: auto; }
+}
+
+/* the current tutorial task, kept in view while the student does it */
+.tut-task { position: absolute; z-index: 12; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); padding: 6px 8px 6px 6px; background: rgba(9, 14, 24, .95); border: 1px solid var(--cyan); border-radius: var(--r); box-shadow: 0 8px 26px rgba(0, 0, 0, .55); }
+.tut-face canvas, .tut-face img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; display: block; }
+.tut-body small { color: var(--cyan); font-size: 12px; font-weight: 600; }
+.tut-body p { margin: 0; font-size: 14px; }
+.tut-actions { display: flex; gap: 2px; margin-left: 6px; }
+.tut-actions button { width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink-dim); border-radius: var(--r-sm); }
+.tut-actions button:hover { color: var(--ink); background: var(--panel-2); }
+.tut-glow { position: relative; outline: 2px solid var(--cyan); outline-offset: 2px; animation: tut-pulse 1.4s ease-in-out infinite; z-index: 2; }
+@keyframes tut-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(43, 227, 255, .55); } 50% { box-shadow: 0 0 0 7px rgba(43, 227, 255, 0); } }
+@media (prefers-reduced-motion: reduce) { .tut-glow { animation: none; } }
+
+/* the hacker taunting at the top of an attack */
+.atk-taunt { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 6px 10px 6px 6px; border: 1px solid rgba(255, 61, 154, .45); border-radius: var(--r); background: rgba(255, 61, 154, .06); }
+.atk-taunt[hidden] { display: none; }
+.atk-face canvas, .atk-face img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; display: block; }
+.atk-taunt p { margin: 0; font-style: italic; color: var(--ink); }
+.atk-taunt b { font-style: normal; color: var(--magenta); margin-right: 6px; }
+
+/* music */
+.music-wrap { position: relative; }
+#music-btn.on { color: var(--cyan); }
+.music-panel { position: absolute; right: 0; top: 44px; z-index: 20; width: 250px; padding: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
+.music-panel[hidden] { display: none; }
+.music-panel .np { margin: 0 0 10px; display: grid; gap: 2px; }
+.music-panel .np small { color: var(--ink-dim); font-size: 12px; }
+.music-panel .np b { font-weight: 600; }
+.music-panel .np span { color: var(--ink-dim); font-size: 13px; }
+.music-row { display: flex; align-items: center; gap: 6px; }
+.music-row .vol { flex: 1; display: flex; align-items: center; gap: 6px; color: var(--ink-dim); }
+.music-row input[type=range] { flex: 1; accent-color: var(--cyan); min-width: 0; }

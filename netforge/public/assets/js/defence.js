@@ -1,6 +1,9 @@
 // Cyber attacks (module 5.0): watches for incoming attacks, runs the timed defence,
 // shows the security rating and the attack history. Marking happens on the server.
 
+import { loadStory, character, fill } from './story.js';
+import { portraitEl } from './dialogue.js';
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const POLL_MS = 15000;
@@ -59,6 +62,7 @@ export function mountDefence(store) {
           <div><h2 id="atk-title">Incoming attack: ${esc(a.name)}</h2><p class="atk-sub">${esc(a.title)}</p></div>
           <span class="atk-clock mono" id="atk-clock" aria-live="off"></span>
         </header>
+        <div class="atk-taunt" id="atk-taunt" hidden></div>
         <p class="atk-sum">${esc(a.summary)}</p>
         <pre class="atk-evidence" aria-label="Evidence">${evidence}</pre>
         <fieldset class="atk-q"><legend>${esc(a.prompt)}</legend>
@@ -72,6 +76,22 @@ export function mountDefence(store) {
     box.querySelector('input').focus();
     $('atk-go').addEventListener('click', () => submit(false));
     startClock(a.secondsLeft);
+    taunt();
+  }
+
+  /** The hacker shows up with a line of trash talk (the character and lines staff can change). */
+  async function taunt() {
+    try {
+      const story = await loadStory();
+      const lines = story.script.attack || [];
+      const el = $('atk-taunt');
+      if (!el || !lines.length) return;
+      const [code, text] = lines[Math.floor(Math.random() * lines.length)];
+      const c = character(story, code);
+      el.innerHTML = `<div class="atk-face"></div><p><b>${esc(c.name)}</b> ${esc(fill(story, text, store.state.user?.name || 'you'))}</p>`;
+      el.querySelector('.atk-face').append(portraitEl(c, 2));
+      el.hidden = false;
+    } catch { /* no story data: the attack works without the taunt */ }
   }
 
   function startClock(seconds) {

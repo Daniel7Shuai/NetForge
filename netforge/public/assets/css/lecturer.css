@@ -203,3 +203,17 @@ table.users td, table.users th { vertical-align: middle; }
 /* hover labels (tooltip.js) */
 .tip { position: fixed; z-index: 200; max-width: 280px; padding: 7px 10px; background: #0b1220; color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: 0 8px 24px rgba(0, 0, 0, .55); font: 400 13px/1.45 var(--ui); pointer-events: none; }
 .tip[hidden] { display: none; }
+
+/* characters and music */
+.char-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 0 20px; }
+.char { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; align-items: start; }
+.char-art { display: grid; justify-items: center; gap: 6px; padding: 10px; background: var(--void); border: 1px solid var(--grid); border-radius: var(--r); }
+.char-art img, .char-art canvas { width: 150px; height: 150px; object-fit: contain; image-rendering: pixelated; }
+.char-body h2 { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.char-body .tag { font-size: 12px; color: var(--ink-dim); }
+.char-body .form { margin-top: 12px; }
+.art-form { padding-top: 12px; border-top: 1px solid var(--grid); }
+table.tracks td { vertical-align: middle; }
+table.tracks input:not([type=checkbox]) { min-width: 0; }
+table.tracks audio { height: 32px; max-width: 220px; }
+@media (max-width: 560px) { .char { grid-template-columns: 1fr; } .char-grid { grid-template-columns: 1fr; } }
