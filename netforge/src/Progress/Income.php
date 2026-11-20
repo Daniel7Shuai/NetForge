@@ -7,9 +7,11 @@ use NetForge\Db;
 use NetForge\Rules;
 
 /**
- * Passive income (FR-4.4). A device earns its item type's income_per_sec (credits per second) only while
- * it is online: joined to the ISP box by a chain of working (up) links. So income
- * rewards a network that actually works, not just equipment on shelves.
+ * Passive income (FR-4.4). End devices (laptops, PCs, servers, GPU rigs) earn their item type's
+ * income_per_sec, but only while online: joined to the ISP box by a chain of working (up) links.
+ * Network devices (home routers, switches, routers) earn nothing themselves. Instead each one on
+ * the path between an end device and the ISP boosts what that device earns by its boost_pct
+ * (more at higher tiers), so a well-built network pays and a cable straight to the ISP box doesn't.
  * Income builds up for at most income_cap_hours while the student is away.
  */
 final class Income
@@ -21,7 +23,9 @@ final class Income
     public static function online(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_sec, t.shield_pct, COALESCE(g.boost_pct, 0) gpu_boost FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ?', [$userId]) as $d) {
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct,
+                                 COALESCE(g.boost_pct, 0) gpu_boost
+                            FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
         }
         $adj = [];
@@ -29,21 +33,42 @@ final class Income
             $adj[(int) $c['a']][] = (int) $c['b'];
             $adj[(int) $c['b']][] = (int) $c['a'];
         }
+        // breadth-first from the ISP boxes; parent[] remembers each device's shortest way back
         $queue = array_keys(array_filter($devices, fn ($d) => in_array($d['item_code'], self::ISP, true)));
         $seen = array_fill_keys($queue, true);
+        $parent = [];
         while ($queue) {
             $id = array_shift($queue);
             foreach ($adj[$id] ?? [] as $next) {
-                if (!isset($seen[$next])) {
+                if (!isset($seen[$next]) && isset($devices[$next])) {
                     $seen[$next] = true;
+                    $parent[$next] = $id;
                     $queue[] = $next;
                 }
             }
         }
-        return array_values(array_filter(
-            array_intersect_key($devices, $seen),
-            fn ($d) => !in_array($d['item_code'], self::ISP, true)
-        ));
+        $out = [];
+        foreach (array_intersect_key($devices, $seen) as $id => $d) {
+            if (in_array($d['item_code'], self::ISP, true)) {
+                continue;
+            }
+            // multiply the boosts of the network devices between this one and the ISP
+            $boost = 1.0;
+            for ($p = $parent[$id] ?? null; $p !== null && isset($devices[$p]); $p = $parent[$p] ?? null) {
+                $boost *= 1 + self::networkBoost($devices[$p]) / 100;
+            }
+            $out[] = $d + ['path_boost' => $boost];
+        }
+        return $out;
+    }
+
+    /** How much a network device boosts the end devices behind it, in percent: boost_pct, x1.5 at tier 2, x2 at tier 3. */
+    public static function networkBoost(array $d): float
+    {
+        if (($d['shop_group'] ?? '') !== 'network') {
+            return 0.0;
+        }
+        return (int) $d['boost_pct'] * Rules::tierIncome((int) $d['tier']);
     }
 
     /** Enough credits for a pack of copper, so the laptop can be linked straight to the ISP box. */
@@ -75,7 +100,7 @@ final class Income
         return min(75, $pct);
     }
 
-    /** What one online device earns per second: its rate times its tier bonus. */
+    /** What one device earns per second on its own: its rate, its tier bonus and any GPU card (before network boosts). */
     public static function deviceRate(array $d): float
     {
         return (int) $d['income_per_sec'] * Rules::tierIncome((int) $d['tier']) * (1 + (int) ($d['gpu_boost'] ?? 0) / 100);
@@ -91,8 +116,9 @@ final class Income
         $online = self::online($userId);
         $by = [];
         foreach ($online as $d) {
-            if (self::deviceRate($d) > 0) {
-                $by[(int) $d['id']] = self::deviceRate($d);
+            $r = self::deviceRate($d) * $d['path_boost'];
+            if ($r > 0) {
+                $by[(int) $d['id']] = $r;
             }
         }
         return ['perSec' => array_sum($by), 'devices' => array_column($online, 'label'), 'byDevice' => $by];
@@ -135,7 +161,7 @@ final class Income
             }
             if ($secs >= 900) { // only mention it after time away, not every few seconds of play
                 Rules::log($userId, 'ok', sprintf('Your network earned %s credits while you were away (%s/s)%s.',
-                    number_format($earned), rtrim(rtrim(number_format($rate, 1), '0'), '.'), $secs > $capSecs ? ', the most it can save up' : ''));
+                    \NetForge\Money::short($earned), $rate >= 1000 ? \NetForge\Money::short($rate) : rtrim(rtrim(number_format($rate, 1), '0'), '.'), $secs > $capSecs ? ', the most it can save up' : ''));
             }
             return $earned;
         });

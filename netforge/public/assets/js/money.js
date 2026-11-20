@@ -1,22 +1,38 @@
 // How money is written everywhere in the game, so the wallet, the coin pops,
-// the shop and the guild screen all agree.
+// the shop and the guild screen all agree. Mirrors NetForge\Money::short() in PHP.
 
-/** Whole credits with separators: 1,284,530. */
-export const fmt = (n) => Math.floor(Number(n) || 0).toLocaleString('en-US');
+const UNITS = [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'k']];
 
-/** A short form for tight spots: 950, 12.5K, 3.40M, 1.25B. */
-export function compact(n) {
-  const v = Math.floor(Number(n) || 0);
-  if (v >= 1e12) return `${(v / 1e12).toFixed(2)}T`;
-  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
-  if (v >= 1e4) return `${(v / 1e3).toFixed(1)}K`;
-  return fmt(v);
+/**
+ * Credits, short: 950, 4k, 12.5k, 3.14M, 1.4B (k thousands, M millions, B billions).
+ * figures: significant figures to keep (3 by default; the wallet shows 4 so it visibly counts up).
+ */
+export function fmt(n, figures = 3) {
+  const raw = Number(n) || 0;
+  const sign = raw < 0 ? '-' : '';
+  const v = Math.abs(raw);
+  for (const [unit, suffix] of UNITS) {
+    if (v >= unit) {
+      const x = v / unit;
+      const digits = Math.max(0, figures - (x >= 100 ? 3 : x >= 10 ? 2 : 1));
+      const f = 10 ** digits;
+      let text = (Math.floor(x * f) / f).toFixed(digits); // round down: never show more than they have
+      if (text.includes('.')) text = text.replace(/\.?0+$/, '');
+      return `${sign}${text}${suffix}`;
+    }
+  }
+  return `${sign}${Math.floor(v)}`;
 }
 
-/** Credits per second: "35/s", "22.5/s", "750,000/s". */
+/** The full number with separators, for tooltips: 1,284,530. */
+export const full = (n) => Math.floor(Number(n) || 0).toLocaleString('en-US');
+
+/** Kept for older callers: the same as fmt(). */
+export const compact = (n) => fmt(n);
+
+/** Credits per second: "35/s", "22.5/s", "750k/s", "1.25M/s". */
 export function rate(perSec) {
   const v = Number(perSec) || 0;
-  const shown = v >= 100 ? Math.round(v) : Math.round(v * 10) / 10;
-  return `${shown.toLocaleString('en-US')}/s`;
+  if (v >= 1000) return `${fmt(v)}/s`;
+  return `${v >= 100 ? Math.round(v) : Math.round(v * 10) / 10}/s`;
 }

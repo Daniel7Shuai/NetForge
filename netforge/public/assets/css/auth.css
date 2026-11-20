@@ -13,7 +13,7 @@ body { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
 }
 .terminal header i { color: var(--cyan); font-size: 22px; }
 .terminal form { padding: 20px 16px 16px; display: grid; gap: 14px; }
-.prompt { margin: 0; font: 13px/1.6 var(--mono); color: var(--ink-dim); }
+.prompt { margin: 0; font: 14px/1.5 var(--ui); color: var(--ink-dim); }
 .prompt b { color: var(--lime); font-weight: 400; }
 label { display: grid; gap: 6px; font-size: 14px; color: var(--ink-dim); }
 input[type=text], input[type=password], input[type=email] {

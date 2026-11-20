@@ -140,7 +140,7 @@ final class Defence
             );
             Rules::log($userId, $defended ? 'ok' : 'error', $defended
                 ? "{$a['type_name']} attack defended. Your network is safe."
-                : ($late ? "Too late: {$a['type_name']} attack got through." : "{$a['type_name']} attack got through.") . ($penalty ? " Lost " . number_format($penalty) . " credits." : ''));
+                : ($late ? "Too late: {$a['type_name']} attack got through." : "{$a['type_name']} attack got through.") . ($penalty ? " Lost " . \NetForge\Money::short($penalty) . " credits." : ''));
             return [
                 'status' => $defended ? 'defended' : 'breached',
                 'late' => $late,
@@ -160,7 +160,7 @@ final class Defence
             Db::transaction(function () use ($userId, $a): void {
                 $penalty = self::charge($userId);
                 Db::exec('UPDATE attacks SET status = "breached", penalty = ?, resolved_at = NOW() WHERE id = ? AND status = "incoming"', [$penalty, $a['id']]);
-                Rules::log($userId, 'error', "No response in time: {$a['name']} attack got through." . ($penalty ? " Lost " . number_format($penalty) . " credits." : ''));
+                Rules::log($userId, 'error', "No response in time: {$a['name']} attack got through." . ($penalty ? " Lost " . \NetForge\Money::short($penalty) . " credits." : ''));
             });
         }
     }

@@ -192,6 +192,41 @@ final class Social
         self::feed((int) $m['guild_id'], $userId, 'share', $msg);
     }
 
+    public const CHAT_MAX = 200;
+
+    /** Posts a chat message to the guild news. Members only, at most one message every 2 seconds. */
+    public static function say(int $userId, string $text): void
+    {
+        $m = self::membership($userId);
+        if ($m === null) {
+            throw new GameError('Join a guild to chat with it.');
+        }
+        $text = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $text) ?? '');
+        if ($text === '') {
+            throw new GameError('Type a message first.');
+        }
+        if (mb_strlen($text) > self::CHAT_MAX) {
+            throw new GameError(sprintf('Keep messages under %d characters.', self::CHAT_MAX));
+        }
+        if (Db::one('SELECT 1 FROM guild_feed WHERE user_id = ? AND kind = "chat" AND created_at > NOW() - INTERVAL 2 SECOND', [$userId])) {
+            throw new GameError('Slow down a little.');
+        }
+        self::feed((int) $m['guild_id'], $userId, 'chat', $text);
+    }
+
+    /** The guild news, oldest first: chat, shared milestones, joins, raid wins. */
+    public static function news(int $userId, int $limit = 60): array
+    {
+        $m = self::membership($userId);
+        if ($m === null) {
+            return [];
+        }
+        $rows = Db::all('SELECT f.id, f.kind, f.message, f.created_at, f.user_id, u.username FROM guild_feed f LEFT JOIN users u ON u.id = f.user_id
+                          WHERE f.guild_id = ? ORDER BY f.id DESC LIMIT ' . max(1, min(200, $limit)), [(int) $m['guild_id']]);
+        return array_reverse(array_map(fn ($f) => ['id' => (int) $f['id'], 'kind' => $f['kind'], 'message' => $f['message'], 'at' => $f['created_at'],
+            'from' => $f['kind'] === 'chat' ? ($f['username'] ?? 'Someone') : null, 'mine' => (int) $f['user_id'] === $userId], $rows));
+    }
+
     /* ======================= raids (FR-6.2) ======================= */
 
     public static function challenge(?string $week = null): ?array
@@ -303,8 +338,7 @@ final class Social
                     'mine' => (int) Db::one('SELECT COALESCE(SUM(correct), 0) n FROM raid_contributions WHERE guild_id = ? AND user_id = ? AND week_start = ?' . ($c['world_id'] ? ' AND world_id = ' . (int) $c['world_id'] : ''), [$gid, $userId, $week])['n'],
                     'done' => (bool) Db::one('SELECT 1 FROM raid_rewards WHERE guild_id = ? AND challenge_id = ?', [$gid, $c['id']]),
                 ] : null,
-                'feed' => array_map(fn ($f) => ['kind' => $f['kind'], 'message' => $f['message'], 'at' => $f['created_at']],
-                    Db::all('SELECT kind, message, created_at FROM guild_feed WHERE guild_id = ? ORDER BY id DESC LIMIT 15', [$gid])),
+                'feed' => self::news($userId),
                 'weekTotal' => $weekTotal,
             ];
         }

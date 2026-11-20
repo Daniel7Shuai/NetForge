@@ -1,6 +1,7 @@
 // The Learn screen (module 3.0): roadmap of topics, lessons, challenge runs and exams.
 // It only shows what the server sends; marking, Elo and rewards all happen in PHP.
 import { api } from './api.js';
+import { fmt } from './money.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -219,7 +220,7 @@ export function mountLearn(store) {
       ${w.status === 'soon' ? '<p class="empty">Lessons for this topic haven’t been written yet. Lecturers add them in the question bank.</p>'
         : w.status === 'locked' ? `<p class="empty"><i class="ti ti-lock" aria-hidden="true"></i> Master the earlier topics to open this one.${w.needs ? ` You’ll also need to lease the ${esc(w.needs.name.toLowerCase())}.` : ''}</p>`
         : w.status === 'area' ? `<div class="area-gate"><i class="ti ti-building" aria-hidden="true"></i><div><strong>Taught in the ${esc(w.needs.name.toLowerCase())}</strong>
-          <small>Lease it from the place menu in the top bar to open these lessons: level ${w.needs.unlockLevel} and ${w.needs.leaseCost.toLocaleString('en-US')} credits.${store.state.user.level < w.needs.unlockLevel ? ` You’re level ${store.state.user.level}, so keep learning for XP.` : ''}</small></div></div>` : ''}
+          <small>Lease it from the place menu in the top bar to open these lessons: level ${w.needs.unlockLevel} and ${fmt(w.needs.leaseCost)} credits.${store.state.user.level < w.needs.unlockLevel ? ` You’re level ${store.state.user.level}, so keep learning for XP.` : ''}</small></div></div>` : ''}
       ${w.levels.length ? `<ol class="levels">${levels}</ol>` : ''}
       ${w.levels.length ? `<div class="exam${ex.ready && !locked ? ' ready' : ''}">
         <i class="ti ti-certificate" aria-hidden="true"></i>

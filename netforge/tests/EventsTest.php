@@ -150,16 +150,45 @@ try {
     }
     check('both outcomes happen', isset($outcomes['deal'], $outcomes['scam']), true);
 
+    echo "Investors\n";
     Db::exec('UPDATE company_history SET at = NOW() - INTERVAL 40 MINUTE, value = 1 WHERE user_id = ?', [$uid]);
-    $before = (int) Db::one('SELECT credits FROM users WHERE id = ?', [$uid])['credits'];
+    $credits = fn () => (int) Db::one('SELECT credits FROM users WHERE id = ?', [$uid])['credits'];
+    $before = $credits();
     Events::start($uid, 'investor');
-    $msg = Db::one('SELECT body, amount FROM messages WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$uid]);
-    check('investor texts', $msg !== null, true);
-    check('growing company gets a dividend', (int) $msg['amount'] > 0 && (int) Db::one('SELECT credits FROM users WHERE id = ?', [$uid])['credits'] === $before + (int) $msg['amount'], true);
+    $offer = Events::offer($uid);
+    check('investor texts an offer', $offer !== null && $offer['amount'] > 0, true);
+    check('the offer is not paid yet', $credits(), $before);
+    check('offer is at least 8% of savings', $offer['amount'] >= $before * 0.08 * 0.8, true);
     check('unread text counted', Events::poll($uid, false)['unread'], 1);
     Events::markRead($uid);
     check('read clears it', Events::poll($uid, false)['unread'], 0);
+    $r = Events::answerInvestor($uid, $offer['id'], 'accept');
+    check('accepting pays the offer', [$r['outcome'], $credits()], ['invested', $before + $offer['amount']]);
+    check('a taken offer is gone', Events::offer($uid), null);
+
+    // asking for more: a small company rarely loses the investor, a rich one usually does
+    Db::exec('UPDATE users SET credits = 1000 WHERE id = ?', [$uid]);
+    Db::exec('DELETE FROM cables WHERE user_id = ?', [$uid]); // nothing online: no income
+    check('walk chance for a small company', Events::walkChance($uid, 0) < 0.3, true);
+    check('each ask makes walking likelier', Events::walkChance($uid, 2) > Events::walkChance($uid, 0), true);
+    Db::exec('UPDATE users SET credits = 10000000000 WHERE id = ?', [$uid]);
+    check('walk chance capped at 80%', Events::walkChance($uid, 5), 0.8);
+    $seen = [];
+    for ($i = 0; $i < 30 && count($seen) < 2; $i++) {
+        Db::exec('UPDATE users SET credits = ? WHERE id = ?', [$i % 2 ? 1000 : 10000000000, $uid]);
+        Events::start($uid, 'investor');
+        $o = Events::offer($uid);
+        $r = Events::answerInvestor($uid, $o['id'], 'more');
+        $seen[$r['outcome']] = $r;
+        if ($r['outcome'] === 'raised') {
+            check('a raised offer is 20-40% higher', $r['amount'] >= $o['amount'] * 1.19 && $r['amount'] <= $o['amount'] * 1.41, true);
+            Events::answerInvestor($uid, $o['id'], 'decline');
+        }
+    }
+    check('investors both raise and walk away', isset($seen['raised'], $seen['walked']), true);
+    check('declined or walked offers are gone', Events::offer($uid), null);
     $ph = Events::phone($uid);
+    check('phone has the conversation', count($ph['messages']) > 4, true);
     check('phone has history for the chart', count($ph['history']) >= 2, true);
 
     echo "Tips seen\n";

@@ -287,8 +287,11 @@ export function mountHud(store) {
     const lockTip = needLevel ? `Reach level ${row.unlockLevel} to buy the ${esc(row.name)}. Answer questions in Learn (L) to earn XP.` : `Master Topic ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
     const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     const price = row.quote ? row.quote.price : row.price;
-    const perk = row.earns ? `+${rate(row.earns)}` : row.boost ? `+${row.boost}%` : '';
-    const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.` : row.boost ? ` Fit it in a server for +${row.boost}% income.` : '';
+    const net = row.group === 'network' && row.boost > 0;
+    const perk = row.earns ? `+${rate(row.earns)}` : net ? `boost +${row.boost}%` : row.boost ? `+${row.boost}%` : '';
+    const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.`
+      : net ? ` Earns nothing itself: every device connected through it earns ${row.boost}% more.`
+      : row.boost ? ` Fit it in a server for +${row.boost}% income.` : '';
     const soldOut = row.quote && row.quote.stock < 1;
     const buyTip = soldOut
       ? `${row.seller} is sold out. They restock in ${Math.max(1, Math.ceil(restockLeft(row.quote) / 60))} minutes, or try another seller.`
@@ -452,11 +455,14 @@ export function mountHud(store) {
     if (dev.shield) {
       perk = `shield ${dev.shield}%`;
       tip = `While it’s online, this firewall blocks ${dev.shield}% of the credits a breach would take.`;
+    } else if (dev.netBoost > 0) {
+      perk = `boosts +${dev.netBoost}%`;
+      tip = `${dev.label} earns nothing itself, but every device connected to the internet through it earns ${dev.netBoost}% more. Routers and switches in a row multiply. Upgrades raise the boost: x1.5 at tier 2, x2 at tier 3.`;
     } else if (dev.rate > 0) {
       perk = dev.earning > 0 ? `earning ${rate(dev.earning)}` : `${rate(dev.rate)} when online`;
       tip = dev.earning > 0
         ? `${dev.label} is online and earns ${rate(dev.earning)}. Upgrades raise that: x1.5 at tier 2, x2 at tier 3.`
-        : `${dev.label} earns ${rate(dev.rate)} once it’s online: cable it to the ISP box, directly or through a router.`;
+        : `${dev.label} earns ${rate(dev.rate)} once it’s online: cable it to the ISP box, ideally through a router or switch, which boost what it earns.`;
     } else {
       perk = 'no income';
       tip = 'This device doesn’t earn credits itself, but it can connect others that do.';
@@ -474,6 +480,7 @@ export function mountHud(store) {
       // what the upgrade buys: more income, or a bigger shield
       const gain = dev.shield
         ? `shield ${dev.shield}% → ${Math.min(75, (dev.shield / dev.tier) * up.tier)}%`
+        : dev.netBoost > 0 ? `boost +${dev.netBoost}% → +${Math.round((dev.netBoost / tierMult(dev.tier)) * tierMult(up.tier))}%`
         : dev.rate > 0 ? `earns ${rate(dev.rate)} → ${rate((dev.rate / tierMult(dev.tier)) * tierMult(up.tier))}` : 'a higher tier';
       const why = s.user.level < up.level
         ? `Reach level ${up.level} to upgrade to tier ${up.tier} (${gain}). Answer questions in Learn (L) for XP.`

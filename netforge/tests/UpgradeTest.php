@@ -37,7 +37,7 @@ check('tier 1 -> 2', Rules::upgradeInfo('firewall', 1, 3), ['tier' => 2, 'cost' 
 check('tier 2 -> 3', Rules::upgradeInfo('firewall', 2, 3), ['tier' => 3, 'cost' => 1200000, 'level' => 8]);
 
 echo "Items not sold in the shop\n";
-check('laptop is priced like a 1,000-credit device', Rules::upgradeInfo('laptop', 1, 3), ['tier' => 2, 'cost' => 600, 'level' => 3]);
+check('laptop: upgrades priced from its 3k shop price', Rules::upgradeInfo('laptop', 1, 3), ['tier' => 2, 'cost' => 1800, 'level' => 3]);
 check('fixed ISP panel has one tier', Rules::upgradeInfo('isp_fiber', 1, 1), null);
 
 echo "\n$passed passed, $failed failed\n";

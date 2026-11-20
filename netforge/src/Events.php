@@ -10,7 +10,7 @@ use NetForge\Progress\Income;
  * Random timed events, once a student has moved past the garage (leased the office):
  *  - the grey-market broker follows them around; hear him out and he usually gives a
  *    temporary GPU discount, but sometimes he's a pickpocket;
- *  - investors text them, paying a dividend of their company value when it's growing.
+ *  - investors text them an offer to invest; take it, turn it down or ask for more (they may walk away);
  * Also the company value (the "stock") and its history for the chart on the phone.
  */
 final class Events
@@ -76,6 +76,7 @@ final class Events
             'event' => self::active($userId),
             'unread' => (int) Db::one('SELECT COUNT(*) n FROM messages WHERE user_id = ? AND read_at IS NULL', [$userId])['n'],
             'buffs' => self::buffs($userId),
+            'offer' => self::offer($userId),
         ];
     }
 
@@ -90,31 +91,110 @@ final class Events
         Db::exec('INSERT INTO game_events (user_id, kind, expires_at) VALUES (?, "broker", NOW() + INTERVAL ? SECOND)', [$userId, self::BROKER_SECONDS]);
     }
 
-    /** An investor texts: a dividend when the company's value is growing. */
+    public const OFFER_MINUTES = 10;   // how long an investor's offer stands
+    public const WALK_CAP = 0.8;       // the most likely an investor is to walk away when asked for more
+
+    /**
+     * What an investor offers: about 20 minutes of the company's income or 8% of its savings,
+     * whichever is more, give or take 20%. Growing companies get a little more.
+     */
+    public static function offerFor(int $userId): int
+    {
+        $perSec = Income::summary($userId)['perSec'];
+        $credits = (int) Db::one('SELECT credits FROM users WHERE id = ?', [$userId])['credits'];
+        $base = max($perSec * 1200, $credits * 0.08, 2000);
+        $first = Db::one('SELECT value FROM company_history WHERE user_id = ? AND at <= NOW() - INTERVAL 30 MINUTE ORDER BY at DESC LIMIT 1', [$userId]);
+        $growing = $first && self::companyValue($userId) > (int) $first['value'] * 1.02;
+        return (int) round($base * (random_int(80, 120) / 100) * ($growing ? 1.2 : 1.0));
+    }
+
+    /**
+     * How likely the investor is to walk away if asked for more: the richer the company, the
+     * less they need it, up to WALK_CAP once income reaches investor_walk_income (credits/s).
+     * Each earlier ask makes it 10 points likelier.
+     */
+    public static function walkChance(int $userId, int $rounds): float
+    {
+        $walk = max(1, Db::configInt('investor_walk_income', 50000));
+        $perSec = Income::summary($userId)['perSec'];
+        $credits = (int) Db::one('SELECT credits FROM users WHERE id = ?', [$userId])['credits'];
+        $wealth = min(1.0, max($perSec / $walk, $credits / ($walk * 3600)));
+        return min(self::WALK_CAP, 0.15 + 0.65 * $wealth + 0.10 * $rounds);
+    }
+
+    private static function text(int $userId, string $sender, string $body, int $amount = 0): void
+    {
+        Db::exec('INSERT INTO messages (user_id, sender, body, amount, read_at) VALUES (?, ?, ?, ?, ?)',
+            [$userId, $sender, $body, $amount, $sender === 'you' ? date('Y-m-d H:i:s') : null]);
+    }
+
+    /** An investor texts an offer to invest in the company; it stands for OFFER_MINUTES. */
     private static function investorText(int $userId): void
     {
         self::snapshot($userId);
-        $now = self::companyValue($userId);
-        $then = Db::one('SELECT value FROM company_history WHERE user_id = ? AND at <= NOW() - INTERVAL 30 MINUTE ORDER BY at DESC LIMIT 1', [$userId])
-            ?? Db::one('SELECT value FROM company_history WHERE user_id = ? ORDER BY at LIMIT 1', [$userId]);
-        $was = max(1, (int) ($then['value'] ?? $now));
-        $growth = ($now - $was) / $was;
-        $pct = $growth > 0.02 ? min(0.08, 0.03 + $growth * 0.2) : ($growth >= 0 ? 0.01 : 0.0);
-        $amount = (int) round($now * $pct);
-        $change = (int) round($growth * 100);
-        if ($amount > 0) {
-            Db::exec('UPDATE users SET credits = credits + ? WHERE id = ?', [$amount, $userId]);
-            $body = $growth > 0.02
-                ? sprintf('Your company’s up %d%%. Nice work! Our fund is sending a dividend of %s credits. Keep it growing.', $change, number_format($amount))
-                : sprintf('Steady numbers this round. Here’s a small dividend of %s credits. Grow your income to earn more.', number_format($amount));
-        } else {
-            $body = sprintf('Your company’s value dipped %d%%. No dividend this time. Keep your network online and your security rating up.', abs($change));
-        }
-        Db::exec('INSERT INTO messages (user_id, sender, body, amount) VALUES (?, "investor", ?, ?)', [$userId, $body, $amount]);
-        Db::exec('INSERT INTO game_events (user_id, kind, status, outcome, amount) VALUES (?, "investor", "done", ?, ?)', [$userId, $amount > 0 ? 'dividend' : 'none', $amount]);
-        if ($amount > 0) {
-            Rules::log($userId, 'ok', sprintf('An investor sent you %s credits. Check your phone.', number_format($amount)));
-        }
+        $amount = self::offerFor($userId);
+        Db::exec('INSERT INTO game_events (user_id, kind, amount, expires_at) VALUES (?, "investor", ?, NOW() + INTERVAL ? MINUTE)',
+            [$userId, $amount, self::OFFER_MINUTES]);
+        self::text($userId, 'investor', sprintf('Hi! Mira from Lumen Capital. We like what you’re building and want to invest %s credits in your company. Interested?', Money::short($amount)));
+        Rules::log($userId, 'info', 'An investor texted you an offer. Check your phone.');
+    }
+
+    /** The investor's current offer, if one stands: {id, amount, rounds, secondsLeft, walkPct}. */
+    public static function offer(int $userId): ?array
+    {
+        $e = Db::one('SELECT id, amount, rounds, created_at, TIMESTAMPDIFF(SECOND, NOW(), expires_at) secs FROM game_events
+                       WHERE user_id = ? AND kind = "investor" AND status = "active" AND expires_at >= NOW() ORDER BY id DESC LIMIT 1', [$userId]);
+        return $e === null ? null : ['id' => (int) $e['id'], 'amount' => (int) $e['amount'], 'rounds' => (int) $e['rounds'], 'since' => $e['created_at'],
+            'secondsLeft' => max(0, (int) $e['secs']), 'walkPct' => (int) round(self::walkChance($userId, (int) $e['rounds']) * 100)];
+    }
+
+    /**
+     * The student's answer to an investor: "accept" (take the money), "more" (ask for a better
+     * deal: they may raise it or walk away) or "decline".
+     * @return array{outcome:string, amount:int, reply:string}
+     */
+    public static function answerInvestor(int $userId, int $eventId, string $choice): array
+    {
+        return Db::transaction(function () use ($userId, $eventId, $choice): array {
+            $e = Db::one('SELECT id, amount, rounds FROM game_events WHERE id = ? AND user_id = ? AND kind = "investor" AND status = "active" AND expires_at >= NOW() FOR UPDATE',
+                [$eventId, $userId]);
+            if ($e === null) {
+                throw new GameError('That offer has expired.');
+            }
+            $amount = (int) $e['amount'];
+            $rounds = (int) $e['rounds'];
+            $done = fn (string $outcome) => Db::exec('UPDATE game_events SET status = "done", outcome = ? WHERE id = ?', [$outcome, $eventId]);
+            if ($choice === 'accept') {
+                self::text($userId, 'you', 'Deal.');
+                Db::exec('UPDATE users SET credits = credits + ? WHERE id = ?', [$amount, $userId]);
+                $done('invested');
+                $reply = sprintf('Wonderful. %s credits are on their way. Keep growing!', Money::short($amount));
+                self::text($userId, 'investor', $reply, $amount);
+                Rules::log($userId, 'ok', sprintf('Lumen Capital invested %s credits in your company.', Money::short($amount)));
+                return ['outcome' => 'invested', 'amount' => $amount, 'reply' => $reply];
+            }
+            if ($choice === 'decline') {
+                self::text($userId, 'you', 'No thanks.');
+                $done('declined');
+                $reply = 'Understood. We’ll be in touch.';
+                self::text($userId, 'investor', $reply);
+                return ['outcome' => 'declined', 'amount' => 0, 'reply' => $reply];
+            }
+            // asking for more: the richer the company, the likelier they walk
+            self::text($userId, 'you', 'Can you do better?');
+            if (random_int(1, 1000) <= (int) round(self::walkChance($userId, $rounds) * 1000)) {
+                $done('walked');
+                $reply = 'That’s more than we can justify. We’ll pass this time. Good luck!';
+                self::text($userId, 'investor', $reply);
+                Rules::log($userId, 'warn', 'You asked for more and the investor walked away.');
+                return ['outcome' => 'walked', 'amount' => 0, 'reply' => $reply];
+            }
+            $new = (int) round($amount * random_int(120, 140) / 100);
+            Db::exec('UPDATE game_events SET amount = ?, rounds = rounds + 1, expires_at = GREATEST(expires_at, NOW() + INTERVAL 2 MINUTE) WHERE id = ?', [$new, $eventId]);
+            $reply = sprintf('You drive a hard bargain. %s credits, and that’s a serious offer.', Money::short($new));
+            self::text($userId, 'investor', $reply);
+            return ['outcome' => 'raised', 'amount' => $new, 'reply' => $reply];
+        });
     }
 
     /**
@@ -144,7 +224,7 @@ final class Events
             $amount = min($credits, max(500, (int) round($credits * random_int(3, 6) / 100)));
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$amount, $userId]);
             Db::exec('UPDATE game_events SET status = "done", outcome = "scam", amount = ? WHERE id = ?', [$amount, $eventId]);
-            Rules::log($userId, 'error', sprintf('The broker was a pickpocket: you lost %s credits.', number_format($amount)));
+            Rules::log($userId, 'error', sprintf('The broker was a pickpocket: you lost %s credits.', Money::short($amount)));
             return ['outcome' => 'scam', 'pct' => 0, 'minutes' => 0, 'amount' => $amount];
         });
     }
@@ -159,14 +239,14 @@ final class Events
     public static function phone(int $userId): array
     {
         $msgs = array_map(fn ($m) => ['id' => (int) $m['id'], 'sender' => $m['sender'], 'body' => $m['body'], 'amount' => (int) $m['amount'], 'at' => $m['created_at'], 'read' => $m['read_at'] !== null],
-            Db::all('SELECT * FROM messages WHERE user_id = ? ORDER BY id DESC LIMIT 30', [$userId]));
+            Db::all('SELECT * FROM messages WHERE user_id = ? ORDER BY id DESC LIMIT 40', [$userId]));
         $history = array_map(fn ($h) => ['at' => $h['at'], 'value' => (int) $h['value']],
             array_reverse(Db::all('SELECT at, value FROM company_history WHERE user_id = ? ORDER BY at DESC LIMIT 48', [$userId])));
         $value = self::companyValue($userId);
         if ($history) {
             $history[] = ['at' => date('Y-m-d H:i:s'), 'value' => $value]; // the line ends at today's value, like the headline
         }
-        return ['messages' => $msgs, 'history' => $history, 'value' => $value, 'eligible' => self::eligible($userId)];
+        return ['messages' => $msgs, 'history' => $history, 'value' => $value, 'eligible' => self::eligible($userId), 'offer' => self::offer($userId)];
     }
 
     public static function markRead(int $userId): void

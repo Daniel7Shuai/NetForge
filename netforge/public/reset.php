@@ -36,15 +36,15 @@ require __DIR__ . '/../src/views/head.php';
     <?= Csrf::field() ?>
     <input type="hidden" name="token" value="<?= e($token) ?>">
     <?php if ($done): ?>
-      <p class="prompt"><b>nf@noc:~$</b> password changed</p>
+      <p class="prompt">Password changed</p>
       <p class="note" role="status">Your password is changed. Sign in with the new one.</p>
       <a class="primary button-link" href="login.php">Sign in</a>
     <?php elseif ($user === null): ?>
-      <p class="prompt"><b>nf@noc:~$</b> link not valid</p>
+      <p class="prompt">Link not valid</p>
       <p class="error" role="alert">This link has expired or was already used. Each link works once, for a short time.</p>
       <a class="primary button-link" href="forgot.php">Ask for a new link</a>
     <?php else: ?>
-      <p class="prompt"><b>nf@noc:~$</b> new password for <?= e($user['username']) ?></p>
+      <p class="prompt">New password for <?= e($user['username']) ?></p>
       <?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif; ?>
       <input type="text" name="username" value="<?= e($user['username']) ?>" autocomplete="username" hidden>
       <label>New password

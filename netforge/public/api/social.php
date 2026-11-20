@@ -7,11 +7,15 @@ use NetForge\GameError;
 use NetForge\Social\Social;
 
 // GET  -> everything the Social panel shows (guild, raid, leaderboards, friends).
+// GET ?news=1 -> just the guild news (polled while the chat is open)
 // POST {action, ...} -> create | join | leave | goal | kick | share | friend-add | friend-remove,
-//      then replies with the fresh overview.
+//      | say {text}, then replies with the fresh overview.
 $method = $_SERVER['REQUEST_METHOD'] === 'POST' ? 'POST' : 'GET';
 $uid = Api::begin($method);
 Api::run(function () use ($uid, $method): void {
+    if ($method === 'GET' && isset($_GET['news'])) {
+        Api::ok(['news' => Social::news($uid)]);
+    }
     if ($method === 'POST') {
         $in = Api::body();
         $str = fn (string $k) => is_string($in[$k] ?? null) ? $in[$k] : '';
@@ -23,6 +27,7 @@ Api::run(function () use ($uid, $method): void {
             'goal'          => Social::setGoal($uid, $str('title'), $int('target')),
             'kick'          => Social::kick($uid, $int('member')),
             'share'         => Social::share($uid, $str('milestone')),
+            'say'           => Social::say($uid, $str('text')),
             'friend-add'    => Social::addFriend($uid, $str('username')),
             'friend-remove' => Social::removeFriend($uid, $int('friend')),
             default         => throw new GameError('Unknown action.'),

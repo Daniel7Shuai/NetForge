@@ -36,7 +36,7 @@ require __DIR__ . '/../src/views/head.php';
   <header><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</header>
   <form method="post" novalidate>
     <?= Csrf::field() ?>
-    <p class="prompt"><b>nf@noc:~$</b> sign in to start your shift</p>
+    <p class="prompt">Sign in to start your shift</p>
     <?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif; ?>
     <?php if ($notice): ?><p class="note info" role="status"><?= e($notice) ?></p><?php endif; ?>
     <label>Username or email

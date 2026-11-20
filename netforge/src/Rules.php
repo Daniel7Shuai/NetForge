@@ -219,7 +219,7 @@ final class Rules
                 $price = $q['price'];
             }
             if ($credits < $price) {
-                throw new GameError(sprintf('You need %s more credits. Your online devices earn them every second.', number_format($price - $credits)));
+                throw new GameError(sprintf('You need %s more credits. Your online devices earn them every second.', Money::short($price - $credits)));
             }
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$price, $userId]);
             Db::exec(
@@ -231,7 +231,7 @@ final class Rules
                 Market::recordPurchase($userId, (int) $row['id']);
             }
             $name = $row['name'] . ((int) $row['quantity'] > 1 ? ' ×' . $row['quantity'] : '') . ($row['seller'] !== null ? ' from ' . $row['seller'] : '');
-            self::log($userId, 'ok', sprintf('Bought %s for %s credits.', $name, number_format($price)));
+            self::log($userId, 'ok', sprintf('Bought %s for %s credits.', $name, Money::short($price)));
             return $name;
         });
     }
@@ -347,11 +347,11 @@ final class Rules
                 throw new GameError(sprintf('Reach level %d to upgrade %s to tier %d. Answer questions in Learn for XP.', $up['level'], $d['label'], $up['tier']));
             }
             if ((int) $me['credits'] < $up['cost']) {
-                throw new GameError(sprintf('You need %s more credits to upgrade %s.', number_format($up['cost'] - (int) $me['credits']), $d['label']));
+                throw new GameError(sprintf('You need %s more credits to upgrade %s.', Money::short($up['cost'] - (int) $me['credits']), $d['label']));
             }
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$up['cost'], $userId]);
             Db::exec('UPDATE devices SET tier = ? WHERE id = ?', [$up['tier'], $deviceId]);
-            $msg = sprintf('Upgraded %s to tier %d for %s credits.', $d['label'], $up['tier'], number_format($up['cost']));
+            $msg = sprintf('Upgraded %s to tier %d for %s credits.', $d['label'], $up['tier'], Money::short($up['cost']));
             self::log($userId, 'ok', $msg);
             return $msg;
         });
@@ -430,12 +430,12 @@ final class Rules
                     throw new GameError(sprintf('Reach level %d to lease the %s.', $l['unlockLevel'], strtolower($l['name'])));
                 }
                 if ((int) $u['credits'] < $cost) {
-                    throw new GameError(sprintf('Leasing the %s costs %s credits. You need %s more.', strtolower($l['name']), number_format($cost), number_format($cost - (int) $u['credits'])));
+                    throw new GameError(sprintf('Leasing the %s costs %s credits. You need %s more.', strtolower($l['name']), Money::short($cost), Money::short($cost - (int) $u['credits'])));
                 }
                 Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$cost, $userId]);
                 Db::exec('INSERT INTO user_locations (user_id, location) VALUES (?, ?)', [$userId, $code]);
                 Starter::placeFixtures($userId, $code);
-                $msg = sprintf('You leased the %s for %s credits. Wire its ISP connection to start earning here.', strtolower($l['name']), number_format($cost));
+                $msg = sprintf('You leased the %s for %s credits. Wire its ISP connection to start earning here.', strtolower($l['name']), Money::short($cost));
             }
             Db::exec('UPDATE users SET location = ?, pos_x = ?, pos_y = ? WHERE id = ?', [$code, $l['spawn']['x'], $l['spawn']['y'], $userId]);
             self::log($userId, 'ok', $msg);
@@ -481,7 +481,7 @@ final class Rules
             Db::exec('UPDATE users SET credits = credits + ? WHERE id = ?', [$o['reward']['credits'], $userId]);
             self::addXp($userId, $o['reward']['xp']);
             $gains = array_filter([
-                $o['reward']['credits'] ? sprintf('+%s credits', number_format($o['reward']['credits'])) : null,
+                $o['reward']['credits'] ? sprintf('+%s credits', Money::short($o['reward']['credits'])) : null,
                 $o['reward']['xp'] ? sprintf('+%d XP', $o['reward']['xp']) : null,
             ]);
             self::log($userId, 'ok', sprintf('Objective done: %s.%s', $o['title'], $gains ? ' ' . implode(', ', $gains) . '.' : ''));

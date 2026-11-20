@@ -68,6 +68,7 @@
       "id": "online",
       "say": [
         ["teacher", "You’re online! See the coins popping out? Your network now earns credits every second. Watch the wallet at the top."],
+        ["teacher", "The laptop does the earning. Routers and switches earn nothing themselves, but every device behind them earns more: your router adds 25%."],
         ["teacher", "Spend them in the shop, but it only sells what your level allows. You level up by learning: press L for lessons."],
         ["hacker", "Heh. Cute little network, {player}."],
         ["hacker", "Be a shame if someone… came knocking."],
@@ -132,7 +133,7 @@
     "arrive:office": [
       ["teacher", "Welcome to the office! Desks for PCs out front, and a server room behind the glass with six rack slots."],
       ["teacher", "Run the new ISP box to a router or switch, then plug your gear into that."],
-      ["teacher", "One more thing. Word gets around when a business grows. Investors will text you, and a broker called {broker} likes to hang around new offices."],
+      ["teacher", "One more thing. Word gets around when a business grows. Investors will text you offers, and a broker called {broker} likes to hang around new offices."],
       ["teacher", "His deals are often good. Often. Keep an eye on your wallet."]
     ],
     "arrive:datacentre": [
@@ -149,7 +150,7 @@
     ],
     "broker": [
       ["broker", "Psst. {player}, right? Nice little operation you’ve got."],
-      ["broker", "I know people at the GPU suppliers. Cash up front and I can get you a discount. What do you say?"]
+      ["broker", "I know people at the GPU suppliers. A little cash up front and I can get you a discount on every GPU. Want my help?"]
     ],
     "broker:deal": [
       ["broker", "Pleasure doing business. {pct}% off every GPU for the next {minutes} minutes. Go shopping."]
@@ -160,10 +161,6 @@
     ],
     "broker:refused": [
       ["broker", "Suit yourself. You know where to find me."]
-    ],
-    "investor": [
-      ["investor", "Hi {player}, Mira from Lumen Capital. We’ve been watching your company."],
-      ["investor", "When your company’s value grows, we’ll text you a dividend. Check your phone, top right, to see your stock chart."]
     ]
   }
 }

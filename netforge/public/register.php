@@ -41,7 +41,7 @@ require __DIR__ . '/../src/views/head.php';
   <header><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</header>
   <form method="post" novalidate>
     <?= Csrf::field() ?>
-    <p class="prompt"><b>nf@noc:~$</b> create an account to get your first desk</p>
+    <p class="prompt">Create an account to get your first desk</p>
     <?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif; ?>
     <label>Username
       <input type="text" name="username" value="<?= e($username) ?>" autocomplete="username" required autofocus>

@@ -9,6 +9,7 @@ use NetForge\GameError;
 // GET ?start=1   -> {event, unread, buffs}: polled by the game (may start a due event)
 // GET ?phone=1   -> {messages, history, value, eligible}
 // POST {action: "broker", event, choice: "accept"|"refuse"} -> {result, poll}
+// POST {action: "investor", event, choice: "accept"|"more"|"decline"} -> {result, poll, phone}
 // POST {action: "read"} -> marks texts read
 $method = $_SERVER['REQUEST_METHOD'] === 'POST' ? 'POST' : 'GET';
 $uid = Api::begin($method);
@@ -27,6 +28,13 @@ Api::run(function () use ($uid, $method): void {
             }
             $result = Events::answerBroker($uid, $in['event'], ($in['choice'] ?? '') === 'accept' ? 'accept' : 'refuse');
             Api::ok(['result' => $result, 'poll' => Events::poll($uid, false)]);
+        case 'investor':
+            if (!is_int($in['event'] ?? null)) {
+                throw new GameError('Which offer?');
+            }
+            $choice = in_array($in['choice'] ?? '', ['accept', 'more', 'decline'], true) ? $in['choice'] : 'decline';
+            $result = Events::answerInvestor($uid, $in['event'], $choice);
+            Api::ok(['result' => $result, 'poll' => Events::poll($uid, false), 'phone' => Events::phone($uid)]);
         case 'read':
             Events::markRead($uid);
             Api::ok(['unread' => 0]);

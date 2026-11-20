@@ -30,6 +30,7 @@ export const api = {
   events: (mayStart) => call(`events.php${mayStart ? '?start=1' : ''}`),
   phone: () => call('events.php?phone=1'),
   readTexts: () => call('events.php', { method: 'POST', body: JSON.stringify({ action: 'read' }) }),
+  answerInvestor: (eventId, choice) => call('events.php', { method: 'POST', body: JSON.stringify({ action: 'investor', event: eventId, choice }) }),
   answerBroker: (eventId, choice) => call('events.php', { method: 'POST', body: JSON.stringify({ action: 'broker', event: eventId, choice }) }),
   music: () => call('music.php'),
   upgrade: (deviceId) => call('upgrade.php', { method: 'POST', body: JSON.stringify({ device: deviceId }) }),

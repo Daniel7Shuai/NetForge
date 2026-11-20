@@ -2,7 +2,7 @@
 // and every device that's earning pops a little "+credits" coin as the money comes in.
 // The server stays the bank: these only animate between its updates, and every state
 // it sends resets the count to the real balance.
-import { fmt, rate } from './money.js';
+import { fmt, full, rate } from './money.js';
 import { devicePixel } from './game/MapScene.js';
 import { TILE, COLS, ROWS } from './game/layout.js';
 
@@ -54,7 +54,8 @@ export function mountEconomy(store) {
     const v = live();
     if (v === shown) return;
     shown = v;
-    amount.textContent = fmt(v);
+    amount.textContent = fmt(v, 4); // four figures, so it visibly counts up
+    amount.title = `${full(v)} credits`;
   }
   // a few frames a second is enough to look alive without burning battery
   setInterval(() => { if (!document.hidden) draw(); }, 120);

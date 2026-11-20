@@ -425,7 +425,7 @@ function cooling(c, x, y) {
   R(c, x, y + 45, 30, 2, 'rgba(0,0,0,.5)');
   R(c, x, y, 30, 45, C.k); R(c, x + 1, y + 1, 28, 43, '#18222f'); R(c, x + 1, y + 1, 28, 1, C.metal2);
   for (let f = 0; f < 2; f++) { c.fillStyle = '#0b111b'; c.beginPath(); c.arc(x + 15, y + 11 + f * 20, 8, 0, 7); c.fill(); }
-  R(c, x + 4, y + 40, 3, 1, C.lime); R(c, x + 9, y + 40, 10, 1, C.metal2);
+  R(c, x + 4, y + 40, 15, 1, C.metal2); // vent grille
 }
 
 function office(c, loc) {

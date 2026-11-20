@@ -125,6 +125,7 @@ export async function mountMoments(store) {
     if (want) {
       lastAfford = Date.now();
       const why = want.earns ? `It earns ${rate(want.earns)} once it’s online.`
+        : want.group === 'network' && want.boost ? `Put it between your devices and the ISP box and they all earn ${want.boost}% more.`
         : want.boost ? `Fit it in a server for +${want.boost}% income.` : (want.description || '');
       const name = want.seller ? want.name.replace(/ \((budget|pro)\)$/, '') : want.name;
       return tip(`afford:${family(want.code)}`, 'afford', { item: name.toLowerCase(), price: fmt(want.quote ? want.quote.price : want.price), why },

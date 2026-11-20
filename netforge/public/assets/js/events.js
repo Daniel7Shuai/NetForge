@@ -1,9 +1,12 @@
 // Random events once the student has moved out of the garage: Vex the grey-market broker
 // turns up and follows them around (talk to him for a GPU discount, or get pickpocketed),
-// and investors text them dividends while their company grows. The phone in the top bar
-// holds the texts and the company's value over time. The server decides everything.
+// and investors text offers to invest (take it, turn it down or haggle: they may walk away).
+// The phone in the top bar holds the texts and the company's value over time. The server
+// decides everything.
 import { api } from './api.js';
 import { fmt } from './money.js';
+import { loadStory, character } from './story.js';
+import { portraitEl } from './dialogue.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -11,9 +14,99 @@ const POLL_MS = 10000;
 
 export function mountEvents(store) {
   let broker = null;      // id of the broker event on screen
+  const greeted = new Set(); // broker visits he has already spoken up in
   let unread = null;
   let talking = false;
+  let offerId = null;     // the investor offer on the go
+  let call = null, callBusy = false; // the pop-up phone
+  let since = null;       // when the current conversation with the investor started
   const btn = $('phone-btn'), panel = $('phone');
+
+  function ring() {
+    btn.classList.remove('ring'); void btn.offsetWidth; btn.classList.add('ring');
+  }
+
+  /** A notification sliding in at the top of the map, like a phone's. */
+  function notify(title, body) {
+    const n = document.createElement('div');
+    n.className = 'notif';
+    n.setAttribute('role', 'status');
+    n.innerHTML = `<i class="ti ti-message-circle" aria-hidden="true"></i><div><b>${esc(title)}</b><small>${esc(body)}</small></div>`;
+    document.querySelector('.stage').append(n);
+    setTimeout(() => n.classList.add('out'), 4200);
+    setTimeout(() => n.remove(), 4600);
+  }
+
+  /* ---------- the investor: a phone that pops up like a character ---------- */
+  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.attackOpen || document.querySelector('.dlg');
+
+  async function openCall() {
+    if (offerId === null) return;
+    if (blocked()) { setTimeout(openCall, 1500); return; } // wait until the lesson, attack or conversation is over
+    if (!call) {
+      call = document.createElement('section');
+      call.className = 'phone-pop';
+      call.setAttribute('role', 'dialog');
+      call.setAttribute('aria-label', 'Message from Mira, Lumen Capital');
+      document.querySelector('.stage').append(call);
+      call.addEventListener('click', onCallClick);
+    }
+    try {
+      renderCall(await api.phone());
+      if (unread) { await api.readTexts(); apply({ ...store.state.events, unread: 0 }); }
+    } catch (err) {
+      store.log('error', err.message);
+    }
+  }
+  function closeCall() { call?.remove(); call = null; }
+
+  function renderCall(d, note = '') {
+    if (!call) return;
+    const o = d.offer;
+    if (o) since = o.since;
+    // this conversation with the investor, oldest first
+    const thread = d.messages.filter((m) => (m.sender === 'investor' || m.sender === 'you') && (!since || m.at >= since)).slice(0, 8).reverse()
+      .map((m) => `<li class="${m.sender === 'you' ? 'me' : 'them'}">${esc(m.body)}</li>`).join('');
+    call.innerHTML = `
+      <header><div class="pp-face"></div><div><b>Mira</b><small>Lumen Capital</small></div>
+        <button type="button" class="pp-x" data-later aria-label="Close the phone (the offer stays open)"><i class="ti ti-x" aria-hidden="true"></i></button></header>
+      <ul class="pp-thread">${thread}</ul>
+      ${note ? `<p class="pp-note">${esc(note)}</p>` : ''}
+      ${o ? `<div class="pp-actions">
+          <button type="button" class="pp-btn primary" data-answer="accept">Accept ${esc(fmt(o.amount))}</button>
+          <button type="button" class="pp-btn" data-answer="more" data-tip="She raises the offer 20-40%, or walks away. The bigger your company, the less she needs the deal.">Ask for more <small>${o.walkPct}% she walks</small></button>
+          <button type="button" class="pp-btn ghost" data-answer="decline">No thanks</button>
+        </div><p class="pp-timer mono">Offer open for ${Math.max(1, Math.ceil(o.secondsLeft / 60))} min</p>`
+        : '<div class="pp-actions"><button type="button" class="pp-btn" data-later>Close</button></div>'}`;
+    const face = call.querySelector('.pp-face');
+    loadStory().then((story) => face.append(portraitEl(character(story, 'investor'), 2))).catch(() => {});
+    const t = call.querySelector('.pp-thread');
+    t.scrollTop = t.scrollHeight;
+  }
+
+  async function onCallClick(e) {
+    const b = e.target.closest('button');
+    if (!b || callBusy) return;
+    if (b.dataset.later !== undefined) { closeCall(); return; }
+    const choice = b.dataset.answer;
+    if (!choice || offerId === null) return;
+    callBusy = true;
+    call.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+    try {
+      const r = await api.answerInvestor(offerId, choice);
+      const { outcome, amount } = r.result;
+      if (outcome !== 'raised') offerId = null;
+      apply(r.poll);
+      if (outcome === 'invested') { await refreshState(); }
+      renderCall(r.phone, outcome === 'invested' ? `+${fmt(amount)} credits` : outcome === 'walked' ? 'She walked away.' : '');
+      if (outcome === 'invested' || outcome === 'walked' || outcome === 'declined') setTimeout(() => { if (offerId === null) closeCall(); }, 2600);
+    } catch (err) {
+      store.log('error', err.message);
+      closeCall();
+    } finally {
+      callBusy = false;
+    }
+  }
 
   async function refreshState() {
     try { store.applyServerState(await api.state()); } catch { /* the next poll catches up */ }
@@ -24,18 +117,29 @@ export function mountEvents(store) {
     if (d !== store.state.events) store.set({ events: d });
     const ev = d.event;
     if (ev?.kind === 'broker') {
-      if (broker !== ev.id) store.log('warn', 'A stranger in a dark coat wandered in and is following you. Click him to talk.');
+      const fresh = broker !== ev.id;
       broker = ev.id;
       if (store.scene?.player && !store.scene.npc) store.scene.showNpc(); // the map may still be starting up
+      if (fresh && !greeted.has(ev.id)) {
+        // like Ghost: he speaks up himself once he's caught up with you
+        greeted.add(ev.id);
+        setTimeout(() => { if (broker === ev.id) store.npcClicked(); }, 2500);
+      }
     } else if (ev?.kind !== 'broker' && broker !== null) {
       broker = null;
       store.scene?.hideNpc();
     }
-    if (unread !== null && d.unread > unread) {
-      refreshState(); // the dividend changed the balance
-      btn.classList.remove('ring'); void btn.offsetWidth; btn.classList.add('ring');
-      if (!store.seen?.('investor')) { store.markSeen?.('investor'); store.talk?.('investor'); }
+    // an investor's offer: ring, notify, then the phone pops up with it
+    if (d.offer && d.offer.id !== offerId) {
+      offerId = d.offer.id;
+      ring();
+      notify('New message from Mira, Lumen Capital', `Offering ${fmt(d.offer.amount)} credits for a stake in your company.`);
+      setTimeout(() => openCall(), 1600);
+    } else if (!d.offer && offerId !== null) {
+      offerId = null;
+      if (call && !callBusy) closeCall();
     }
+    if (unread !== null && d.unread > unread) ring();
     unread = d.unread;
     const badge = btn.querySelector('.badge');
     badge.textContent = d.unread;
@@ -57,9 +161,12 @@ export function mountEvents(store) {
     const id = broker;
     try {
       const choice = await store.talk('broker', {}, {
-        choices: [{ label: 'Hear him out (risky)', value: 'accept' }, { label: 'No thanks', value: 'refuse' }],
+        choices: [{ label: 'Take his help (risky)', value: 'accept' }, { label: 'Not now', value: 'later' }, { label: 'Get lost', value: 'refuse' }],
       });
-      if (choice !== 'accept' && choice !== 'refuse') return; // walked away: he keeps following
+      if (choice !== 'accept' && choice !== 'refuse') {
+        store.log('info', 'Vex is still following you. Click him if you change your mind.');
+        return; // he keeps following
+      }
       const r = await api.answerBroker(id, choice);
       apply(r.poll);
       await refreshState();

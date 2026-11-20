@@ -38,7 +38,7 @@ require __DIR__ . '/../src/views/head.php';
   <header><i class="ti ti-topology-star-3" aria-hidden="true"></i>NetForge</header>
   <form method="post" novalidate>
     <?= Csrf::field() ?>
-    <p class="prompt"><b>nf@noc:~$</b> reset a forgotten password</p>
+    <p class="prompt">Reset a forgotten password</p>
     <?php if ($error): ?><p class="error" role="alert"><?= e($error) ?></p><?php endif; ?>
     <?php if ($sent): ?>
       <p class="note" role="status">If that account exists and has an email, a reset link is on its way. It works once, for <?= (int) \NetForge\Db::configInt('reset_minutes', 30) ?> minutes. Check your spam folder too.</p>
