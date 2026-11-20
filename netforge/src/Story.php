@@ -135,10 +135,25 @@ final class Story
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
             throw new GameError(($file['error'] ?? 0) === UPLOAD_ERR_INI_SIZE ? 'That file is bigger than the server allows.' : 'Choose a music file to upload.');
         }
-        if ($file['size'] > self::MAX_MUSIC_BYTES) {
+        return self::saveTrack($file['tmp_name'], (int) $file['size'], $title, $artist, $licence, fn (string $to) => move_uploaded_file($file['tmp_name'], $to));
+    }
+
+    /** Adds a music file already on the server's disk (tools/import-music.php). The file is copied. */
+    public static function addTrackFromFile(string $path, string $title, string $artist, string $licence): int
+    {
+        if (!is_file($path) || !is_readable($path)) {
+            throw new GameError("Can't read $path.");
+        }
+        return self::saveTrack($path, (int) filesize($path), $title, $artist, $licence, fn (string $to) => copy($path, $to));
+    }
+
+    /** The checks every new track goes through, then it's stored in storage/music and listed. */
+    private static function saveTrack(string $path, int $size, string $title, string $artist, string $licence, callable $store): int
+    {
+        if ($size > self::MAX_MUSIC_BYTES) {
             throw new GameError('That file is over 30 MB. Use a shorter or more compressed track (MP3 or OGG).');
         }
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: '';
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path) ?: '';
         if (!isset(self::MUSIC_TYPES[$mime])) {
             throw new GameError('Upload an MP3, OGG, WAV, M4A or WebM audio file.');
         }
@@ -151,13 +166,13 @@ final class Story
             throw new GameError('Say where the track is from and why it’s free to use (for example "CC0 from freepd.com").');
         }
         $name = bin2hex(random_bytes(12)) . '.' . self::MUSIC_TYPES[$mime];
-        if (!move_uploaded_file($file['tmp_name'], self::musicDir() . '/' . $name)) {
+        if (!$store(self::musicDir() . '/' . $name)) {
             throw new GameError('The file couldn’t be saved on the server.');
         }
         $sort = (int) (Db::one('SELECT COALESCE(MAX(sort_order), 0) + 10 n FROM music_tracks')['n']);
         Db::exec(
             'INSERT INTO music_tracks (kind, title, artist, licence, file, mime, bytes, sort_order) VALUES ("file", ?, ?, ?, ?, ?, ?, ?)',
-            [$title, mb_substr(trim($artist), 0, 80), $licence, $name, $mime, (int) $file['size'], $sort]
+            [$title, mb_substr(trim($artist), 0, 80), $licence, $name, $mime, $size, $sort]
         );
         return (int) Db::pdo()->lastInsertId();
     }
