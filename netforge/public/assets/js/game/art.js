@@ -182,7 +182,7 @@ export function drawIcon(c, item) {
     case 'desk_kit': c.save(); c.scale(1 / 3, 1 / 3); desk(c, 0, 0); c.restore(); return;
     case 'server_rack': c.save(); c.scale(0.5, 0.5); rackFrame(c, 8, 0); c.restore(); return;
   }
-  if (item.sprite === 'gpucard' || item.category === 'part') return gpuCard(c, 0, 0);
+  if (item.sprite === 'gpucard' || (item.category === 'part' && !SPRITES[item.sprite])) return gpuCard(c, 0, 0);
   switch (item.sprite) {
     case 'gpurig': c.save(); c.scale(0.5, 0.5); gpuRig(c, 8, 0); c.restore(); return;
     case 'rack': case 'rack2u': c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore(); return;

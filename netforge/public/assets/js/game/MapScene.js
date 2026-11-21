@@ -2,6 +2,7 @@
 // and turns keyboard/pointer input into store actions. It holds no game rules.
 import * as layout from './layout.js';
 import * as art from './art.js';
+import { rackCabinet } from './device-art.js';
 
 const { TILE } = layout;
 // the map's size depends on the place (read when the scene starts, after setLocation)
@@ -11,12 +12,20 @@ const LED_COLORS = [0x7cff6b, 0x2be3ff, 0xffb43d];
 
 /** Where a device's sprite is drawn and its visible box, in map pixels. */
 export function devicePixel(dev) {
+  if (dev.rackU != null) { // mounted in a rack: its band in the cabinet (2px per U, U1 at the bottom)
+    return { x: dev.tile_x * TILE + 3, y: dev.tile_y * TILE + 29 - (dev.rackU + dev.size - 1) * 2, w: 10, h: dev.size * 2 };
+  }
   const s = art.SPRITES[dev.sprite] || art.SPRITES.tower;
   return { x: dev.tile_x * TILE + s.off[0], y: dev.tile_y * TILE + s.off[1], w: s.box[0], h: s.box[1] };
 }
 
 /** Where a cable plugs into a device, nudged per port so neighbouring cables don't overlap. */
 export function portAnchor(dev, portName) {
+  if (dev.rackU != null) { // cables leave a rack from the unit's band
+    const px = devicePixel(dev);
+    const i = Math.max(0, (dev.ports || []).findIndex((p) => p.name === portName));
+    return { x: px.x + 1 + (i % 8), y: px.y + px.h - 1 };
+  }
   const s = art.SPRITES[dev.sprite] || art.SPRITES.tower;
   const px = devicePixel(dev);
   const i = Math.max(0, (dev.ports || []).findIndex((p) => p.name === portName));
@@ -83,6 +92,7 @@ export class MapScene extends Phaser.Scene {
     this.input.on('pointermove', (p) => this.hover(p));
     this.input.on('pointerout', () => this.clearHover());
     this.input.on('pointerdown', (p) => this.click(p));
+    this.input.mouse?.disableContextMenu(); // right-click opens a rack's front/rear menu instead
 
     this.store.subscribe(() => this.sync());
     this.sync();
@@ -117,6 +127,7 @@ export class MapScene extends Phaser.Scene {
     this.blocked = layout.staticBlocked();
     const seen = new Set();
     for (const dev of devices) {
+      if (dev.rackU != null) continue; // drawn inside its rack cabinet
       seen.add(dev.id);
       const px = devicePixel(dev);
       let s = this.sprites.get(dev.id);
@@ -137,10 +148,43 @@ export class MapScene extends Phaser.Scene {
     for (const [id, s] of this.sprites) if (!seen.has(id)) { s.destroy(); this.sprites.delete(id); }
     const sig = devices.map((d) => `${d.id}:${d.tile_x},${d.tile_y}`).join('|') + '#' + layout.USER_FURNITURE.map((f) => `${f.id}:${f.x},${f.y}`).join('|');
     if (sig !== this.devSig) { this.devSig = sig; this.redrawRoom(devices); }
+    this.syncRacks();
     this.drawCables();
     this.drawSlots();
     if (this.lastTile) this.hoverTile(this.lastTile);
     this.ready = true;
+  }
+
+  /** Draws every rack cabinet, with what's mounted in it, and redraws one when its contents change. */
+  syncRacks() {
+    this.rackImgs ??= new Map();
+    const { racks = [], devices } = this.store.state;
+    const keep = new Set();
+    for (const r of racks) {
+      const key = `${r.x},${r.y}`;
+      keep.add(key);
+      const units = devices.filter((d) => d.rackU != null && d.tile_x === r.x && d.tile_y === r.y)
+        .map((d) => ({ u: d.rackU, size: d.size, sprite: d.sprite }));
+      const sig = (r.powered ? 'P' : '-') + units.map((u) => `${u.u}:${u.size}:${u.sprite}`).join('|');
+      let img = this.rackImgs.get(key);
+      const tex = `rackcab-${r.x}-${r.y}`;
+      if (!img || img.sig !== sig) {
+        if (this.textures.exists(tex)) this.textures.remove(tex);
+        const t = this.textures.createCanvas(tex, 16, 33);
+        rackCabinet(t.getContext(), units, r.powered);
+        t.refresh();
+        if (img) img.setTexture(tex);
+        else { img = this.add.image(r.x * TILE, r.y * TILE, tex).setOrigin(0).setDepth(r.y * TILE + 32); this.rackImgs.set(key, img); }
+        img.sig = sig;
+      }
+      this.blocked.add(`${r.x},${r.y}`); this.blocked.add(`${r.x},${r.y + 1}`); // a cabinet stands there
+    }
+    for (const [key, img] of this.rackImgs) if (!keep.has(key)) { img.destroy(); this.rackImgs.delete(key); }
+  }
+
+  /** The rack covering a tile (racks are two tiles tall), if any. */
+  rackAt(tile) {
+    return (this.store.state.racks || []).find((r) => r.x === tile.x && (tile.y === r.y || tile.y === r.y + 1)) || null;
   }
 
   redrawRoom(devices) {
@@ -247,7 +291,7 @@ export class MapScene extends Phaser.Scene {
     g.clear();
     for (const dev of this.store.state.devices) {
       const spr = art.SPRITES[dev.sprite];
-      if (!spr || !spr.leds.length) continue;
+      if (!spr || !spr.leds.length || dev.rackU != null) continue;
       const { x, y } = devicePixel(dev);
       const sx = x - 0, sy = y - 0;
       spr.leds.forEach(([lx, ly], i) => {
@@ -419,7 +463,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   deviceAt(tile) {
-    return this.store.state.devices.find((d) => d.tile_x === tile.x && tile.y >= d.tile_y && tile.y < d.tile_y + d.height) || null;
+    return this.store.state.devices.find((d) => d.rackU == null && d.tile_x === tile.x && tile.y >= d.tile_y && tile.y < d.tile_y + d.height) || null;
   }
 
   hover(p) {
@@ -488,6 +532,15 @@ export class MapScene extends Phaser.Scene {
   click(p) {
     if (this.store.state.uiFocus) return;
     const tile = this.tileAt(p);
+    const rack = this.rackAt(tile);
+    if (rack) {
+      const item = this.store.placingItem();
+      if (p.rightButtonDown()) { this.store.rackMenu?.(rack, p.event); return; }
+      if (item && !item.slotKinds.includes('rack')) { this.store.tileClicked(tile, null); return; }
+      this.store.openRack?.(rack, item ? { mount: item.code } : { face: this.store.state.cableDraft ? 'rear' : 'front' });
+      return;
+    }
+    if (p.rightButtonDown()) return;
     if (this.npcAt(tile) && !this.store.placingItem()) { this.store.npcClicked?.(); return; }
     const device = this.deviceAt(tile);
     // point and click: open floor with nothing in hand means "walk there"

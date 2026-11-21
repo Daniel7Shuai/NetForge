@@ -4,6 +4,7 @@ import { datatechIcon } from './game/story-art.js';
 import { CABLE_FITS } from './rules.js';
 import { devicePixel } from './game/MapScene.js';
 import { TILE, COLS, ROWS } from './game/layout.js';
+import { moduleSlot } from './rackview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -15,6 +16,7 @@ const tipOf = (el) => el.dataset.tip || el.title || '';
 const GROUPS = [
   ['end', 'End devices', 'ti-device-desktop'], ['network', 'Network devices', 'ti-router'], ['wireless', 'Wireless', 'ti-wifi'],
   ['security', 'Security & WAN', 'ti-shield-lock'], ['iot', 'IoT', 'ti-bulb'],
+  ['misc', 'Misc', 'ti-server-bolt'], ['modules', 'Modules', 'ti-plug-connected'],
   ['gpu', 'GPUs', 'ti-cpu'], ['cable', 'Cables', 'ti-plug'], ['furniture', 'Furniture', 'ti-armchair'],
   ['company', 'DataTech', 'ti-building-skyscraper'],
 ];
@@ -24,12 +26,14 @@ const HOW = {
   cable: 'Use it with the cable tool (C).',
   furniture: 'Click it, then an open bit of floor on the map.',
   part: 'Click one of your servers to fit it.',
+  module: 'Click a device it fits, then pick it under Modules.',
 };
 const DETAIL = {
   device: 'Click a glowing spot on the map, or drag it there. Esc to cancel.',
   cable: 'Pick the cable tool (C) to run it.',
   furniture: 'Click open floor on the map to set it down: the green outline shows where it goes. Esc to cancel.',
   part: 'Click one of your servers on the map, then pick this card under GPU card.',
+  module: 'Click a device it fits on the map (or in a rack), then pick it under Modules.',
 };
 
 function icon(item) {
@@ -101,6 +105,8 @@ export function mountHud(store) {
   $('pane-shop').addEventListener('click', (e) => {
     const chip = e.target.closest('[data-shop-group]');
     if (chip) { store.set({ shopGroup: chip.dataset.shopGroup }); return; }
+    const wish = e.target.closest('[data-wish]');
+    if (wish) { store.wish(wish.dataset.wish, !store.state.wishlist.includes(wish.dataset.wish)); return; }
     const btn = e.target.closest('[data-buy]');
     if (!btn) return;
     if (btn.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(btn)); return; }
@@ -118,6 +124,8 @@ export function mountHud(store) {
     else if (b.dataset.pickup) store.pickUp(Number(b.dataset.pickup));
     else if (b.dataset.move) store.startMove(Number(b.dataset.move));
     else if (b.dataset.card) store.installCard(Number(b.dataset.dev), b.dataset.card);
+    else if (b.dataset.module) store.installModule(Number(b.dataset.dev), b.dataset.module);
+    else if (b.dataset.unmodule) store.removeModule(Number(b.dataset.dev), Number(b.dataset.unmodule));
     else if (b.dataset.upgrade) {
       if (b.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(b)); return; }
       store.upgrade(Number(b.dataset.upgrade));
@@ -246,7 +254,7 @@ export function mountHud(store) {
         b.dataset.category = item.category;
         b.draggable = item.category === 'device' || item.category === 'furniture';
         b.setAttribute('aria-label', `${item.name}, ${item.quantity}`);
-        b.dataset.tip = `${item.name} ×${item.quantity}. ${item.description || ''} ${HOW[item.category] || ''}`;
+        b.dataset.tip = `${item.name} ×${item.quantity}. ${item.description || ''} ${HOW[item.moduleFor ? 'module' : item.category] || ''}`;
         b.setAttribute('aria-pressed', String(s.selectedItem === item.code));
         b.append(icon(item));
         b.insertAdjacentHTML('beforeend', `<span class="n">${item.quantity}</span>`);
@@ -258,7 +266,7 @@ export function mountHud(store) {
     }
     const sel = s.inventory.find((i) => i.code === s.selectedItem);
     pane.insertAdjacentHTML('beforeend', sel
-      ? `<div class="detail"><strong>${esc(sel.name)}</strong><div class="spec">${esc(sel.description || '')}</div><p>${esc(DETAIL[sel.category] || '')}</p></div>`
+      ? `<div class="detail"><strong>${esc(sel.name)}</strong><div class="spec">${esc(sel.description || '')}</div><p>${esc(DETAIL[sel.moduleFor ? 'module' : sel.category] || '')}</p></div>`
       : '<p class="empty-note">Select an item to see what it does.</p>');
   }
 
@@ -313,12 +321,20 @@ export function mountHud(store) {
       : `${esc(row.name)}${qty}`;
     const sub = row.locked ? lockText : row.seller ? offerLine(row) : esc(row.description || '');
     div.insertAdjacentHTML('beforeend', `<div><strong>${title}${perk ? ` <span class="earns mono">${perk}</span>` : ''}</strong><small class="${row.seller && !row.locked ? 'offerline' : ''}">${sub}</small></div>`
-      + (row.locked
+      + `<span class="buycol">${wishBtn(s, row)}` + (row.locked
         ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : topicsLeft.length ? 'Topics' : `T${row.unlockWorld}`}</button>`
         : soldOut
           ? `<button class="buy" aria-disabled="true" data-buy="${row.id}" data-tip="${esc(buyTip)}"><i class="ti ti-package-off" aria-hidden="true"></i>${fmt(price)}</button>`
-          : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)}${row.seller ? ` from ${esc(row.seller)}` : ''} for ${fmt(price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(price)}</button>`));
+          : `<button class="buy" data-buy="${row.id}" aria-label="Buy ${esc(row.name)}${row.seller ? ` from ${esc(row.seller)}` : ''} for ${fmt(price)} credits" data-tip="${esc(buyTip)}"><i class="ti ti-coins" aria-hidden="true"></i>${fmt(price)}</button>`) + '</span>');
     return div;
+  }
+
+  /** A star to save up for an item: it goes on the to-do list with a progress bar. */
+  function wishBtn(s, row) {
+    if (row.seller || row.code === 'datatech') return '';
+    const on = s.wishlist.includes(row.code);
+    return `<button class="wish ${on ? 'on' : ''}" data-wish="${esc(row.code)}" aria-pressed="${on}" aria-label="${on ? 'Remove from' : 'Add to'} your to-do list"
+      data-tip="${esc(on ? `Saving up for the ${row.name}. Click to take it off your to-do list.` : `Save up for the ${row.name}: it goes on your to-do list with how close you are.`)}"><i class="ti ${on ? 'ti-star-filled' : 'ti-star'}" aria-hidden="true"></i></button>`;
   }
 
   function renderShop(s) {
@@ -366,6 +382,7 @@ export function mountHud(store) {
     const box = $('tags');
     box.innerHTML = '';
     for (const d of s.devices) {
+      if (d.rackU != null) continue; // mounted gear: its rack shows it
       const px = devicePixel(d);
       const linked = s.cables.filter((c) => c.a_device_id === d.id || c.b_device_id === d.id);
       const cls = linked.some((c) => c.status === 'down') ? 'down' : linked.some((c) => c.status === 'up') ? 'up' : '';
@@ -503,14 +520,14 @@ export function mountHud(store) {
         ? `<button class="act" data-upgrade="${dev.id}" aria-disabled="true" data-tip="${esc(why)}"><i class="ti ti-lock" aria-hidden="true"></i>${s.user.level < up.level ? `Lv ${up.level}` : fmt(up.cost)}</button>`
         : `<button class="act up" data-upgrade="${dev.id}" aria-label="Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits" data-tip="${esc(`Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits: ${gain}.`)}"><i class="ti ti-arrow-big-up-lines" aria-hidden="true"></i>T${up.tier}, ${fmt(up.cost)}</button>`;
     }
-    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>${cardSlot(s, dev)}`;
+    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>${cardSlot(s, dev)}${moduleSlot(s, dev)}`;
   }
 
   /** Servers take a GPU card: which one is fitted, and the cards in the inventory that could go in. */
   function cardSlot(s, dev) {
     if (dev.item_code !== 'server') return '';
     const fitted = dev.gpuCard && (s.shop.find((r) => r.code === dev.gpuCard) || s.inventory.find((i) => i.code === dev.gpuCard));
-    const cards = s.inventory.filter((i) => i.category === 'part' && i.quantity > 0 && i.code !== dev.gpuCard);
+    const cards = s.inventory.filter((i) => i.category === 'part' && !i.moduleFor && i.quantity > 0 && i.code !== dev.gpuCard);
     const now = fitted ? `${esc(fitted.name)}, +${dev.gpuBoost}% income` : 'empty';
     const btns = cards.map((c) => `<button class="act up" data-card="${esc(c.code)}" data-dev="${dev.id}" data-tip="${esc(`Fit the ${c.name.toLowerCase()} in ${dev.label}: +${c.boost}% income.${fitted ? ' The card in it now goes back to your inventory.' : ''}`)}"><i class="ti ti-cpu" aria-hidden="true"></i>Fit +${c.boost}%</button>`).join('');
     const none = cards.length ? '' : `<p class="note">${fitted ? 'No other cards to swap in.' : 'Buy a GPU card in the shop (B), under GPUs, then fit it here.'}</p>`;

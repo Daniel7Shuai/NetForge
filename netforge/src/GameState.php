@@ -9,6 +9,7 @@ final class GameState
     public static function load(int $userId): array
     {
         // pay out passive income and award badges before reading the balance (FR-4.4, FR-4.5)
+        Racks::adopt($userId); // rack gear from before racks had U-slots: mount it, with a PDU
         \NetForge\Progress\Income::accrue($userId);
         $newBadges = \NetForge\Progress\Badges::award($userId);
 
@@ -25,8 +26,9 @@ final class GameState
         $user['gameEnded'] = Ending::ended($userId);
 
         $inventory = array_map(fn ($r) => ['quantity' => (int) $r['quantity'], 'slotKinds' => Layout::kinds($r['slot_kinds']),
-                'group' => $r['shop_group'], 'furniture' => $r['furniture_type'], 'boost' => (int) $r['boost_pct']] + $r, Db::all(
-            'SELECT t.code, t.name, t.category, t.sprite, t.slot_kinds, t.description, t.shop_group, t.furniture_type, t.boost_pct, i.quantity
+                'group' => $r['shop_group'], 'furniture' => $r['furniture_type'], 'boost' => (int) $r['boost_pct'],
+                'rackU' => (int) $r['rack_u'], 'moduleFor' => $r['module_for'] ? explode(',', $r['module_for']) : null] + $r, Db::all(
+            'SELECT t.code, t.name, t.category, t.sprite, t.slot_kinds, t.description, t.shop_group, t.furniture_type, t.boost_pct, t.rack_u, t.module_for, i.quantity
                FROM inventory i JOIN item_types t ON t.code = i.item_code
               WHERE i.user_id = ? AND i.quantity > 0 ORDER BY t.category DESC, t.name',
             [$userId]
@@ -38,6 +40,7 @@ final class GameState
             'id'          => (int) $r['id'],
             'group'       => $r['shop_group'],
             'radio'       => $r['radio'],
+            'rackU'       => (int) $r['rack_u'],
             'sprite'      => $r['sprite'],
             'boost'       => (int) $r['boost_pct'],
             'furniture'   => $r['furniture_type'],
@@ -57,7 +60,7 @@ final class GameState
             'topicsLeft'  => $r['code'] === Ending::ITEM ? $topicsLeft : null, // topics to master before DataTech can be bought
         ], Db::all(
             'SELECT s.id, s.item_code, s.seller, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec,
-                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite, t.radio
+                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite, t.radio, t.rack_u
                FROM shop_items s JOIN item_types t ON t.code = s.item_code ORDER BY s.sort_order, s.id'
         ));
 
@@ -66,6 +69,7 @@ final class GameState
             'id'        => (int) $r['id'],
             'item_code' => $r['item_code'],
             'label'     => $r['label'],
+            'name'      => $r['name'],
             'tile_x'    => (int) $r['tile_x'],
             'tile_y'    => (int) $r['tile_y'],
             'sprite'    => $r['sprite'],
@@ -83,10 +87,15 @@ final class GameState
             'maxTier'   => (int) $r['max_tier'],
             'shield'    => (int) $r['shield_pct'] * (int) $r['tier'],
             'upgrade'   => $r['fixed'] ? null : Rules::upgradeInfo($r['item_code'], (int) $r['tier'], (int) $r['max_tier']),
-            'ports'     => json_decode((string) $r['ports'], true) ?: [],
+            'ports'     => Racks::ports((string) $r['ports'], $r['modules']),
+            'rackU'     => $r['rack_u'] === null ? null : (int) $r['rack_u'], // lowest U it fills, if it's in a rack
+            'size'      => (int) $r['size'],                                   // how many U it fills
+            'bays'      => (int) $r['bays'],
+            'modules'   => Racks::moduleList($r['modules']),
+            'rackBoost' => (int) $r['rack_boost'],
         ], Db::all(
-            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, COALESCE(g.boost_pct, 0) gpu_boost,
-                    t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct, t.radio, t.site_boost
+            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, d.rack_u, d.modules, t.rack_u size, t.bays, t.rack_boost, COALESCE(g.boost_pct, 0) gpu_boost,
+                    t.name, t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct, t.radio, t.site_boost
                FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ? AND d.location = ?',
             [$userId, $location]
         ));
@@ -129,6 +138,11 @@ final class GameState
         $furniture = Layout::userFurniture($userId, $location);
         $events = Events::poll($userId, false);
 
-        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events');
+        $powered = Racks::powered($userId, $location);
+        $racks = array_map(fn ($r) => $r + ['size' => Racks::SIZE, 'powered' => isset($powered["$location:{$r['x']},{$r['y']}"])], Racks::inPlace($userId, $location));
+        $wishlist = array_column(Db::all('SELECT item_code FROM user_wishlist WHERE user_id = ? ORDER BY added_at', [$userId]), 'item_code');
+        $progress['upsHours'] = \NetForge\Progress\Income::upsHours($userId);
+
+        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events', 'racks', 'wishlist');
     }
 }

@@ -23,10 +23,21 @@ final class Income
     public static function online(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, d.location, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct, t.radio, t.site_boost,
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, d.location, d.tile_x, d.tile_y, d.rack_u, d.modules, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct, t.radio, t.site_boost, t.rack_boost,
                                  COALESCE(g.boost_pct, 0) gpu_boost
                             FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
+        }
+        // rack gear only runs in a rack with a PDU; a module can give a device Wi-Fi (or make it an AP)
+        $powered = \NetForge\Racks::powered($userId);
+        foreach ($devices as $id => $d) {
+            if ($d['rack_u'] !== null && !isset($powered[$d['location'] . ':' . $d['tile_x'] . ',' . $d['tile_y']])) {
+                unset($devices[$id]);
+                continue;
+            }
+            if ($r = \NetForge\Racks::moduleRadio($d['modules'])) {
+                $devices[$id]['radio'] = $r;
+            }
         }
         $adj = [];
         foreach (Db::all('SELECT a_device_id a, b_device_id b FROM cables WHERE user_id = ? AND status = "up"', [$userId]) as $c) {
@@ -81,6 +92,21 @@ final class Income
             }
         }
 
+        // KVM switches, cable management and blanking panels lift everything in their (powered) rack
+        $rackBoost = [];
+        foreach ($devices as $d) {
+            if ($d['rack_u'] !== null && (int) $d['rack_boost'] > 0) {
+                $k = $d['location'] . ':' . $d['tile_x'] . ',' . $d['tile_y'];
+                $rackBoost[$k] = ($rackBoost[$k] ?? 0) + (int) $d['rack_boost'];
+            }
+        }
+        foreach ($out as $id => $d) {
+            $k = $d['location'] . ':' . $d['tile_x'] . ',' . $d['tile_y'];
+            if ($d['rack_u'] !== null && isset($rackBoost[$k])) {
+                $out[$id]['path_boost'] *= 1 + $rackBoost[$k] / 100;
+            }
+        }
+
         // a Network Controller online lifts every device in its place (site_boost percent)
         $site = [];
         foreach ($out as $d) {
@@ -95,7 +121,7 @@ final class Income
     /** How much a network device boosts the end devices behind it, in percent: boost_pct, x1.5 at tier 2, x2 at tier 3. */
     public static function networkBoost(array $d): float
     {
-        if (!in_array($d['shop_group'] ?? '', ['network', 'wireless', 'security'], true)) {
+        if (!in_array($d['shop_group'] ?? '', ['network', 'wireless', 'security', 'misc'], true)) {
             return 0.0; // routers, switches, hubs, access points and modems boost; end devices and GPUs don't
         }
         return (int) $d['boost_pct'] * Rules::tierIncome((int) $d['tier']);
@@ -121,6 +147,17 @@ final class Income
         Db::exec('UPDATE users SET credits = credits + ? WHERE id = ?', [$grant, $userId]);
         Rules::log($userId, 'info', "Your ISP sent $grant credits to get you started. Buy copper cable and link your laptop to the ISP box to start earning.");
         return $grant;
+    }
+
+    /** Extra hours of earning while away: 2 per UPS in a powered rack, up to 8. */
+    public static function upsHours(int $userId): int
+    {
+        $powered = \NetForge\Racks::powered($userId);
+        $n = 0;
+        foreach (Db::all('SELECT location, tile_x, tile_y FROM devices WHERE user_id = ? AND item_code = "ups" AND rack_u IS NOT NULL', [$userId]) as $u) {
+            $n += isset($powered[$u['location'] . ':' . $u['tile_x'] . ',' . $u['tile_y']]) ? 1 : 0;
+        }
+        return min(8, 2 * $n);
     }
 
     /** Percent of a breach blocked by firewalls that are online: shield_pct x tier each, at most 75. */
@@ -172,7 +209,7 @@ final class Income
             }
             $rate = self::summary($userId)['perSec'];
             $secs = max(0, (int) $u['secs']);
-            $capSecs = max(1, Db::configInt('income_cap_hours', 8)) * 3600;
+            $capSecs = (max(1, Db::configInt('income_cap_hours', 8)) + self::upsHours($userId)) * 3600;
             if ($rate <= 0) {
                 Db::exec('UPDATE users SET income_at = NOW() WHERE id = ?', [$userId]);
                 return self::rescue($userId);

@@ -32,6 +32,9 @@ final class Rules
         if ($cableKind !== 'copper' && $cableKind !== 'crossover') {
             return null;
         }
+        if (($portA['role'] ?? '') === 'pass' || ($portB['role'] ?? '') === 'pass') {
+            return null; // a patch panel is passive: the link passes straight through
+        }
         $same = ($portA['role'] ?? 'mdi') === ($portB['role'] ?? 'mdi');
         if ($cableKind === 'copper' && $same) {
             return 'these two ports are the same type, so they need a crossover cable';
@@ -66,7 +69,7 @@ final class Rules
             $ends = [];
             foreach ([[$aId, $aPort], [$bId, $bPort]] as [$id, $portName]) {
                 $dev = Db::one(
-                    'SELECT d.id, d.label, d.location, t.ports FROM devices d JOIN item_types t ON t.code = d.item_code
+                    'SELECT d.id, d.label, d.location, d.modules, t.ports FROM devices d JOIN item_types t ON t.code = d.item_code
                       WHERE d.id = ? AND d.user_id = ? FOR UPDATE',
                     [$id, $userId]
                 );
@@ -74,7 +77,7 @@ final class Rules
                     throw new GameError('That device isn’t on your map.');
                 }
                 $port = null;
-                foreach (json_decode((string) $dev['ports'], true) ?: [] as $p) {
+                foreach (Racks::ports((string) $dev['ports'], $dev['modules']) as $p) {
                     if ($p['name'] === $portName) {
                         $port = $p;
                     }
@@ -276,6 +279,9 @@ final class Rules
             if ($slot === null) {
                 throw new GameError(Layout::hint($kinds));
             }
+            if ($slot['kind'] === 'rack') {
+                return Racks::mount($userId, $itemCode, $x, $y); // into the rack, at the lowest free U
+            }
 
             // Any device in this location already covering one of the slot's tiles?
             $taken = Db::one(
@@ -371,7 +377,7 @@ final class Rules
     {
         Db::transaction(function () use ($userId, $deviceId, $x, $y): void {
             $d = Db::one(
-                'SELECT d.id, d.label, d.location, d.fixed, t.slot_kinds FROM devices d JOIN item_types t ON t.code = d.item_code
+                'SELECT d.id, d.label, d.location, d.fixed, d.rack_u, t.slot_kinds, t.rack_u size FROM devices d JOIN item_types t ON t.code = d.item_code
                   WHERE d.id = ? AND d.user_id = ? FOR UPDATE',
                 [$deviceId, $userId]
             );
@@ -386,6 +392,15 @@ final class Rules
             if ($slot === null) {
                 throw new GameError(Layout::hint($kinds));
             }
+            if ($slot['kind'] === 'rack') { // into another rack, at its lowest free U
+                $u = Racks::freeU(Racks::contents($userId, $d['location'], $x, $y), (int) $d['size'], $deviceId);
+                if ($u === null) {
+                    throw new GameError(sprintf('That rack has no %dU gap left for %s.', $d['size'], $d['label']));
+                }
+                Db::exec('UPDATE devices SET tile_x = ?, tile_y = ?, rack_u = ? WHERE id = ?', [$x, $y, $u, $deviceId]);
+                self::log($userId, 'info', sprintf('Moved %s to U%d of that rack. Its cables came with it.', $d['label'], $u));
+                return;
+            }
             $taken = Db::one(
                 'SELECT d.label FROM devices d JOIN item_types t ON t.code = d.item_code
                   WHERE d.user_id = ? AND d.location = ? AND d.id <> ? AND d.tile_x = ? AND d.tile_y < ? AND d.tile_y + t.height > ?',
@@ -394,7 +409,7 @@ final class Rules
             if ($taken !== null) {
                 throw new GameError($taken['label'] . ' is already there. Pick a free spot.');
             }
-            Db::exec('UPDATE devices SET tile_x = ?, tile_y = ? WHERE id = ?', [$x, $y, $deviceId]);
+            Db::exec('UPDATE devices SET tile_x = ?, tile_y = ?, rack_u = NULL WHERE id = ?', [$x, $y, $deviceId]);
             self::log($userId, 'info', 'Moved ' . $d['label'] . '. Its cables came with it.');
         });
     }

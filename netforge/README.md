@@ -26,6 +26,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_datatech.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_music.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_catalog.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_racks.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -192,8 +193,13 @@ The database is pre-release: after pulling schema changes, drop `netforge` and r
   - End devices: smartphone, tablet, printer, smart TV, IP phone, and DHCP, DNS, email, file and database servers. IoT: smart light, smart plug, thermostat, IP camera, waste, environment and parking sensors, smart street light, traffic light controller and an industrial controller (PLC).
 - **Wi-Fi** (`Income::online`): phones, tablets and most IoT devices have no ports. They're online when an access point in the same place is online (a wireless router, an AP-PT, a 2811, or a LAP with a Wireless LAN Controller online in the same building), and earn through it (the AP's boost applies). The Network Controller lifts every device in its building by 10%; the IP camera and ASA 5505 add to the firewall shield. Ada explains Wi-Fi and the LAP/WLC pairing the first time they come up.
 - **Floor spots**: small devices (`slot_kinds` includes `floor`) stand on any open tile: not a wall, furniture, a built-in spot or another device.
-- Coming in later phases: rack view with U-slots, interface modules, Misc rack gear (UPS, PDU, patch panel...), electricity, cooling and temperature, and the new office and datacentre maps.
-- Tests: `php tests/StoryTest.php`.
+- **Server racks with U-slots** (`schema_racks.sql`, `src/Racks.php`, `api/rack.php`, `public/assets/js/rackview.js`): every rack is 12U. Click a rack on the map to stand in front of it; right-click for **Front view** (what's mounted, status lights, drive bays) or **Rear view** (power supplies, fans and the ports you cable). Gear goes in at the U you pick: switches and routers are 1U, servers 2U, the UPS and SAN 3U. Slide devices up or down, take them out, upgrade them or move them to another rack from the side panel. Cables run from port to port in the rear view, or from a rack port to a device on the map.
+  - **Power**: nothing in a rack runs without a **PDU** in it. Racks set up before U-slots got a free PDU and their gear was mounted automatically (`Racks::adopt`), so income didn't change.
+  - **Misc** (shop section): PDU, UPS (each adds 2 hours of earning while you're away, up to 8), patch panel (8 ports that pass any copper link through), cable management and blanking panels (+3% and +1% to their rack), KVM switch (+5%), load balancer (boosts what's behind it), NAS and SAN storage (earn).
+  - **Modules** (shop section): Packet Tracer's interface cards. NM-1CFE, NM-1FFE, NM-1CGE and NM-1FGE add a port to the PT-Router (2 bays) or the 2620XM/2621XM; HWIC-AP-AG-B makes an ISR an access point; WMP300N and WPC300N give a PC or laptop Wi-Fi. Fit and remove them from a device's panel; a module with a cable in it stays until it's unplugged.
+- **To-do list** (bottom left of the map, `public/assets/js/todo.js`): where there are racks, it walks through setting one up (buy a PDU, mount it, a patch panel, a switch, a server, cable the server to the switch, get it online), ticking each step off by itself. Star any item in the shop to save up for it: it joins the list with a progress bar and says when you can afford it. Stars are saved per student (`user_wishlist`).
+- Coming in later phases: electricity, generators, cooling and temperature, and the new office and datacentre maps.
+- Tests: `php tests/StoryTest.php`, `php tests/RackTest.php`.
 
 ## Tutorial, characters, movement and music
 

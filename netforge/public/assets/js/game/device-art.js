@@ -119,10 +119,55 @@ function plc(c) {
   R(c, 2, 8, 10, 1, '#ff8a1f'); R(c, 2, 10, 4, 3, '#5a5f68'); R(c, 8, 10, 4, 3, '#5a5f68');
 }
 
+/* ---------- Misc rack gear (shown in shop icons; on the map it lives inside its rack) ---------- */
+function unitBox(c, u, body, trim, detail) { // a rack unit u tall, 16 wide, 4px per U
+  const h = u * 4 + 2;
+  R(c, 0, 0, 16, h, C.k); R(c, 1, 1, 14, h - 2, body); R(c, 1, 1, 14, 1, trim);
+  detail(c, h);
+}
+const misc = (u, body, trim, detail) => ({ w: 16, h: u * 4 + 2, off: [0, 0], box: [16, u * 4 + 2], port: [8, u * 4], draw: (c) => unitBox(c, u, body, trim, detail), leds: [] });
+const MISC = {
+  pdu1u: misc(2, '#1b1f27', '#3a4660', (c) => { for (let i = 0; i < 5; i++) R(c, 3 + i * 2, 4, 1, 2, '#05070d'); R(c, 13, 3, 1, 1, '#ff2a3a'); }),
+  ups3u: misc(3, '#14171e', '#2a3446', (c, h) => { R(c, 3, 3, 6, 3, '#0a2a33'); R(c, 4, 4, 3, 1, C.lime); R(c, 10, 3, 3, h - 6, '#2a3446'); }),
+  patch1u: misc(2, '#c9d3de', '#eef3f7', (c) => { for (let i = 0; i < 6; i++) R(c, 2 + i * 2, 4, 1, 2, '#1c2638'); }),
+  cablemgmt1u: misc(2, '#1b1f27', '#2a3446', (c) => { for (let i = 0; i < 5; i++) R(c, 2 + i * 3, 2, 2, 5, '#3a4660'); R(c, 1, 5, 14, 1, C.cyan); }),
+  blank1u: misc(2, '#22262e', '#2e333d', (c) => { R(c, 3, 4, 10, 1, '#191c22'); }),
+  kvm1u: misc(2, '#1c2638', '#33446a', (c) => { R(c, 3, 3, 4, 3, '#0a2a33'); R(c, 4, 4, 2, 1, C.cyan); for (let i = 0; i < 3; i++) R(c, 9 + i * 2, 4, 1, 2, '#05070d'); }),
+  lb1u: misc(2, '#1c2638', '#33446a', (c) => { R(c, 3, 3, 10, 1, '#d9a03a'); for (let i = 0; i < 4; i++) R(c, 4 + i * 2, 5, 1, 2, '#05070d'); }),
+  nas2u: misc(3, '#2a3446', '#465672', (c, h) => { for (let i = 0; i < 4; i++) R(c, 2 + i * 3, 3, 2, h - 6, '#141a26'); R(c, 14, 3, 1, 1, C.lime); }),
+  san3u: misc(4, '#1b1f27', '#3a4660', (c, h) => { for (let r = 0; r < 3; r++) for (let i = 0; i < 6; i++) R(c, 2 + i * 2, 3 + r * 4, 1, 3, '#2a3446'); R(c, 14, 3, 1, 1, C.amber); }),
+  module: { w: 16, h: 10, off: [0, 6], box: [16, 10], port: [8, 8], leds: [], draw: (c) => { R(c, 0, 1, 16, 8, C.k); R(c, 1, 2, 14, 6, '#2c3b56'); R(c, 3, 4, 3, 2, '#05070d'); R(c, 8, 4, 3, 2, C.amber); R(c, 1, 8, 14, 1, '#b08a2e'); } },
+  wificard: { w: 16, h: 12, off: [0, 4], box: [16, 12], port: [8, 10], leds: [], draw: (c) => { R(c, 0, 4, 16, 7, C.k); R(c, 1, 5, 14, 5, '#22301f'); R(c, 2, 10, 10, 2, '#b08a2e'); R(c, 12, 0, 1, 5, C.k); R(c, 14, 1, 1, 4, C.k); R(c, 4, 6, 4, 2, '#3b5a34'); } },
+};
+
+/* ---------- the rack cabinet on the map: 12U, each unit a band in its own colour ---------- */
+export const RACK_U = 12;
+// what each kind of rack gear looks like from across the room: [body, highlight]
+const BAND = {
+  switch1u: ['#1c3a48', '#2be3ff'], router1u: ['#3a2a14', '#ffb43d'], rack2u: ['#2a3446', '#7cff6b'], gpurig: ['#1d2a1c', '#7cff6b'],
+  pdu1u: ['#2a1418', '#ff2a3a'], ups3u: ['#14171e', '#7cff6b'], patch1u: ['#9aa7b6', '#eef3f7'], cablemgmt1u: ['#1b1f27', '#2be3ff'],
+  blank1u: ['#1a1d23', '#22262e'], kvm1u: ['#1c2638', '#2be3ff'], lb1u: ['#2e2614', '#d9a03a'], nas2u: ['#2a3446', '#9fb3c8'],
+  san3u: ['#1b1f27', '#ffb43d'], wlc1u: ['#2a2244', '#9c8cff'], ctl1u: ['#14301f', '#7cff6b'], asa1u: ['#3a1626', '#ff3d9a'], firewall: ['#3a1626', '#ff3d9a'],
+};
+/** Draws a 16x33 rack cabinet. units: [{u, size, sprite}], powered: has a PDU. */
+export function rackCabinet(c, units, powered) {
+  R(c, 0, 31, 16, 2, 'rgba(0,0,0,.5)');
+  R(c, 0, 0, 16, 31, C.k); R(c, 1, 1, 14, 29, '#0b111b');
+  R(c, 1, 1, 14, 2, '#2c3b56'); R(c, 1, 1, 1, 29, '#2c3b56'); R(c, 14, 1, 1, 29, '#2c3b56');
+  for (let u = 0; u < RACK_U; u++) R(c, 2, 28 - u * 2, 1, 1, '#1d2a3c'); // rail holes
+  for (const d of units) {
+    const [body, hi] = BAND[d.sprite] || ['#2a3446', '#9fb3c8'];
+    const top = 29 - (d.u + d.size - 1) * 2, h = d.size * 2;
+    R(c, 3, top, 10, h, body); R(c, 3, top, 10, 1, hi);
+    if (powered && d.sprite !== 'blank1u' && d.sprite !== 'cablemgmt1u') R(c, 11, top + h - 1, 1, 1, hi === '#22262e' ? body : '#7cff6b');
+  }
+  R(c, 2, 3, 12, 1, powered ? '#3a1418' : '#141820'); if (powered) R(c, 12, 3, 1, 1, '#ff2a3a'); // the PDU's power strip
+}
+
 // off: where the sprite sits in its tile; box: visible size; port: where cables plug in
 const one = (w, h, draw, leds = [], port) => ({ w, h, off: [Math.floor((16 - w) / 2), 16 - h], box: [w, h - 2], port: port || [Math.floor(w / 2), h - 3], draw, leds });
 
-Object.assign(SPRITES, {
+Object.assign(SPRITES, MISC, {
   rack2u:     { ...SPRITES.rack },
   switch1u:   rackUnit('switch', [[3, 3], [5, 3], [7, 3], [9, 3], [11, 3], [13, 3]]),
   router1u:   rackUnit('router', [[12, 4], [12, 6]]),

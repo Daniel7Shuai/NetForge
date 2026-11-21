@@ -11,6 +11,8 @@ import { mountMusic } from './musicui.js';
 import { mountMoments } from './moments.js';
 import { mountEvents } from './events.js';
 import { mountEnding } from './ending.js';
+import { mountRackView } from './rackview.js';
+import { mountTodo } from './todo.js';
 import './game/story-art.js'; // the story's characters and their portraits
 import './game/device-art.js'; // sprites for the Packet Tracer device catalogue
 import { MapScene } from './game/MapScene.js';
@@ -33,6 +35,8 @@ mountMusic();
 mountLearn(store);
 mountSocial(store);
 mountDefence(store);
+mountRackView(store);
+mountTodo(store);
 
 new Phaser.Game({
   type: Phaser.CANVAS,

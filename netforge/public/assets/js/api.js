@@ -36,6 +36,7 @@ export const api = {
   music: () => call('music.php'),
   upgrade: (deviceId) => call('upgrade.php', { method: 'POST', body: JSON.stringify({ device: deviceId }) }),
   travel: (code) => call('travel.php', { method: 'POST', body: JSON.stringify({ location: code }) }),
+  rack: (action, body) => call('rack.php', { method: 'POST', body: JSON.stringify({ action, ...body }) }),
   buy: (shopId) => call('buy.php', { method: 'POST', body: JSON.stringify({ id: shopId }) }),
   learn: {
     roadmap: () => call('learn/roadmap.php'),

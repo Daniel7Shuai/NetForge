@@ -30,6 +30,10 @@ export function createStore() {
       furniture: [],       // furniture the student placed here
       events: null,        // {event, unread, buffs}: the broker, texts, temporary buffs
       shopGroup: 'all',    // the shop's category filter
+      racks: [],           // racks in this place: {x, y, size, powered, bought}
+      wishlist: [],        // item codes the student is saving up for
+      rackView: null,      // {x, y, face: 'front' | 'rear', mount: item code | null, sel: device id | null}
+      rackMenu: null,      // {rack, left, top}: the right-click Front/Rear menu
     },
 
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -59,6 +63,7 @@ export function createStore() {
         furniture: data.furniture || [], events: data.events || store.state.events,
         user: data.user, inventory: data.inventory, shop: data.shop, objective: data.objective,
         devices: data.devices, cables: data.cables, log: store.mergedLog(), progress: data.progress, locations: data.locations || [],
+        racks: data.racks || [], wishlist: data.wishlist || [],
       });
     },
 
@@ -78,12 +83,18 @@ export function createStore() {
       const next = !keep && store.state.selectedItem === code ? null : code;
       const item = store.state.inventory.find((i) => i.code === next);
       if (item && item.category === 'cable') { store.set({ cable: code }); store.setTool('cable'); return; }
-      if (item && item.category === 'part') { store.log('info', `To fit the ${item.name.toLowerCase()}, click one of your servers and pick it under GPU card.`); }
+      if (item && item.category === 'part') {
+        store.log('info', item.moduleFor
+          ? `The ${item.name} is a module: click a device it fits (${item.moduleFor.length} kinds, see its tip) and pick it under Modules.`
+          : `To fit the ${item.name.toLowerCase()}, click one of your servers and pick it under GPU card.`);
+      }
       store.set({ selectedItem: next, tool: 'select', picker: null, cableDraft: null, moving: null });
     },
     /** Esc: back out one step (popover, then cable in hand, then the tool). */
     cancel() {
       const s = store.state;
+      if (s.rackMenu) return store.set({ rackMenu: null });
+      if (s.rackView && !s.cableDraft) return store.closeRack();
       if (s.picker) return store.set({ picker: null });
       if (s.cableDraft) { store.log('info', 'Cable dropped.'); return store.set({ cableDraft: null }); }
       if (s.moving) { store.log('info', 'Move cancelled.'); return store.set({ moving: null }); }
@@ -109,10 +120,10 @@ export function createStore() {
     },
 
     /** Picks a port in the open popover: plugs in the first end, or completes the cable. */
-    async pickPort(portName) {
+    async pickPort(portName, onDevice = null) {
       const s = store.state;
-      if (!s.picker || s.busy) return;
-      const deviceId = s.picker.deviceId;
+      const deviceId = onDevice ?? s.picker?.deviceId;
+      if (!deviceId || s.busy) return;
       const dev = s.devices.find((d) => d.id === deviceId);
       if (!s.cableDraft) {
         store.set({ picker: null, cableDraft: { kind: s.cable, from: { deviceId, port: portName } } });
@@ -191,6 +202,7 @@ export function createStore() {
       }
       const slot = slotAt(item.slotKinds, tile);
       if (!slot) return { slot: null, problem: hint(item.slotKinds) };
+      if (slot.kind === 'rack') return { slot, problem: null }; // racks hold several devices: the rack view picks the U
       const taken = store.occupant(slot);
       if (taken) return { slot, problem: `${taken.label} is already there. Pick a free spot.` };
       const p = store.state.playerTile;
@@ -201,6 +213,9 @@ export function createStore() {
     async place(tile) {
       const item = store.placingItem();
       if (!item || store.state.busy) return;
+      // rack gear dropped on a rack: open the rack to pick its U
+      const rack = store.state.racks.find((r) => r.x === tile.x && (tile.y === r.y || tile.y === r.y + 1));
+      if (rack && item.slotKinds?.includes('rack')) { store.openRack(rack, { mount: item.code }); return; }
       const { slot, problem } = store.placementCheck(item, tile);
       if (problem) { store.log('error', problem); return; }
       // carry it over: the character walks up to the spot, then sets it down
@@ -332,6 +347,95 @@ export function createStore() {
         store.set({ busy: false });
       }
     },
+
+    /* ---- racks ---- */
+    rackAt(x, y) { return store.state.racks.find((r) => r.x === x && r.y === y) || null; },
+    /** Devices mounted in a rack, bottom U first. */
+    rackContents(rack) {
+      return store.state.devices.filter((d) => d.rackU != null && d.tile_x === rack.x && d.tile_y === rack.y).sort((a, b) => a.rackU - b.rackU);
+    },
+    /** U numbers free in a rack (ignoring one device, when sliding it). */
+    rackFree(rack, ignoreId = null) {
+      const used = new Set();
+      for (const d of store.rackContents(rack)) if (d.id !== ignoreId) for (let u = d.rackU; u < d.rackU + d.size; u++) used.add(u);
+      return Array.from({ length: rack.size }, (_, i) => i + 1).filter((u) => !used.has(u));
+    },
+    /** Would something size U tall fit with its bottom at U u? */
+    rackFits(rack, u, size, ignoreId = null) {
+      const free = new Set(store.rackFree(rack, ignoreId));
+      for (let k = u; k < u + size; k++) if (!free.has(k)) return false;
+      return true;
+    },
+    openRack(rack, opts = {}) {
+      store.set({
+        rackMenu: null, picker: null,
+        rackView: { x: rack.x, y: rack.y, face: opts.face || 'front', mount: opts.mount || null, sel: opts.sel ?? null },
+        uiFocus: true,
+      });
+      store.scene?.clearHover?.();
+    },
+    closeRack() { store.set({ rackView: null, rackMenu: null, uiFocus: false }); },
+    rackMenu(rack, ev) {
+      const r = document.getElementById('map').getBoundingClientRect();
+      store.set({ rackMenu: { rack, left: ev.clientX - r.left, top: ev.clientY - r.top }, picker: null });
+    },
+    async rackCall(action, body, after) {
+      if (store.state.busy) return false;
+      store.set({ busy: true });
+      try {
+        const res = await api.rack(action, body);
+        store.applyServerState(res.state);
+        after?.(res);
+        return true;
+      } catch (err) {
+        store.log('error', err.message);
+        return false;
+      } finally {
+        store.set({ busy: false });
+      }
+    },
+    /** Mounts the item in hand (or the device being moved) in the open rack at U u. */
+    async mountAt(u) {
+      const v = store.state.rackView;
+      if (!v?.mount) return;
+      const item = store.placingItem();
+      if (item?.moveId) {
+        // from elsewhere into this rack: move it in, then slide it to the U picked
+        if (store.state.busy) return;
+        store.set({ busy: true });
+        try {
+          store.applyServerState((await api.move(item.moveId, { x: v.x, y: v.y })).state);
+          const d = store.state.devices.find((x) => x.id === item.moveId);
+          if (d && d.rackU !== u) store.applyServerState((await api.rack('shift', { device: d.id, u })).state);
+          store.set({ moving: null, rackView: { ...v, mount: null, sel: item.moveId } });
+        } catch (err) {
+          store.log('error', err.message);
+        } finally {
+          store.set({ busy: false });
+        }
+        return;
+      }
+      const code = v.mount;
+      await store.rackCall('mount', { item: code, x: v.x, y: v.y, u }, () => {
+        const left = store.state.inventory.find((i) => i.code === code)?.quantity || 0;
+        const mounted = store.state.devices.find((d) => d.tile_x === v.x && d.tile_y === v.y && d.rackU === u);
+        store.set({
+          selectedItem: left > 0 && store.state.selectedItem === code ? code : null,
+          rackView: { ...store.state.rackView, mount: null, sel: mounted?.id ?? null },
+          lastEvent: { type: 'mounted', item: code, at: Date.now() },
+        });
+      });
+    },
+    /** Picks rack gear from the inventory to mount in the open rack. */
+    chooseMount(code) {
+      const v = store.state.rackView;
+      if (!v) return;
+      store.set({ selectedItem: code, moving: null, rackView: { ...v, mount: code, face: 'front' } });
+    },
+    shift: (deviceId, u) => store.rackCall('shift', { device: deviceId, u }),
+    installModule: (deviceId, code) => store.rackCall('module', { device: deviceId, item: code }, () => store.set({ lastEvent: { type: 'module', at: Date.now() } })),
+    removeModule: (deviceId, bay) => store.rackCall('unmodule', { device: deviceId, bay }),
+    wish: (code, on) => store.rackCall('wish', { item: code, on }),
 
     setLearnOpen(open) { store.set({ learnOpen: open, uiFocus: open, selectedItem: open ? null : store.state.selectedItem }); },
 
