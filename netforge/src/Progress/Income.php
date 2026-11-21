@@ -174,21 +174,27 @@ final class Income
     }
 
     /**
-     * Credits per second from everything online, with each earning device's share
-     * (so the map can show coins popping out of the right ones).
-     * @return array{perSec:float, devices:list<string>, byDevice:array<int,float>}
+     * Credits per second from everything online, after the electricity bill, with each earning
+     * device's share (so the map can show coins popping out of the right ones).
+     * A place that's too hot or short of power earns less (Facility); the bill is a share of what each place earns.
+     * @return array{perSec:float, gross:float, bill:float, devices:list<string>, byDevice:array<int,float>}
      */
     public static function summary(int $userId): array
     {
         $online = self::online($userId);
+        $facility = \NetForge\Facility::all($userId);
         $by = [];
+        $bill = 0.0;
         foreach ($online as $d) {
-            $r = self::deviceRate($d) * $d['path_boost'];
+            $place = $facility[$d['location']] ?? null;
+            $r = self::deviceRate($d) * $d['path_boost'] * ($place['factor'] ?? 1);
             if ($r > 0) {
                 $by[(int) $d['id']] = $r;
+                $bill += $r * ($place['billPct'] ?? 0) / 100;
             }
         }
-        return ['perSec' => array_sum($by), 'devices' => array_column($online, 'label'), 'byDevice' => $by];
+        $gross = array_sum($by);
+        return ['perSec' => $gross - $bill, 'gross' => $gross, 'bill' => $bill, 'devices' => array_column($online, 'label'), 'byDevice' => $by];
     }
 
     /**

@@ -40,7 +40,7 @@ $link = function (int $a, int $b) use ($uid, &$port): void { // each cable on it
     Db::exec('INSERT INTO cables (user_id, cable_code, a_device_id, a_port, b_device_id, b_port, status) VALUES (?, "copper", ?, ?, ?, ?, "up")',
         [$uid, $a, 'p' . ++$port, $b, 'p' . ++$port]);
 };
-$rate = fn () => round(Income::summary($uid)['perSec'], 2);
+$rate = fn () => round(Income::summary($uid)['gross'], 2); // before the electricity bill (PowerTest covers that)
 $laptop = (int) Db::one('SELECT income_per_sec r FROM item_types WHERE code = "laptop"')['r'];
 
 try {

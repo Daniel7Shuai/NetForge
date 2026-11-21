@@ -11,12 +11,13 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '
 import { fmt, rate } from './money.js';
 /** A control's explanation, whether it's still in title or already moved to data-tip by the tooltips. */
 const tipOf = (el) => el.dataset.tip || el.title || '';
+const kw = (w) => (w >= 1000 ? `${(w / 1000).toFixed(w >= 10000 ? 0 : 1)} kW` : `${w} W`);
 
 /** Shop and inventory categories, in Packet Tracer's order. */
 const GROUPS = [
   ['end', 'End devices', 'ti-device-desktop'], ['network', 'Network devices', 'ti-router'], ['wireless', 'Wireless', 'ti-wifi'],
   ['security', 'Security & WAN', 'ti-shield-lock'], ['iot', 'IoT', 'ti-bulb'],
-  ['misc', 'Misc', 'ti-server-bolt'], ['modules', 'Modules', 'ti-plug-connected'],
+  ['misc', 'Misc', 'ti-server-bolt'], ['modules', 'Modules', 'ti-plug-connected'], ['power', 'Power & cooling', 'ti-bolt'],
   ['gpu', 'GPUs', 'ti-cpu'], ['cable', 'Cables', 'ti-plug'], ['furniture', 'Furniture', 'ti-armchair'],
   ['company', 'DataTech', 'ti-building-skyscraper'],
 ];
@@ -27,6 +28,7 @@ const HOW = {
   furniture: 'Click it, then an open bit of floor on the map.',
   part: 'Click one of your servers to fit it.',
   module: 'Click a device it fits, then pick it under Modules.',
+  upgrade: 'Bought for the place you’re in.',
 };
 const DETAIL = {
   device: 'Click a glowing spot on the map, or drag it there. Esc to cancel.',
@@ -307,7 +309,8 @@ export function mountHud(store) {
     const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     const price = row.quote ? row.quote.price : row.price;
     const net = ['network', 'wireless', 'security'].includes(row.group) && row.boost > 0;
-    const perk = row.earns ? `+${rate(row.earns)}` : net ? `boost +${row.boost}%` : row.boost ? `+${row.boost}%` : '';
+    const perk = row.earns ? `+${rate(row.earns)}` : net ? `boost +${row.boost}%` : row.boost ? `+${row.boost}%`
+      : row.genW ? `+${kw(row.genW)} power` : row.coolW ? `${kw(row.coolW)} cooling` : '';
     const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.`
       : net ? ` Earns nothing itself: every device connected through it earns ${row.boost}% more.`
       : row.boost ? ` Fit it in a server for +${row.boost}% income.` : '';
@@ -320,6 +323,15 @@ export function mountHud(store) {
       ? `${esc(row.seller)} <span class="what">${esc(row.name)}${perf ? `, ${perf}% performance` : ''}</span>`
       : `${esc(row.name)}${qty}`;
     const sub = row.locked ? lockText : row.seller ? offerLine(row) : esc(row.description || '');
+    if (row.category === 'upgrade' && !row.locked && (row.installed || !row.facilityFor.includes(s.user.location))) {
+      const here = s.user.locationName.toLowerCase();
+      const why = row.installed ? `The ${here} already has ${row.name}.`
+        : `The ${row.name} is for the ${row.facilityFor.map((l) => s.locations.find((x) => x.code === l)?.name.toLowerCase() || l).join(' or the ')}. Go there to buy it.`;
+      div.classList.add('locked');
+      div.insertAdjacentHTML('beforeend', `<div><strong>${esc(row.name)}</strong><small>${esc(row.description || '')}</small></div>`
+        + `<span class="buycol">${wishBtn(s, row)}<button class="buy" aria-disabled="true" data-tip="${esc(why)}"><i class="ti ${row.installed ? 'ti-check' : 'ti-map-pin'}" aria-hidden="true"></i>${row.installed ? 'Installed' : 'Not here'}</button></span>`);
+      return div;
+    }
     div.insertAdjacentHTML('beforeend', `<div><strong>${title}${perk ? ` <span class="earns mono">${perk}</span>` : ''}</strong><small class="${row.seller && !row.locked ? 'offerline' : ''}">${sub}</small></div>`
       + `<span class="buycol">${wishBtn(s, row)}` + (row.locked
         ? `<button class="buy" aria-disabled="true" data-tip="${lockTip}"><i class="ti ti-lock" aria-hidden="true"></i>${needLevel ? `Lv ${row.unlockLevel}` : topicsLeft.length ? 'Topics' : `T${row.unlockWorld}`}</button>`
@@ -494,6 +506,12 @@ export function mountHud(store) {
         ? `${dev.label} is online and earns ${rate(dev.earning)}. Upgrades raise that: x1.5 at tier 2, x2 at tier 3.`
         : dev.radio === 'client' ? `${dev.label} earns ${rate(dev.rate)} once it’s on Wi-Fi: it needs an access point or wireless router online in this room.`
         : `${dev.label} earns ${rate(dev.rate)} once it’s online: cable it to the ISP box, ideally through a router or switch, which boost what it earns.`;
+    } else if (dev.genW) {
+      perk = `+${kw(dev.genW)} power`;
+      tip = `${dev.label} adds ${kw(dev.genW)} to the power supply here, so you can run more gear than the grid allows.`;
+    } else if (dev.coolW) {
+      perk = `cools ${kw(dev.coolW)}`;
+      tip = `${dev.label} adds ${kw(dev.coolW)} of cooling here. It draws ${kw(dev.powerW)} itself. Check the temperature meter in the top bar.`;
     } else {
       perk = 'no income';
       tip = 'This device doesn’t earn credits itself, but it can connect others that do.';

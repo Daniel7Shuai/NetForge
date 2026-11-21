@@ -155,6 +155,18 @@
       ["teacher", "That one connects over Wi-Fi, so there's no cable to run. It needs an access point online in the same room: a wireless router, an AP-PT, or a lightweight AP with its controller."],
       ["teacher", "Small devices like phones, sensors and access points can stand on any open bit of floor. Click it in your inventory, then a free tile."]
     ],
+    "heat": [
+      ["teacher", "Feel that? It's {temp}°C in here. Hot gear slows down: above 30°C everything in this room earns less, and the meter up top starts to sweat."],
+      ["teacher", "Cool it down: a desk fan does for a garage, an air conditioner for an office, CRAC units for a datacentre. Or spread your gear out between places."]
+    ],
+    "brownout": [
+      ["teacher", "The lights are flickering. You're drawing more power than this place's supply, so everything runs slower."],
+      ["teacher", "A generator adds supply. To check the power bar, click the thermometer in the top bar."]
+    ],
+    "bill": [
+      ["teacher", "One more thing grown-ups worry about: the electricity bill. It takes {pct}% of what this place earns."],
+      ["teacher", "Efficiency upgrades in Power & cooling bring it down. They're bought once for the place you're in."]
+    ],
     "lap": [
       ["teacher", "A lightweight access point is clever but helpless on its own. It needs a Wireless LAN Controller online in the same building to give it its settings."],
       ["teacher", "Put a WLC in a rack, cable both to your switch, and every LAP in the building comes alive."]

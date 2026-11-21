@@ -191,3 +191,54 @@ Object.assign(SPRITES, MISC, {
   iot_traffic: { w: 12, h: 24, off: [2, -8], box: [12, 22], port: [6, 20], draw: trafficLight, leds: [] },
   iot_plc:    one(14, 17, plc, [[3, 4], [8, 4]], [7, 12]),
 });
+
+/* ---------- power and cooling: stand on open floor ---------- */
+function deskFan(c) {
+  shadow(c, 2, 14, 10);
+  R(c, 5, 9, 2, 5, C.metal2); R(c, 2, 13, 8, 1, C.metal3);           // stand and base
+  R(c, 1, 0, 10, 10, C.k); R(c, 2, 1, 8, 8, '#c9d6e3');               // cage
+  R(c, 5, 2, 2, 6, '#7f93a8'); R(c, 3, 4, 6, 2, '#7f93a8');           // blades
+  R(c, 5, 4, 2, 2, C.metal3);
+}
+function portableAc(c) {
+  shadow(c, 1, 15, 12);
+  R(c, 0, 0, 12, 15, C.k); R(c, 1, 1, 10, 13, '#e6ecf2'); R(c, 1, 1, 10, 1, '#ffffff');
+  for (let y = 3; y < 8; y += 2) R(c, 2, y, 8, 1, '#9fb0c2');         // air louvres
+  R(c, 2, 10, 4, 2, '#1c2638'); R(c, 3, 11, 2, 1, C.cyan);             // display
+  R(c, 8, 10, 2, 2, '#9fb0c2');
+}
+function inRow(c) {
+  shadow(c, 1, 15, 12);
+  R(c, 0, 0, 12, 15, C.k); R(c, 1, 1, 10, 13, '#22303f');
+  for (let y = 2; y < 13; y += 2) R(c, 2, y, 8, 1, '#3b5068');         // perforated door
+  R(c, 2, 1, 8, 1, C.cyan);
+}
+function crac(c) {
+  shadow(c, 0, 15, 14);
+  R(c, 0, 0, 14, 15, C.k); R(c, 1, 1, 12, 13, '#d7dee6'); R(c, 1, 1, 12, 1, '#f4f7fa');
+  R(c, 2, 3, 10, 5, '#5d6c7e'); R(c, 3, 4, 8, 3, '#2a3446');           // fan grille
+  R(c, 6, 4, 2, 3, '#7f93a8'); R(c, 4, 5, 6, 1, '#7f93a8');
+  R(c, 2, 10, 5, 2, '#1c2638'); R(c, 3, 11, 3, 1, C.cyan); R(c, 9, 10, 3, 3, '#5d6c7e');
+}
+function generator(c, body, hi, big) {
+  shadow(c, 0, 14, 16);
+  R(c, 0, 3, 16, 11, C.k); R(c, 1, 4, 14, 9, body); R(c, 1, 4, 14, 1, hi);
+  for (let x = 3; x < 13; x += 2) R(c, x, 6, 1, 4, 'rgba(0,0,0,.35)'); // vents
+  R(c, 12, 0, 2, 4, C.metal2);                                         // exhaust
+  if (big) { R(c, 2, 11, 4, 1, C.amber); R(c, 10, 11, 3, 1, C.lime); }
+  else R(c, 2, 11, 3, 1, C.lime);
+}
+function upgradeIcon(c) { // a wrench over a bolt: an efficiency upgrade for a place
+  R(c, 2, 2, 12, 12, C.k); R(c, 3, 3, 10, 10, '#1c2a1f');
+  R(c, 8, 4, 2, 3, C.lime); R(c, 6, 7, 4, 1, C.lime); R(c, 6, 8, 2, 3, C.lime);
+}
+Object.assign(SPRITES, {
+  deskfan:    one(12, 16, deskFan),
+  portac:     one(12, 16, portableAc, [[3, 11]]),
+  inrow:      one(12, 16, inRow, [[3, 1], [7, 1]]),
+  crac:       one(14, 16, crac, [[4, 11]]),
+  genport:    one(16, 15, (c) => generator(c, '#c8341f', '#e8553e', false), [[3, 11]]),
+  gendiesel:  one(16, 15, (c) => generator(c, '#d9a03a', '#f0c060', true), [[3, 11]]),
+  genturbine: one(16, 15, (c) => generator(c, '#5d6c7e', '#8a9bb0', true), [[3, 11]]),
+  upgrade:    one(16, 16, upgradeIcon),
+});

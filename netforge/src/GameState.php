@@ -34,6 +34,8 @@ final class GameState
             [$userId]
         ));
 
+        $facilityHere = Facility::all($userId)[$location] ?? null; // power, cooling and temperature where the student is
+        $facilityHere ??= Facility::compute(['grid' => 0, 'cool' => 1, 'ambient' => 20, 'bill' => 0], 0, 0, 0, []);
         $mastered = \NetForge\Learning\Learning::masteredNumbers($userId);
         $topicsLeft = Ending::topicsLeft($userId);
         $shop = array_map(fn ($r) => ($r['seller'] ? ['seller' => $r['seller'], 'quote' => Market::quote($r, $userId)] : ['seller' => null, 'quote' => null]) + [
@@ -41,6 +43,11 @@ final class GameState
             'group'       => $r['shop_group'],
             'radio'       => $r['radio'],
             'rackU'       => (int) $r['rack_u'],
+            'powerW'      => (int) $r['power_w'],
+            'genW'        => (int) $r['gen_w'],
+            'coolW'       => (int) $r['cool_w'],
+            'facilityFor' => $r['category'] === 'upgrade' ? Facility::placesFor($r['facility_for']) : null,
+            'installed'   => $r['category'] === 'upgrade' && in_array($r['code'], $facilityHere['upgrades'], true), // already in this place
             'sprite'      => $r['sprite'],
             'boost'       => (int) $r['boost_pct'],
             'furniture'   => $r['furniture_type'],
@@ -60,7 +67,7 @@ final class GameState
             'topicsLeft'  => $r['code'] === Ending::ITEM ? $topicsLeft : null, // topics to master before DataTech can be bought
         ], Db::all(
             'SELECT s.id, s.item_code, s.seller, s.quantity, s.price, s.unlock_level, s.unlock_world, t.code, t.name, t.category, t.description, t.income_per_sec,
-                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite, t.radio, t.rack_u
+                    t.shop_group, t.boost_pct, t.furniture_type, t.sprite, t.radio, t.rack_u, t.power_w, t.gen_w, t.cool_w, t.facility_for
                FROM shop_items s JOIN item_types t ON t.code = s.item_code ORDER BY s.sort_order, s.id'
         ));
 
@@ -93,9 +100,12 @@ final class GameState
             'bays'      => (int) $r['bays'],
             'modules'   => Racks::moduleList($r['modules']),
             'rackBoost' => (int) $r['rack_boost'],
+            'powerW'    => (int) $r['power_w'],
+            'genW'      => (int) $r['gen_w'],
+            'coolW'     => (int) $r['cool_w'],
         ], Db::all(
             'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, d.rack_u, d.modules, t.rack_u size, t.bays, t.rack_boost, COALESCE(g.boost_pct, 0) gpu_boost,
-                    t.name, t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct, t.radio, t.site_boost
+                    t.name, t.power_w, t.gen_w, t.cool_w, t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct, t.radio, t.site_boost
                FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ? AND d.location = ?',
             [$userId, $location]
         ));
@@ -127,7 +137,7 @@ final class GameState
         }
 
         $progress = [
-            'income' => ['perSec' => $income['perSec'], 'devices' => $income['devices']],
+            'income' => ['perSec' => $income['perSec'], 'gross' => $income['gross'], 'bill' => $income['bill'], 'devices' => $income['devices']],
             'shield' => \NetForge\Progress\Income::shield($userId),
             'streak' => \NetForge\Progress\Badges::streak($userId),
             'badges' => (int) Db::one('SELECT COUNT(*) n FROM user_badges WHERE user_id = ?', [$userId])['n'],
@@ -143,6 +153,10 @@ final class GameState
         $wishlist = array_column(Db::all('SELECT item_code FROM user_wishlist WHERE user_id = ? ORDER BY added_at', [$userId]), 'item_code');
         $progress['upsHours'] = \NetForge\Progress\Income::upsHours($userId);
 
-        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events', 'racks', 'wishlist');
+        // this place's bill in credits per second, from what its devices earn
+        $facilityHere['billPerSec'] = array_sum(array_map(fn ($d) => $d['earning'], $devices)) * $facilityHere['billPct'] / 100;
+        $facility = $facilityHere;
+
+        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events', 'racks', 'wishlist', 'facility');
     }
 }

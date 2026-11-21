@@ -63,7 +63,7 @@ export function createStore() {
         furniture: data.furniture || [], events: data.events || store.state.events,
         user: data.user, inventory: data.inventory, shop: data.shop, objective: data.objective,
         devices: data.devices, cables: data.cables, log: store.mergedLog(), progress: data.progress, locations: data.locations || [],
-        racks: data.racks || [], wishlist: data.wishlist || [],
+        racks: data.racks || [], wishlist: data.wishlist || [], facility: data.facility || null,
       });
     },
 

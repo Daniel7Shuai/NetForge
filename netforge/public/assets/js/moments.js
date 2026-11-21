@@ -121,11 +121,17 @@ export async function mountMoments(store) {
     if (ownRadio('client') && !seen.has('wifi')) return tip('wifi');
     if (ownRadio('lap') && !seen.has('lap')) return tip('lap');
 
+    // power and heat: the first time a place overheats, browns out, or the bill shows up
+    const f = s.facility;
+    if (f && f.heatFactor < 1 && !seen.has('heat')) return tip('heat', 'heat', { temp: Math.round(f.temp) }, () => showShop('power'));
+    if (f && f.powerFactor < 1 && !seen.has('brownout')) return tip('brownout', 'brownout', {}, () => showShop('power'));
+    if (f && f.billPerSec >= 1 && !seen.has('bill')) return tip('bill', 'bill', { pct: f.billPct });
+
     // something new they can now afford: someone tells them to go and buy it
     if (Date.now() - lastAfford < AFFORD_GAP) return;
     const family = (code) => code.replace(/_(budget|std|pro)$/, '');
     const want = s.shop
-      .filter((r) => !r.locked && r.group !== 'cable' && !owned(s, r.code) && (r.quote ? r.quote.price : r.price) <= live
+      .filter((r) => !r.locked && r.group !== 'cable' && r.group !== 'power' && !owned(s, r.code) && (r.quote ? r.quote.price : r.price) <= live
         && !seen.has(`afford:${family(r.code)}`) && !(r.quote && r.quote.stock < 1))
       .sort((a, b) => (b.earns || b.boost || 0) - (a.earns || a.boost || 0))[0]; // the best one they can get
     if (want) {

@@ -27,6 +27,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_music.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_catalog.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_racks.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_power.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -198,8 +199,15 @@ The database is pre-release: after pulling schema changes, drop `netforge` and r
   - **Misc** (shop section): PDU, UPS (each adds 2 hours of earning while you're away, up to 8), patch panel (8 ports that pass any copper link through), cable management and blanking panels (+3% and +1% to their rack), KVM switch (+5%), load balancer (boosts what's behind it), NAS and SAN storage (earn).
   - **Modules** (shop section): Packet Tracer's interface cards. NM-1CFE, NM-1FFE, NM-1CGE and NM-1FGE add a port to the PT-Router (2 bays) or the 2620XM/2621XM; HWIC-AP-AG-B makes an ISR an access point; WMP300N and WPC300N give a PC or laptop Wi-Fi. Fit and remove them from a device's panel; a module with a cable in it stays until it's unplugged.
 - **To-do list** (bottom left of the map, `public/assets/js/todo.js`): where there are racks, it walks through setting one up (buy a PDU, mount it, a patch panel, a switch, a server, cable the server to the switch, get it online), ticking each step off by itself. Star any item in the shop to save up for it: it joins the list with a progress bar and says when you can afford it. Stars are saved per student (`user_wishlist`).
-- Coming in later phases: electricity, generators, cooling and temperature, and the new office and datacentre maps.
-- Tests: `php tests/StoryTest.php`, `php tests/RackTest.php`.
+- **Power, cooling and the electricity bill** (`schema_power.sql`, `src/Facility.php`, `public/assets/js/facility.js`), per place:
+  - Every running device draws watts (`item_types.power_w`: a laptop 60 W, a PC 250 W, a server 450 W, a GPU rig up to 1.8 kW). Each place has a grid supply: garage 2.5 kW, office 15 kW, datacentre 80 kW. Going over it browns the place out, and everything there earns supply ÷ load of what it would. **Generators** (portable 3 kW, diesel 25 kW, gas turbine 120 kW) add supply.
+  - The load turns into heat. Each place has its own cooling (garage 1.2 kW, office 6 kW, datacentre 30 kW), plus any **cooling units** (desk fan 0.4 kW, portable AC 2.5 kW, in-row cooler 8 kW, CRAC unit 25 kW), which draw power themselves. Temperature = room temperature + 12°C × heat ÷ cooling. Above 30°C everything in that place earns 3% less per degree, down to half.
+  - The **thermometer** in the top bar shows how hot the place you're in is. It's amber when warm, sweats when it's over 30°C, and sweats and shakes when it's over 36°C. Click it for the power and heat bars, the bill and the upgrades there.
+  - The **electricity bill** takes a share of what each place earns: garage 10%, office 12%, datacentre 15%. The rate in the top bar is after the bill.
+  - **Efficiency upgrades** are bought once for the place you're in, not carried: LED lighting, smart power strips, solar panels and 80 PLUS Platinum PSUs cut the bill (down to 2% at least). Better insulation, aisle containment and free-air cooling make cooling stronger, and the Platinum PSUs also make gear run cooler. Some only fit some places, and the shop says so.
+  - Ada explains it the first time a place overheats, browns out or the bill shows up. They're all in the shop under **Power & cooling**.
+- Coming in a later phase: the new office and datacentre maps.
+- Tests: `php tests/StoryTest.php`, `php tests/RackTest.php`, `php tests/PowerTest.php`.
 
 ## Tutorial, characters, movement and music
 

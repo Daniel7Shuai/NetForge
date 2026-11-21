@@ -197,7 +197,7 @@ final class Rules
     {
         return Db::transaction(function () use ($userId, $shopId): string {
             $row = Db::one(
-                'SELECT s.id, s.item_code, s.quantity, s.price, s.unlock_level, s.unlock_world, s.seller, t.name
+                'SELECT s.id, s.item_code, s.quantity, s.price, s.unlock_level, s.unlock_world, s.seller, t.name, t.category, t.facility_for
                    FROM shop_items s JOIN item_types t ON t.code = s.item_code WHERE s.id = ?',
                 [$shopId]
             );
@@ -228,7 +228,14 @@ final class Rules
             if ($credits < $price) {
                 throw new GameError(sprintf('You need %s more credits. Your online devices earn them every second.', Money::short($price - $credits)));
             }
+            // an efficiency upgrade goes straight into the place you're in, not your inventory
+            $upgradeAt = $row['category'] === 'upgrade' ? Facility::checkUpgrade($userId, $row['item_code'], $row['facility_for'], $row['name']) : null;
             Db::exec('UPDATE users SET credits = credits - ? WHERE id = ?', [$price, $userId]);
+            if ($upgradeAt !== null) {
+                Facility::install($userId, $upgradeAt, $row['item_code']);
+                self::log($userId, 'ok', sprintf('Installed %s in the %s for %s credits.', $row['name'], strtolower(Layout::location($upgradeAt)['name']), Money::short($price)));
+                return $row['name'];
+            }
             if ($isEnding) { // a company, not something to carry around
                 self::log($userId, 'ok', sprintf('Bought %s for %s credits.', $row['name'], Money::short($price)));
                 Ending::finish($userId);

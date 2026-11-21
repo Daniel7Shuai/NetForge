@@ -41,7 +41,7 @@ Db::exec('INSERT INTO users (username, email, password_hash, role, credits, leve
 $uid = (int) Db::pdo()->lastInsertId();
 $give = fn (string $code, int $n = 1) => Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)', [$uid, $code, $n]);
 $id = fn (string $label) => (int) Db::one('SELECT id FROM devices WHERE user_id = ? AND label = ?', [$uid, $label])['id'];
-$rate = fn () => round(Income::summary($uid)['perSec'], 2);
+$rate = fn () => round(Income::summary($uid)['gross'], 2); // before the electricity bill (PowerTest covers that)
 [$rx, $ry] = [19, 3]; // a rack position in the office server room
 
 try {
