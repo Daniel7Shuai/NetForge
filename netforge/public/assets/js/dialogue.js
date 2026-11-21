@@ -1,6 +1,8 @@
 // The dialogue box: a text box along the bottom of the map with the speaking character
 // standing on top of it, left or right. Click or Enter for the next line, Skip to jump past
 // the whole conversation. Characters with no uploaded art get their built-in pixel portrait.
+// A conversation can end on a task: its last line then stays up (smaller, and the game can be
+// played around it) until the task is done, and Enter doesn't move it on.
 import { portrait, PORTRAIT_SIZE } from './game/art.js';
 import { character, fill } from './story.js';
 
@@ -28,9 +30,11 @@ export function portraitEl(c, scale = 5) {
  * Plays a list of [speaker, text] lines. Resolves 'done' after the last line, or 'skipped'.
  * Options: player (name for {player}), skipLabel, choices: [{label, value}] offered on the last
  * line instead of Done (resolves with the chosen value; Esc or Skip still resolve 'skipped'),
- * host: the element to show it in (the map by default).
+ * host: the element to show it in (the map by default),
+ * task + waitUntil: the last line stays up showing the task until waitUntil() is true, then
+ * resolves 'done' by itself (Skip still resolves 'skipped').
  */
-export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip', choices = null, host: into = null } = {}) {
+export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip', choices = null, host: into = null, task = null, waitUntil = null } = {}) {
   return new Promise((resolve) => {
     const host = into || document.querySelector('.stage'); // a cutscene passes its own stage
     const root = document.createElement('div');
@@ -64,7 +68,7 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip',
     const nameEl = root.querySelector('.dlg-name b'), roleEl = root.querySelector('.dlg-name small');
     const textEl = root.querySelector('.dlg-text'), nextBtn = root.querySelector('.dlg-next');
 
-    let i = -1, full = '', shown = 0, timer = 0;
+    let i = -1, full = '', shown = 0, timer = 0, waiting = false, poll = 0;
     const typing = () => shown < full.length;
     function show(n) {
       i = n;
@@ -95,6 +99,8 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip',
         });
         root.querySelector('.dlg-actions').prepend(row);
       }
+      // a task on the last line: it stays up until the task is done (already done: a normal Done)
+      if (i === lines.length - 1 && waitUntil && !waitUntil()) startWaiting();
       root.style.setProperty('--dlg-h', `${box.offsetHeight}px`); // phones stand the speaker on top of the box
       clearInterval(timer);
       if (!reduceMotion) {
@@ -105,19 +111,42 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip',
         }, 28);
       }
     }
+    function startWaiting() {
+      waiting = true;
+      root.classList.add('waiting');
+      nextBtn.hidden = true;
+      const t = document.createElement('p');
+      t.className = 'dlg-task';
+      t.innerHTML = `<i class="ti ti-hand-finger" aria-hidden="true"></i><span>${esc(fill(story, task || '', player))}</span>`;
+      textEl.after(t);
+      const hint = document.createElement('span');
+      hint.className = 'dlg-wait';
+      hint.textContent = 'Do it to carry on';
+      root.querySelector('.dlg-actions').prepend(hint);
+      poll = setInterval(() => {
+        if (!waitUntil()) return;
+        clearInterval(poll);
+        hint.textContent = 'Done!';
+        hint.classList.add('ok');
+        setTimeout(() => close('done'), reduceMotion ? 0 : 600);
+      }, 300);
+    }
     function next() {
       // the first press finishes the line being typed; the next moves on
       if (typing()) { shown = full.length; textEl.textContent = full; clearInterval(timer); return; }
+      if (waiting) return; // only doing the task moves this one on
       if (i < lines.length - 1) show(i + 1); else if (!choices?.length) close('done');
     }
     function close(result) {
       clearInterval(timer);
+      clearInterval(poll);
       removeEventListener('keydown', onKey, true);
       root.classList.add('out');
       setTimeout(() => root.remove(), reduceMotion ? 0 : 180);
       resolve(result);
     }
     function onKey(e) {
+      if (waiting && !typing()) return; // the game is being played around it: keys go to the game
       const pick = choices?.length && i === lines.length - 1 && !typing() ? choices[Number(e.key) - 1] : null;
       if (pick) { e.preventDefault(); e.stopPropagation(); close(pick.value); }
       else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); next(); }

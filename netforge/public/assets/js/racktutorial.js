@@ -1,12 +1,11 @@
 // The rack-building guide: Ada walks the student through building a first server rack, with a
-// free starter kit (PDU, patch panel, switch, server, cables). Each step is a few lines, then a
-// task card; the step ends when the game state shows it's done, so a reload picks up where they
-// were. The finished rack is a real one: it stays in the office or datacentre and earns.
+// free starter kit (PDU, patch panel, switch, server, cables). Each step is a few lines; the last
+// stays up until the game state shows the task is done, then the next step starts (a reload
+// picks up where they were). While the rack is open, its side panel shows the task instead. The finished rack is a real one: it stays in the office or datacentre and earns.
 // Ada offers it once, the first time the student is somewhere with racks; the to-do list's
 // "Guide me" button starts it any time. The lines live in data/tutorial.json, "rackGuide".
 import { api } from './api.js';
 import { loadStory } from './story.js';
-import { taskCard } from './tutorial.js';
 
 export async function mountRackGuide(store) {
   const story = await loadStory();
@@ -14,7 +13,7 @@ export async function mountRackGuide(store) {
   const seen = new Set(story.tutorial.seen || []);
   const mark = (flag) => { if (!seen.has(flag)) { seen.add(flag); api.seen(flag).catch(() => {}); } };
   let active = seen.has('racktut:start') && !seen.has('racktut:done');
-  let idx = 0, said = -1, talking = false, card = null, glowing = null;
+  let idx = 0, said = -1, talking = false, waiting = false, glowing = null;
 
   const place = () => (store.state.user?.locationName || 'office').toLowerCase();
   const lines = (list) => list.map(([who, text]) => [who, text.replaceAll('{place}', place())]);
@@ -73,16 +72,14 @@ export async function mountRackGuide(store) {
 
   function stop() {
     active = store.rackGuideActive = false;
-    hideCard();
-    store.set({ guideRack: null });
+    store.set({ guideRack: null, guideTask: null });
     store.log('info', 'Guide stopped. “Guide me” on your to-do list starts it again.');
   }
 
   async function finish() {
     active = store.rackGuideActive = false;
     mark('racktut:done');
-    hideCard();
-    store.set({ guideRack: null });
+    store.set({ guideRack: null, guideTask: null });
     talking = true;
     await store.talk(lines(G.done));
     talking = false;
@@ -94,22 +91,24 @@ export async function mountRackGuide(store) {
     if (talking || !s.user || !store.talk) return;
     if (!active) { offer(); return; }
     const r = target();
-    if (!r) { hideCard(); if (s.guideRack) store.set({ guideRack: null }); return; } // somewhere without racks: wait
+    if (!r) { if (s.guideRack) store.set({ guideRack: null }); return; } // somewhere without racks: wait
     while (idx < G.steps.length && stepDone(idx, r)) idx++;
     if (idx >= G.steps.length) { finish(); return; }
     // point at the rack on the map while it's closed and the work is inside it (not for the last cable, out on the map)
     const want = !s.rackView && G.steps[idx].goal !== 'online' ? { x: r.x, y: r.y } : null;
     if (JSON.stringify(want) !== JSON.stringify(s.guideRack ?? null)) store.set({ guideRack: want });
     if (said === idx) return;
-    // a new step: Ada explains, then the task card stays up until it's done
+    // a new step: Ada explains, and her last line stays up until it's done
     said = idx;
-    hideCard();
-    const step = G.steps[idx];
-    talking = true;
-    const res = await store.talk(lines(step.say), {}, { skipLabel: 'Stop the guide' });
-    talking = false;
+    const step = G.steps[idx], at = idx;
+    talking = waiting = true;
+    store.set({ guideTask: step.task }); // the rack view shows it while the rack is open
+    const res = await store.talk(lines(step.say), {}, {
+      skipLabel: 'Stop the guide', task: step.task, waitUntil: () => stepDone(at, target() || r),
+    });
+    talking = waiting = false;
+    store.set({ guideTask: null });
     if (res === 'skipped') { stop(); return; }
-    if (active && said === idx) showCard(step);
     tick();
   }
 
@@ -126,29 +125,9 @@ export async function mountRackGuide(store) {
     else store.log('info', 'Any time: “Guide me” on your to-do list starts the rack guide.');
   }
 
-  function showCard(step) {
-    hideCard();
-    store.set({ guideTask: step.task });
-    card = taskCard(story, step.say[0]?.[0] || 'teacher', step.task, {
-      skipLabel: 'Stop the guide (“Guide me” on the to-do list starts it again)',
-      onSkip: stop,
-      onAgain: async () => {
-        if (talking) return;
-        talking = true;
-        await store.talk(lines(step.say), {}, { skipLabel: 'Close' });
-        talking = false;
-      },
-    });
-    card.classList.add('guide-card'); // bottom right, clear of the ISP box up top
-  }
-  function hideCard() {
-    card?.remove(); card = null;
-    if (store.state.guideTask) store.set({ guideTask: null });
-  }
-
   /** Makes the control for the current step glow (the first of its targets that's on screen). */
   function glow() {
-    const step = active && card ? G.steps[idx] : null;
+    const step = active && waiting ? G.steps[idx] : null;
     const pick = (list) => { // the first one on screen; among empty U, the one at the end of the rack the step wants
       const shown = list.filter((e) => e.offsetParent !== null);
       if (shown[0]?.dataset.u && step.u) shown.sort((a, b) => (step.u === 'top' ? b.dataset.u - a.dataset.u : a.dataset.u - b.dataset.u));

@@ -614,13 +614,6 @@ button.objective:hover { border-color: var(--ink-dim); }
 }
 
 /* the current tutorial task, kept in view while the student does it */
-.tut-task { position: absolute; z-index: 12; top: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); padding: 6px 8px 6px 6px; background: rgba(9, 14, 24, .95); border: 1px solid var(--cyan); border-radius: var(--r); box-shadow: 0 8px 26px rgba(0, 0, 0, .55); }
-.tut-face canvas, .tut-face img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; display: block; }
-.tut-body small { color: var(--cyan); font-size: 12px; font-weight: 600; }
-.tut-body p { margin: 0; font-size: 14px; }
-.tut-actions { display: flex; gap: 2px; margin-left: 6px; }
-.tut-actions button { width: 30px; height: 30px; display: grid; place-items: center; color: var(--ink-dim); border-radius: var(--r-sm); }
-.tut-actions button:hover { color: var(--ink); background: var(--panel-2); }
 .tut-glow { position: relative; outline: 2px solid var(--cyan); outline-offset: 2px; animation: tut-pulse 1.4s ease-in-out infinite; z-index: 2; }
 @keyframes tut-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(43, 227, 255, .55); } 50% { box-shadow: 0 0 0 7px rgba(43, 227, 255, 0); } }
 @media (prefers-reduced-motion: reduce) { .tut-glow { animation: none; } }
@@ -865,7 +858,7 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 @keyframes rv-spin { to { transform: rotate(1turn); } }
 @media (prefers-reduced-motion: reduce) { .rv-fan.spin, .rv-drives i.b::after, .rv-port.from i { animation: none; } }
 .rv-cord { font: 9px var(--mono); color: #ff8a95; }
-.rv-rports { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; justify-content: flex-end; align-content: center; }
+.rv-rports { display: flex; flex-wrap: nowrap; gap: 2px; flex: 1; justify-content: flex-end; align-items: center; min-width: 0; } /* one row: a 1U unit has no room for two */
 .rv-port { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0 1px; border-radius: 2px; color: #93a7bf; }
 .rv-port i { width: 13px; height: 8px; background: #05070a; border: 1px solid #5d7491; position: relative; } /* icon and label fit in one U, even on a small screen */
 .rv-port i::after { content: ""; position: absolute; left: 3px; right: 3px; top: 0; height: 2px; background: #5d7491; }
@@ -1012,8 +1005,32 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 /* ---- the rack-building guide (racktutorial.js) ---- */
 .guide-glow { position: relative; outline: 2px solid var(--cyan); outline-offset: 2px; animation: tut-pulse 1.4s ease-in-out infinite; z-index: 2; }
 @media (prefers-reduced-motion: reduce) { .guide-glow { animation: none; } }
-.stage:has(.rackview:not([hidden])) .tut-task { display: none; } /* the rack view shows the task itself */
 .rv-sec.guide { background: rgba(43, 227, 255, .08); border-left: 2px solid var(--cyan); }
 .todo .tguide { display: block; width: 100%; margin: 2px 0 6px; padding: 4px 8px; border: 1px solid var(--cyan); color: var(--cyan); border-radius: var(--r-sm); font-size: 12px; }
 .todo .tguide:hover { background: rgba(43, 227, 255, .1); }
-.tut-task.guide-card { top: auto; bottom: 12px; left: auto; right: 12px; transform: none; max-width: min(420px, calc(100% - 250px)); } /* clear of the ISP box up top and the to-do list bottom left */
+
+/* a conversation waiting on a task: smaller, no shade, the game playable around it */
+.dlg.waiting .dlg-shade { display: none; }
+.dlg.waiting .dlg-box { cursor: default; min-height: 0; padding: 16px 18px 10px; }
+.dlg.waiting .dlg-text { font-size: 15px; min-height: 0; margin-bottom: 4px; }
+.dlg.waiting .dlg-portrait, .dlg.waiting .dlg-portrait img, .dlg.waiting .dlg-portrait canvas { width: 104px; height: 104px; }
+.dlg.waiting .dlg-box.has-left .dlg-text { padding-left: 116px; }
+.dlg.waiting .dlg-box.has-left .dlg-task { margin-left: 116px; }
+.dlg.waiting .dlg-name { left: 132px; }
+.dlg-task { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 6px 10px; font-size: 14px; color: var(--cyan); background: rgba(43, 227, 255, .07); border-radius: var(--r-sm); }
+.dlg-task i { margin-top: 2px; }
+.dlg-wait { margin-right: auto; align-self: center; font-size: 12px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; }
+.dlg-wait::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); animation: tut-pulse 1.4s ease-in-out infinite; }
+.dlg-wait.ok { color: var(--lime); }
+.dlg-wait.ok::before { background: var(--lime); animation: none; }
+.stage:has(.rackview:not([hidden])) .dlg.waiting { display: none; } /* an open rack shows the task itself */
+@media (max-width: 640px) { .dlg.waiting .dlg-box.has-left .dlg-text { padding-left: 0; } .dlg.waiting .dlg-box.has-left .dlg-task { margin-left: 0; } .dlg.waiting .dlg-name { left: 16px; } }
+
+/* cables in the rack view: under the gear at the front, plugged into the ports at the rear */
+.rv-rack { position: relative; }
+.rv-dev { z-index: 1; }
+.rv-wires { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.rv-wires.rear { z-index: 2; }
+.rv-wires path { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rv-wires path.under { stroke: rgba(0, 0, 0, .7); stroke-width: 3.4; }
+.rv-wires text { font: 600 8px var(--mono); paint-order: stroke; stroke: #05080d; stroke-width: 2px; }

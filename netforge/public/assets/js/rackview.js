@@ -12,6 +12,10 @@ const FACE = {
   router1u: 'router', asa1u: 'router', pdu1u: 'pdu', ups3u: 'ups', blank1u: 'blank', cablemgmt1u: 'cablemgmt',
 };
 const faceOf = (d) => FACE[d.sprite] || (d.size >= 2 ? 'server' : 'switch');
+/** A port's name, short enough to sit under it in a 1U row: Fa0/1 → 1, Gi0/1 → G1, Con0 → Con (the tooltip has the full name). */
+const shortPort = (n) => n.replace(/^Fa0\//, '').replace(/^Gi0\//, 'G').replace(/^Con\d*$/, 'Con'); // module ports (Gi1/0...) keep their full name
+/** Cable colours, as on the map. */
+const WIRE = { copper: '#2be3ff', crossover: '#2be3ff', fiber: '#ffb43d', console: '#9c8cff' };
 
 function iconCanvas(item) {
   const c = document.createElement('canvas');
@@ -138,10 +142,68 @@ export function mountRackView(store) {
     el.hidden = false;
     el.querySelector('.rv-side').scrollTop = keepScroll;
     ghost();
+    wires(s, v, r);
     el.querySelectorAll('[data-icon]').forEach((slot) => {
       const it = s.inventory.find((i) => i.code === slot.dataset.icon) || s.shop.find((i) => i.code === slot.dataset.icon);
       if (it) slot.replaceWith(iconCanvas(it));
     });
+  }
+
+  // the cables are drawn over the rack once it's laid out, and again whenever it changes size
+  new ResizeObserver(() => { const s = store.state, v = s.rackView, r = v && store.rackAt(v.x, v.y); if (r && !el.hidden) wires(s, v, r); }).observe(el);
+
+  /**
+   * The rack's cables. Front: each one comes out from under its device (the device hides the plug,
+   * as in a real rack) and runs down the right-hand rail to the other end. Rear: plugged into the
+   * ports themselves. A cable to something outside the rack runs off the bottom, labelled.
+   */
+  function wires(s, v, r) {
+    const rackEl = el.querySelector('.rv-rack');
+    if (!rackEl) return;
+    rackEl.querySelector('.rv-wires')?.remove();
+    const box = rackEl.getBoundingClientRect();
+    const inRack = new Map(store.rackContents(r).map((d) => [d.id, d]));
+    const cables = s.cables.filter((c) => inRack.has(c.a_device_id) || inRack.has(c.b_device_id));
+    if (!cables.length || !box.width) return;
+    const W = box.width, H = box.height, rear = v.face === 'rear';
+    const rel = (q) => ({ x: q.left + q.width / 2 - box.left, y: q.top + q.height / 2 - box.top, bottom: q.bottom - box.top, left: q.left - box.left, width: q.width });
+    /** Where the cable meets the device: the port itself at the rear, just under the device at the front. */
+    const at = (id, port) => {
+      if (rear) {
+        const p = rackEl.querySelector(`[data-rdev="${id}"][data-rport="${CSS.escape(port)}"] i`);
+        return p && rel(p.getBoundingClientRect());
+      }
+      const d = rackEl.querySelector(`.rv-dev[data-dev="${id}"]`);
+      if (!d) return null;
+      const q = rel(d.getBoundingClientRect()), ports = inRack.get(id).ports;
+      const i = Math.max(0, ports.findIndex((p) => p.name === port));
+      return { x: q.left + q.width * (0.42 + (0.45 * i) / Math.max(1, ports.length)), y: q.bottom - 2 };
+    };
+    const name = (id, port) => `${s.devices.find((d) => d.id === id)?.label || '?'} ${port}`;
+    const drop = rear ? 7 : 6;
+    let out = 0, svg = '';
+    cables.forEach((c, k) => {
+      const lane = W - 9 - (k % 5) * 3; // each cable gets its own line down the rail
+      const A = inRack.has(c.a_device_id) && at(c.a_device_id, c.a_port);
+      const B = inRack.has(c.b_device_id) && at(c.b_device_id, c.b_port);
+      const p = A || B;
+      if (!p) return;
+      // down from the port (or out from under the device), across to the rail...
+      let d = `M ${p.x} ${p.y} C ${p.x} ${p.y + drop * 2}, ${lane} ${p.y + drop}, ${lane} ${p.y + drop * 2}`;
+      let tag = '';
+      if (A && B) { // ...down (or up) the rail, and in to the other end
+        d += ` L ${lane} ${B.y + drop * 2} C ${lane} ${B.y + drop}, ${B.x} ${B.y + drop * 2}, ${B.x} ${B.y}`;
+      } else { // ...and out the bottom of the rack, to whatever it goes to
+        d += ` L ${lane} ${H - 2}`;
+        const other = A ? name(c.b_device_id, c.b_port) : name(c.a_device_id, c.a_port);
+        tag = `<text x="${W - 26}" y="${H - 5 - out++ * 10}" text-anchor="end">→ ${esc(other)}</text>`;
+      }
+      const col = c.status === 'down' ? '#ff3d9a' : WIRE[c.code] || WIRE[c.kind] || '#9fb3c8';
+      const dash = c.code === 'crossover' ? ' stroke-dasharray="3 2"' : '';
+      const plug = rear ? `<rect x="${p.x - 3}" y="${p.y - 2}" width="6" height="4" rx="1" fill="${col}"/>${A && B ? `<rect x="${B.x - 3}" y="${B.y - 2}" width="6" height="4" rx="1" fill="${col}"/>` : ''}` : '';
+      svg += `<path d="${d}" class="under"/><path d="${d}" stroke="${col}"${dash}/>${plug}${tag ? tag.replace('<text', `<text fill="${col}"`) : ''}`;
+    });
+    rackEl.insertAdjacentHTML('beforeend', `<svg class="rv-wires ${rear ? 'rear' : 'front'}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${svg}</svg>`);
   }
 
   function renderMenu(s) {
@@ -194,7 +256,7 @@ export function mountRackView(store) {
     }
     for (const d of contents) {
       const top = r.size - (d.rackU + d.size - 1) + 1;
-      rows.push(`<div class="rv-dev f-${faceOf(d)} ${v.sel === d.id ? 'sel' : ''} ${r.powered ? 'pw' : ''}" style="grid-row:${top} / span ${d.size}">
+      rows.push(`<div class="rv-dev f-${faceOf(d)} ${v.sel === d.id ? 'sel' : ''} ${r.powered ? 'pw' : ''}" data-dev="${d.id}" style="grid-row:${top} / span ${d.size}">
         ${v.face === 'rear' ? rear(s, d, r) : front(s, d, r)}</div>`);
     }
     return `<div class="rv-cab ${v.face}"><div class="rv-rack" data-size="${size}" style="grid-template-rows:repeat(${r.size}, var(--u))">${rows.join('')}</div></div>`;
@@ -238,7 +300,7 @@ export function mountRackView(store) {
       if (c) tip = `${p.name}: plugged in, link ${c.status}. Click to see where it goes.`;
       else if (!fits) tip = `${p.name} is a ${p.kind} port: pick a ${p.kind === 'copper' ? 'copper or crossover' : p.kind} cable below.`;
       else tip = draft ? `Plug the other end of the ${draft.kind} cable into ${p.name}.` : `Plug a ${s.cable} cable into ${p.name}.`;
-      return `<button class="rv-port k-${p.kind} ${c ? c.status : ''} ${isFrom ? 'from' : ''} ${!c && !fits ? 'nofit' : ''}" data-rport="${esc(p.name)}" data-rdev="${d.id}" data-tip="${esc(tip)}"><i></i><small>${esc(p.name)}</small></button>`;
+      return `<button class="rv-port k-${p.kind} ${c ? c.status : ''} ${isFrom ? 'from' : ''} ${!c && !fits ? 'nofit' : ''}" data-rport="${esc(p.name)}" data-rdev="${d.id}" data-tip="${esc(tip)}"><i></i><small>${esc(shortPort(p.name))}</small></button>`;
     }).join('');
     const psu = k === 'server' || k === 'storage' || k === 'gpu' ? `<span class="rv-psu ${r.powered ? 'on' : ''}"></span><span class="rv-psu ${r.powered ? 'on' : ''}"></span>` : '';
     const fan = k === 'server' || k === 'storage' || k === 'gpu' || k === 'ups' ? `<span class="rv-fan ${r.powered ? 'spin' : ''}"></span>` : '';

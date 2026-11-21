@@ -1,12 +1,11 @@
 // The guided tutorial: the network teacher walks new students from installing the laptop to
-// cabling the ISP. Each step is a conversation, then a task the student does in the game; the
-// next step starts once the game state shows the task is done. Progress is saved on the server.
+// cabling the ISP. Each step is a conversation that ends on a task: its last line stays up until
+// the game state shows the task is done, then the next step starts by itself (Enter doesn't skip
+// it). Progress is saved on the server.
 import { api } from './api.js';
-import { loadStory, character, fill } from './story.js';
-import { playDialogue, portraitEl } from './dialogue.js';
+import { loadStory, fill } from './story.js';
+import { playDialogue } from './dialogue.js';
 import { playIntro } from './cutscene.js';
-
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 /** Is a step's goal met in this game state? Goals: placed:<item>, owns:<item>, link:<item>:<item>. */
 function goalMet(goal, s) {
@@ -22,32 +21,11 @@ function goalMet(goal, s) {
   return false;
 }
 
-/**
- * The card at the top of the map that keeps a guide's current task in view: the speaker's face,
- * the task, a button to hear the lines again and one to stop. Added to the stage; returns it.
- */
-export function taskCard(story, speaker, text, { onAgain, onSkip, skipLabel }) {
-  const who = character(story, speaker);
-  const card = document.createElement('div');
-  card.className = 'tut-task';
-  card.innerHTML = `<div class="tut-face"></div>
-    <div class="tut-body"><small>${esc(who.name)}</small><p>${esc(text)}</p></div>
-    <div class="tut-actions">
-      <button type="button" data-again aria-label="Hear the instructions again"><i class="ti ti-message-2" aria-hidden="true"></i></button>
-      <button type="button" data-skip aria-label="${esc(skipLabel)}" data-tip="${esc(skipLabel)}"><i class="ti ti-player-skip-forward" aria-hidden="true"></i></button>
-    </div>`;
-  card.querySelector('.tut-face').append(portraitEl(who, 2));
-  card.querySelector('[data-again]').addEventListener('click', onAgain);
-  card.querySelector('[data-skip]').addEventListener('click', onSkip);
-  document.querySelector('.stage').append(card);
-  return card;
-}
-
 export async function mountTutorial(store) {
   const story = await loadStory();
   const steps = story.script.steps;
   let { step, done } = story.tutorial;
-  let busy = false, card = null;
+  let busy = false;
   const player = () => store.state.user?.name || store.state.user?.username || 'you';
   const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.attackOpen || store.state.cutsceneOpen || document.querySelector('.dlg');
 
@@ -78,21 +56,18 @@ export async function mountTutorial(store) {
     if (busy || done || !store.state.user || blocked()) return;
     const s = steps[step];
     if (!s) { finish(); return; }
-    if (s.task && s.shown) {
-      if (goalMet(s.goal, store.state)) await advance(); // done while the task card was up
-      return;
-    }
     // a task they'd already done before the tutorial got here: skip its talk
     if (s.task && goalMet(s.goal, store.state)) { await advance(); return; }
     busy = true;
-    const result = await playDialogue(story, s.say, { player: player(), skipLabel: 'Skip tutorial' });
+    s.shown = true; // its control can glow now
+    const wait = s.task ? { task: fill(story, s.task, player()), waitUntil: () => goalMet(s.goal, store.state) } : {};
+    const result = await playDialogue(story, s.say, { player: player(), skipLabel: 'Skip tutorial', ...wait });
     busy = false;
     if (result === 'skipped') { skipAll(); return; }
-    if (s.task) { s.shown = true; showCard(s); tick(); } else await advance();
+    await advance();
   }
 
   async function advance() {
-    hideCard();
     step += 1;
     api.tutorial('step', step).catch(() => {});
     if (step >= steps.length) { finish(); return; }
@@ -102,34 +77,13 @@ export async function mountTutorial(store) {
     if (done) return;
     done = true;
     store.tutorialDone = true;
-    hideCard();
     glow();
     api.tutorial('done').catch(() => {});
   }
   function skipAll() {
-    if (!confirm('Skip the tutorial? You can replay it any time from the menu.')) {
-      if (steps[step]?.task) { steps[step].shown = true; showCard(steps[step]); }
-      return;
-    }
+    if (!confirm('Skip the tutorial? You can replay it any time from the menu.')) { tick(); return; } // back to the step
     finish();
   }
-
-  /** The small card that keeps the current task in view while the student does it. */
-  function showCard(s) {
-    hideCard();
-    card = taskCard(story, s.say[0]?.[0] || 'teacher', fill(story, s.task, player()), {
-      skipLabel: 'Skip the tutorial (replay it from the menu)',
-      onSkip: skipAll,
-      onAgain: async () => {
-        if (busy) return;
-        busy = true;
-        await playDialogue(story, s.say, { player: player(), skipLabel: 'Close' });
-        busy = false;
-        tick();
-      },
-    });
-  }
-  function hideCard() { card?.remove(); card = null; }
 
   /** Makes the control for the current task glow, so the student knows where to look. */
   function glow() {
