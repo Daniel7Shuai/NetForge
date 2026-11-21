@@ -14,6 +14,7 @@ import { mountEnding } from './ending.js';
 import { mountRackView } from './rackview.js';
 import { mountTodo } from './todo.js';
 import { mountFacility } from './facility.js';
+import { mountRackGuide } from './racktutorial.js';
 import './game/story-art.js'; // the story's characters and their portraits
 import './game/device-art.js'; // sprites for the Packet Tracer device catalogue
 import { MapScene } from './game/MapScene.js';
@@ -56,5 +57,6 @@ new Phaser.Game({
 mountTutorial(store);
 // the characters keep turning up after it: tips along the way, the broker, investors
 mountMoments(store);
+mountRackGuide(store); // after the moments: Ada's lines queue through store.talk
 mountEvents(store);
 mountEnding(store);

@@ -88,6 +88,49 @@
     ["hacker", "Found a door. Mind if I come in?"]
   ],
   "_moments": "Tips the characters give along the way, each shown once. {item}, {price}, {level}, {place}, {list}, {why} are filled in by the game.",
+  "rackGuide": {
+    "_about": "The rack-building guide (racktutorial.js). Each step: what Ada says, the task card, the goal that ends it, and u (which end of the rack to point at when mounting): open, pdu, patch, switch, server, rear, cabled, online. {place} is where the rack is.",
+    "offer": [
+      ["teacher", "{player}, see those tall black cabinets? They’re server racks, the heart of every server room."],
+      ["teacher", "Want me to show you how to build one, step by step? I’ll give you a starter kit: a PDU, a patch panel, a switch, a server and the cables."]
+    ],
+    "steps": [
+      {"goal": "open", "task": "Click the glowing rack on the map to open it.",
+       "say": [["teacher", "Here’s your kit. Let’s start: walk over to the glowing rack and click it. You’ll see it from the front, as if you’re standing in front of it."],
+               ["teacher", "A rack has 12 slots, called U (rack units), counted from the bottom: U1 to U12. Gear slides in and fills one or more of them."]]},
+      {"goal": "pdu", "u": "bottom", "task": "Mount the Rack PDU: pick it on the right, then click an empty U.",
+       "glow": "#rackview [data-mount-item='pdu'], #rackview button.rv-empty.fits",
+       "say": [["teacher", "First the PDU, the Power Distribution Unit. It powers everything in the rack: without one, nothing in it runs."],
+               ["teacher", "Pick the Rack PDU under “Mount from your inventory”, then click an empty U. Low down is a good spot."]]},
+      {"goal": "patch", "u": "top", "task": "Mount the patch panel near the top of the rack (U12 or U11).",
+       "glow": "#rackview [data-mount-item='patch_panel'], #rackview button.rv-empty.fits",
+       "say": [["teacher", "Next, the patch panel. In a real building the cables from every room end here, so the rack stays tidy. It goes near the top."]]},
+      {"goal": "switch", "u": "top", "task": "Mount the switch just under the patch panel.",
+       "glow": "#rackview [data-mount-item='switch8'], #rackview button.rv-empty.fits",
+       "say": [["teacher", "Now the switch, just under the patch panel. It’s 1U, one slot tall, and every server in the rack plugs into it."]]},
+      {"goal": "server", "u": "bottom", "task": "Mount the server. It’s 2U: pick a U with a free one above it.",
+       "glow": "#rackview [data-mount-item='server'], #rackview button.rv-empty.fits",
+       "say": [["teacher", "And the server! It’s 2U, two slots tall, so pick a U with a free one above it."],
+               ["teacher", "This is what earns: it hosts websites and apps for your clients, once it’s online."]]},
+      {"goal": "rear", "task": "Open the rack and click Rear at the top to turn it around.",
+       "glow": "#rackview [data-act='rear']",
+       "say": [["teacher", "Everything’s in. Cables go in at the back, so let’s turn the rack around. Click Rear at the top."],
+               ["teacher", "Next time, you can also right-click a rack on the map and pick Rear view."]]},
+      {"goal": "cabled", "task": "Pick the copper cable, click the server’s Eth0, then a free switch port.",
+       "glow": "#rackview [data-cable-kind='copper']:not(.on), #rackview:not(:has(.rv-port.from)) .f-server .rv-port.k-copper:not(.up), #rackview .f-switch .rv-port.k-copper:not(.up)",
+       "say": [["teacher", "See the ports? Pick the copper cable on the right, click the server’s Eth0, then a free port on the switch."],
+               ["teacher", "Copper (straight-through) joins unlike ports: the server’s host-style port to the switch’s switch-style port."]]},
+      {"goal": "online", "task": "Link the switch to the ISP box with the crossover cable (or to your router with copper).",
+       "glow": "#rackview [data-cable-kind='crossover']:not(.on), #rackview [data-act='to-map']",
+       "say": [["teacher", "Last step: the switch needs a way out to the internet."],
+               ["teacher", "Pick the crossover cable and click a free switch port. Then click “find it on the map” and click the ISP box."],
+               ["teacher", "The switch and the ISP box both have switch-style ports, so they need a crossover. If you have a router here, cable the switch to it with copper instead."]]}
+    ],
+    "done": [
+      ["teacher", "Your rack is live! The server’s online and earning, and the rack stays right here in your {place}."],
+      ["teacher", "As you grow, add more servers and cable them to the same switch. And keep an eye on the thermometer up top: racks get hot."]
+    ]
+  },
   "moments": {
     "cable:copper": [
       ["teacher", "Copper straight-through cable, the everyday one. The wires run pin 1 to pin 1, end to end."],
@@ -122,9 +165,8 @@
     "port:console": [
       ["teacher", "That’s a console port, for managing the device with a console cable. It never carries network traffic."]
     ],
-    "afford": [
-      ["teacher", "Hey {player}, you’ve saved up enough for a {item} now: {price} credits. {why}"],
-      ["teacher", "It’s in the shop (B). I’ve opened it for you."]
+    "ready": [
+      ["teacher", "{player}, the {item} on your to-do list is ready: you’ve got the {price} credits for it. I’ve opened the shop for you."]
     ],
     "unlock": [
       ["teacher", "Level {level}! That unlocks new gear in the shop: {list}."]

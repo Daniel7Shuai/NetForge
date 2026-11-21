@@ -1,24 +1,24 @@
 // The characters don't stop at the tutorial: they turn up along the way. The first time a
-// student picks up each kind of cable, meets each kind of port, can afford something new,
-// unlocks gear, can lease a bigger place or walks into one, someone explains it. Each tip
-// shows once (the server remembers which). The lines live in data/tutorial.json, "moments".
+// student picks up each kind of cable, meets each kind of port, unlocks gear, can lease a bigger
+// place or walks into one, someone explains it. Beyond that, Ada only speaks up when something on
+// the student's to-do list (a starred shop item) is ready to buy. Each tip shows once (the server
+// remembers which). The lines live in data/tutorial.json, "moments".
 //
 // Also the one place conversations queue up: store.talk() plays lines when nothing else is
 // on screen, so a tip never lands on top of an attack, a lesson or another conversation.
 import { api } from './api.js';
 import { loadStory } from './story.js';
 import { playDialogue } from './dialogue.js';
-import { fmt, rate } from './money.js';
+import { fmt } from './money.js';
 import { LOC_CODE } from './game/layout.js';
 
 const GAP = 12000;        // at least this long between two tips
-const AFFORD_GAP = 60000; // and longer between "you can afford this" nudges
 
 export async function mountMoments(store) {
   const story = await loadStory();
   const script = story.script.moments || {};
   const seen = new Set(story.tutorial.seen || []);
-  let queue = Promise.resolve(), talking = false, lastTip = 0, lastAfford = 0;
+  let queue = Promise.resolve(), talking = false, lastTip = 0;
   const player = () => store.state.user?.name || store.state.user?.username || 'you';
   const blocked = () => {
     const s = store.state;
@@ -67,12 +67,9 @@ export async function mountMoments(store) {
     return true;
   }
 
-  const owned = (s, code) => s.devices.some((d) => d.item_code === code) || s.inventory.some((i) => i.code === code)
-    || s.cables.some((c) => c.code === code);
-
   function check() {
     const s = store.state;
-    if (!store.tutorialDone || !s.user || talking || blocked() || store.walking || s.busy) return;
+    if (!store.tutorialDone || store.rackGuideActive || !s.user || talking || blocked() || store.walking || s.busy) return;
     if (Date.now() - lastTip < GAP) return;
 
     // walking into a new place
@@ -127,22 +124,10 @@ export async function mountMoments(store) {
     if (f && f.powerFactor < 1 && !seen.has('brownout')) return tip('brownout', 'brownout', {}, () => showShop('power'));
     if (f && f.billPerSec >= 1 && !seen.has('bill')) return tip('bill', 'bill', { pct: f.billPct });
 
-    // something new they can now afford: someone tells them to go and buy it
-    if (Date.now() - lastAfford < AFFORD_GAP) return;
-    const family = (code) => code.replace(/_(budget|std|pro)$/, '');
-    const want = s.shop
-      .filter((r) => !r.locked && r.group !== 'cable' && r.group !== 'power' && !owned(s, r.code) && (r.quote ? r.quote.price : r.price) <= live
-        && !seen.has(`afford:${family(r.code)}`) && !(r.quote && r.quote.stock < 1))
-      .sort((a, b) => (b.earns || b.boost || 0) - (a.earns || a.boost || 0))[0]; // the best one they can get
-    if (want) {
-      lastAfford = Date.now();
-      const why = want.earns ? `It earns ${rate(want.earns)} once it’s online.`
-        : want.booster && want.boost ? `Put it between your devices and the ISP box and they all earn ${want.boost}% more.`
-        : want.boost ? `Fit it in a server for +${want.boost}% income.` : (want.description || '');
-      const name = want.seller ? want.name.replace(/ \((budget|pro)\)$/, '') : want.name;
-      return tip(`afford:${family(want.code)}`, 'afford', { item: name === name[0] + name.slice(1).toLowerCase() ? name.toLowerCase() : name /* keep model names like Catalyst 2960 */, price: fmt(want.quote ? want.quote.price : want.price), why },
-        () => showShop(want.group));
-    }
+    // something on their to-do list is ready to buy: Ada says so, once per item
+    const ready = (s.wishlist || []).map((code) => s.shop.find((r) => r.code === code && !r.seller))
+      .find((r) => r && !r.locked && r.price <= live && !seen.has(`ready:${r.code}`));
+    if (ready) return tip(`ready:${ready.code}`, 'ready', { item: ready.name, price: fmt(ready.price) }, () => showShop(ready.group));
   }
 
   function showShop(group) {

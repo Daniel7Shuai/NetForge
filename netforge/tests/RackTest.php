@@ -125,6 +125,12 @@ try {
     $before = $rate();
     Racks::installModule($uid, $pc, 'wmp300n');
     check('a PC with a WMP300N joins the Wi-Fi', round($rate() - $before, 2), round($pcRate * 1.15, 2));
+
+    echo "Starter kit
+";
+    $before = (int) (Db::one('SELECT quantity FROM inventory WHERE user_id = ? AND item_code = "server"', [$uid])['quantity'] ?? 0);
+    check('the rack guide’s kit comes once', [Racks::starterKit($uid), Racks::starterKit($uid)], [true, false]);
+    check('with a server in it', (int) Db::one('SELECT quantity FROM inventory WHERE user_id = ? AND item_code = "server"', [$uid])['quantity'], $before + 1);
 } finally {
     Db::exec('DELETE FROM users WHERE id = ?', [$uid]);
 }

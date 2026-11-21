@@ -866,8 +866,8 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 @media (prefers-reduced-motion: reduce) { .rv-fan.spin, .rv-drives i.b::after, .rv-port.from i { animation: none; } }
 .rv-cord { font: 9px var(--mono); color: #ff8a95; }
 .rv-rports { display: flex; flex-wrap: wrap; gap: 3px; flex: 1; justify-content: flex-end; align-content: center; }
-.rv-port { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 1px 2px; border-radius: 2px; color: #93a7bf; }
-.rv-port i { width: 13px; height: 10px; background: #05070a; border: 1px solid #5d7491; position: relative; }
+.rv-port { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0 1px; border-radius: 2px; color: #93a7bf; }
+.rv-port i { width: 13px; height: 8px; background: #05070a; border: 1px solid #5d7491; position: relative; } /* icon and label fit in one U, even on a small screen */
 .rv-port i::after { content: ""; position: absolute; left: 3px; right: 3px; top: 0; height: 2px; background: #5d7491; }
 .rv-port.k-fiber i { border-color: var(--amber); }
 .rv-port.k-console i { border-color: var(--violet); }
@@ -876,7 +876,7 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 .rv-port.from i { background: var(--cyan); animation: rv-blink .8s steps(2) infinite; }
 .rv-port.nofit { opacity: .4; }
 .rv-port:hover:not(.nofit) { background: rgba(43, 227, 255, .14); color: var(--cyan); }
-.rv-port small { font: 8px/1 var(--mono); }
+.rv-port small { font: 7px/7px var(--mono); }
 
 /* side panel */
 .rv-sec { padding: 10px 12px; border-bottom: 1px solid var(--grid); }
@@ -1008,3 +1008,12 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 .fac-go { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 6px 12px 8px; width: calc(100% - 24px); padding: 6px; border: 1px solid var(--cyan); color: var(--cyan); border-radius: var(--r-sm); font-size: 12px; }
 .fac-go:hover { background: rgba(43, 227, 255, .1); }
 @media (max-width: 640px) { .facility { position: fixed; left: 8px; right: 8px; top: 60px; width: auto; } }
+
+/* ---- the rack-building guide (racktutorial.js) ---- */
+.guide-glow { position: relative; outline: 2px solid var(--cyan); outline-offset: 2px; animation: tut-pulse 1.4s ease-in-out infinite; z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .guide-glow { animation: none; } }
+.stage:has(.rackview:not([hidden])) .tut-task { display: none; } /* the rack view shows the task itself */
+.rv-sec.guide { background: rgba(43, 227, 255, .08); border-left: 2px solid var(--cyan); }
+.todo .tguide { display: block; width: 100%; margin: 2px 0 6px; padding: 4px 8px; border: 1px solid var(--cyan); color: var(--cyan); border-radius: var(--r-sm); font-size: 12px; }
+.todo .tguide:hover { background: rgba(43, 227, 255, .1); }
+.tut-task.guide-card { top: auto; bottom: 12px; left: auto; right: 12px; transform: none; max-width: min(420px, calc(100% - 250px)); } /* clear of the ISP box up top and the to-do list bottom left */

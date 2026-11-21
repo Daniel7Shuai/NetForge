@@ -175,6 +175,33 @@ final class Racks
         });
     }
 
+    /* ---------- the starter kit for the rack-building guide ---------- */
+
+    /** What Ada hands over to build a first rack: item code => how many. */
+    public const KIT = ['pdu' => 1, 'patch_panel' => 1, 'switch8' => 1, 'server' => 1, 'copper' => 2, 'crossover' => 1];
+
+    /**
+     * Gives the starter kit, once per student, in a place with racks. Returns false if they already had it
+     * (the guide then carries on with whatever they have).
+     */
+    public static function starterKit(int $userId): bool
+    {
+        $location = Db::one('SELECT location FROM users WHERE id = ?', [$userId])['location'];
+        if (!self::inPlace($userId, $location)) {
+            throw new GameError('There are no racks here. Go to the office or the datacentre to build one.');
+        }
+        return Db::transaction(function () use ($userId): bool {
+            if (Db::exec('INSERT IGNORE INTO user_seen (user_id, flag) VALUES (?, "rackkit")', [$userId]) === 0) {
+                return false;
+            }
+            foreach (self::KIT as $code => $n) {
+                Rules::giveItem($userId, $code, $n);
+            }
+            Rules::log($userId, 'ok', 'Ada gave you a starter rack kit: a PDU, a patch panel, a switch, a server and three cables.');
+            return true;
+        });
+    }
+
     /* ---------- interface modules ---------- */
 
     /** A device's ports: its own, plus those its modules add ({b} becomes the bay number). */

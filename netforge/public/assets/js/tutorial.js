@@ -22,6 +22,27 @@ function goalMet(goal, s) {
   return false;
 }
 
+/**
+ * The card at the top of the map that keeps a guide's current task in view: the speaker's face,
+ * the task, a button to hear the lines again and one to stop. Added to the stage; returns it.
+ */
+export function taskCard(story, speaker, text, { onAgain, onSkip, skipLabel }) {
+  const who = character(story, speaker);
+  const card = document.createElement('div');
+  card.className = 'tut-task';
+  card.innerHTML = `<div class="tut-face"></div>
+    <div class="tut-body"><small>${esc(who.name)}</small><p>${esc(text)}</p></div>
+    <div class="tut-actions">
+      <button type="button" data-again aria-label="Hear the instructions again"><i class="ti ti-message-2" aria-hidden="true"></i></button>
+      <button type="button" data-skip aria-label="${esc(skipLabel)}" data-tip="${esc(skipLabel)}"><i class="ti ti-player-skip-forward" aria-hidden="true"></i></button>
+    </div>`;
+  card.querySelector('.tut-face').append(portraitEl(who, 2));
+  card.querySelector('[data-again]').addEventListener('click', onAgain);
+  card.querySelector('[data-skip]').addEventListener('click', onSkip);
+  document.querySelector('.stage').append(card);
+  return card;
+}
+
 export async function mountTutorial(store) {
   const story = await loadStory();
   const steps = story.script.steps;
@@ -96,25 +117,17 @@ export async function mountTutorial(store) {
   /** The small card that keeps the current task in view while the student does it. */
   function showCard(s) {
     hideCard();
-    const teacher = character(story, s.say[0]?.[0] || 'teacher');
-    card = document.createElement('div');
-    card.className = 'tut-task';
-    card.innerHTML = `<div class="tut-face"></div>
-      <div class="tut-body"><small>${esc(teacher.name)}</small><p>${esc(fill(story, s.task, player()))}</p></div>
-      <div class="tut-actions">
-        <button type="button" data-again aria-label="Hear the instructions again"><i class="ti ti-message-2" aria-hidden="true"></i></button>
-        <button type="button" data-skip aria-label="Skip the tutorial (replay it from the menu)"><i class="ti ti-player-skip-forward" aria-hidden="true"></i></button>
-      </div>`;
-    card.querySelector('.tut-face').append(portraitEl(teacher, 2));
-    card.querySelector('[data-again]').addEventListener('click', async () => {
-      if (busy) return;
-      busy = true;
-      await playDialogue(story, s.say, { player: player(), skipLabel: 'Close' });
-      busy = false;
-      tick();
+    card = taskCard(story, s.say[0]?.[0] || 'teacher', fill(story, s.task, player()), {
+      skipLabel: 'Skip the tutorial (replay it from the menu)',
+      onSkip: skipAll,
+      onAgain: async () => {
+        if (busy) return;
+        busy = true;
+        await playDialogue(story, s.say, { player: player(), skipLabel: 'Close' });
+        busy = false;
+        tick();
+      },
     });
-    card.querySelector('[data-skip]').addEventListener('click', skipAll);
-    document.querySelector('.stage').append(card);
   }
   function hideCard() { card?.remove(); card = null; }
 

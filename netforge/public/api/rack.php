@@ -11,6 +11,7 @@ use NetForge\Racks;
 // POST {action: "mount", item, x, y, u} -> mounts rack gear in the rack at (x, y), at U u
 // POST {action: "shift", device, u}     -> slides a mounted device to another U in its rack
 // POST {action: "module", device, item} -> fits an interface module;  {action: "unmodule", device, bay}
+// POST {action: "kit"}                 -> the rack-building guide's starter kit, once per student
 // POST {action: "wish", item, on}       -> adds or removes a shop item from the wishlist; replies {wishlist} only
 // The others reply {state}.
 $uid = Api::begin('POST');
@@ -34,6 +35,9 @@ Api::run(function () use ($uid): void {
             break;
         case 'unmodule':
             Racks::removeModule($uid, (int) $int('device'), (int) $int('bay'));
+            break;
+        case 'kit':
+            Racks::starterKit($uid);
             break;
         case 'wish':
             if (!Db::one('SELECT 1 FROM shop_items WHERE item_code = ?', [$str('item')])) {

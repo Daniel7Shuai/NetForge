@@ -73,6 +73,7 @@ export class MapScene extends Phaser.Scene {
     this.linksG = this.add.graphics().setDepth(5100);
     this.ghost = this.add.image(0, 0, 'tower').setOrigin(0).setDepth(5500).setVisible(false);
     this.hoverG = this.add.graphics().setDepth(6000);
+    this.guideG = this.add.graphics().setDepth(6050); // the rack the rack-building guide points at
     this.add.image(0, 0, 'vignette').setOrigin(0).setDepth(9000);
     this.fans = art.fansFor(layout.LOC);
     this.store.scene = this;
@@ -271,6 +272,12 @@ export class MapScene extends Phaser.Scene {
 
   update(time) {
     this.drawLinks(time / 1000);
+    this.guideG.clear();
+    const g = this.store.state.guideRack;
+    if (g) { // a slow cyan pulse round the rack, two tiles tall
+      const a = reduceMotion ? 0.9 : 0.45 + 0.45 * Math.sin(time / 260);
+      this.guideG.lineStyle(1, 0x2be3ff, a).strokeRect(g.x * TILE - 1.5, g.y * TILE - 1.5, TILE + 3, TILE * 2 + 3);
+    }
     if (this.npc) {
       const { spr, bubble } = this.npc;
       spr.setDepth(spr.y + 1);

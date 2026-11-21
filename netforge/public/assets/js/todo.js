@@ -43,6 +43,7 @@ export function mountTodo(store) {
     }
     const un = e.target.closest('[data-unwish]');
     if (un) { store.wish(un.dataset.unwish, false); return; }
+    if (e.target.closest('[data-rack-guide]')) { store.startRackGuide?.(); return; }
     const go = e.target.closest('[data-shop-for]');
     if (go) { store.setTab('shop'); store.set({ shopGroup: go.dataset.shopFor }); }
   });
@@ -66,7 +67,8 @@ export function mountTodo(store) {
       if (showSteps) {
         const left = steps.filter((x) => !x.done); // finished steps drop off the list; the count shows them
         const next = left.find((x) => !x.optional);
-        body += `<h4>Set up a server rack <span>${steps.length - left.length}/${steps.length}</span></h4><ol class="tsteps">${left.map((x) => `
+        const guide = store.rackGuideActive ? '' : '<button class="tguide" data-rack-guide data-tip="Ada walks you through building a rack, with a free starter kit the first time.">Guide me</button>';
+        body += `<h4>Set up a server rack <span>${steps.length - left.length}/${steps.length}</span></h4>${guide}<ol class="tsteps">${left.map((x) => `
           <li class="${x === next ? 'next' : ''}"><i class="ti ti-circle" aria-hidden="true"></i>
           <span>${esc(x.text)}${x.optional ? ' <small>(optional)</small>' : ''}${x === next ? `<small class="how">${esc(x.how)}</small>` : ''}</span></li>`).join('')}</ol>`;
       }
