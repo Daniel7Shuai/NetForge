@@ -402,6 +402,55 @@ const FURNITURE = {
   desk: (c, x, y) => desk(c, x, y),
   cooling: (c, x, y) => cooling(c, x, y),
   rack: (c, x, y) => rackFrame(c, x, y),
+  meeting(c, x, y) { // 5x2: a meeting table with chairs round it
+    R(c, x + 6, y + 27, 70, 3, 'rgba(0,0,0,.4)');
+    for (const cx of [12, 28, 44, 60]) { R(c, x + cx, y, 8, 6, C.k); R(c, x + cx + 1, y + 1, 6, 4, '#24314a'); R(c, x + cx, y + 25, 8, 6, C.k); R(c, x + cx + 1, y + 26, 6, 4, '#24314a'); }
+    R(c, x + 4, y + 6, 72, 20, C.k); R(c, x + 5, y + 7, 70, 18, '#5a3f2a'); R(c, x + 5, y + 7, 70, 1, '#7a5a3e');
+    for (let k = 9; k < 75; k += 9) R(c, x + k, y + 8, 1, 16, '#4e3624');
+    R(c, x + 14, y + 12, 9, 6, '#1c2638'); R(c, x + 15, y + 13, 7, 3, C.cyan);        // laptop
+    R(c, x + 50, y + 13, 8, 5, '#e6ecf2'); R(c, x + 51, y + 14, 6, 1, '#9fb0c2');    // notes
+    R(c, x + 36, y + 11, 6, 6, '#2a3446'); R(c, x + 37, y + 12, 4, 4, '#05070d');    // conference phone
+  },
+  noc(c, x, y) { // 4x2: an operator console with a row of monitors
+    R(c, x + 2, y + 28, 60, 3, 'rgba(0,0,0,.4)');
+    for (let i = 0; i < 4; i++) {
+      const mx = x + 2 + i * 15;
+      R(c, mx, y + 1, 14, 11, C.k); R(c, mx + 1, y + 2, 12, 8, '#04121a');
+      for (let k = 0; k < 10; k++) R(c, mx + 2 + k, y + 8 - Math.floor(hash(i, k) * 5), 1, 1, [C.cyan, C.lime, C.amber, C.cyan][i]);
+      R(c, mx + 6, y + 12, 2, 3, C.metal2);
+    }
+    R(c, x, y + 14, 64, 10, C.k); R(c, x + 1, y + 15, 62, 7, '#24314a'); R(c, x + 1, y + 15, 62, 1, C.metal3);
+    for (const kx of [8, 23, 38, 53]) { R(c, x + kx, y + 17, 8, 3, '#121a29'); }
+    for (const cx of [10, 40]) { R(c, x + cx, y + 25, 10, 6, C.k); R(c, x + cx + 1, y + 26, 8, 4, '#1c2638'); }
+  },
+  switchgear(c, x, y) { // 3x2: electrical switchgear cabinets
+    R(c, x + 1, y + 29, 46, 3, 'rgba(0,0,0,.45)');
+    for (let i = 0; i < 3; i++) {
+      const cx = x + i * 16;
+      R(c, cx, y, 16, 29, C.k); R(c, cx + 1, y + 1, 14, 27, '#8d97a3'); R(c, cx + 1, y + 1, 14, 1, '#b3bcc6');
+      R(c, cx + 3, y + 4, 10, 6, '#2a313d'); R(c, cx + 5, y + 6, 3, 2, hash(i, 1) > 0.5 ? C.lime : C.amber);
+      R(c, cx + 9, y + 6, 2, 2, '#d23a3a');
+      R(c, cx + 4, y + 13, 8, 1, '#5d6670'); R(c, cx + 4, y + 16, 8, 1, '#5d6670');
+      R(c, cx + 5, y + 20, 6, 5, '#f2c230'); R(c, cx + 7, y + 21, 2, 3, C.k);     // high-voltage sign
+    }
+  },
+  batteries(c, x, y) { // 2x2: UPS battery cabinets
+    R(c, x + 1, y + 29, 30, 3, 'rgba(0,0,0,.45)');
+    for (let i = 0; i < 2; i++) {
+      const cx = x + i * 16;
+      R(c, cx, y, 16, 29, C.k); R(c, cx + 1, y + 1, 14, 27, '#1b2230'); R(c, cx + 1, y + 1, 14, 1, '#2c3b56');
+      for (let r = 0; r < 5; r++) { R(c, cx + 3, y + 4 + r * 5, 10, 3, '#111722'); R(c, cx + 11, y + 5 + r * 5, 1, 1, C.lime); }
+    }
+  },
+  genset(c, x, y) { // 4x3: the standby diesel generator
+    R(c, x + 2, y + 44, 62, 3, 'rgba(0,0,0,.5)');
+    R(c, x, y + 8, 64, 37, C.k); R(c, x + 1, y + 9, 62, 35, '#d9a03a'); R(c, x + 1, y + 9, 62, 2, '#f0c060');
+    for (let k = 6; k < 40; k += 4) R(c, x + k, y + 15, 2, 14, '#a87a24');      // louvres
+    R(c, x + 44, y + 14, 15, 15, '#3a3324'); R(c, x + 46, y + 16, 11, 11, '#1e1a12'); // radiator
+    R(c, x + 6, y + 34, 26, 6, '#1e1a12'); R(c, x + 8, y + 36, 6, 2, C.lime); R(c, x + 16, y + 36, 10, 2, '#4a6a8a'); // control panel
+    R(c, x + 50, y, 5, 10, '#3a4250'); R(c, x + 49, y, 7, 2, '#5d6670');         // exhaust stack
+    R(c, x + 36, y + 34, 22, 6, '#f2c230'); for (let k = 0; k < 22; k += 4) R(c, x + 36 + k, y + 34, 2, 6, C.k); // hazard stripe
+  },
   plant(c, x, y) {
     const p = { x: x + 8, y };
     R(c, p.x, p.y + 6, 10, 10, C.k); R(c, p.x + 1, p.y + 7, 8, 8, '#1d2a1d');
@@ -456,7 +505,7 @@ function office(c, loc) {
   R(c, 110, 12, 5, 4, C.cyan); R(c, 128, 12, 5, 4, C.cyan); R(c, 145, 18, 5, 4, C.amber); R(c, 115, 14, 13, 1, C.cyan);
   R(c, 133, 14, 6, 1, '#1590a6'); R(c, 139, 14, 1, 5, '#1590a6'); R(c, 139, 19, 6, 1, '#1590a6');
   R(c, 112, 21, 22, 1, C.magenta); R(c, 130, 20, 1, 3, C.magenta);
-  for (let ty = loc.wallRows; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+  if (!roomFloors(c, loc)) for (let ty = loc.wallRows; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
     const x = tx * TILE, y = ty * TILE;
     if (tx < loc.partition.col) {
       R(c, x, y, 16, 16, (tx + ty) % 2 ? '#0d1421' : '#0f1726');
@@ -474,7 +523,113 @@ function office(c, loc) {
   }
   for (const y of [wallH, doorTop - 2, doorBottom, H - 2]) R(c, px + 1, y, 6, 2, '#2a3850');
   R(c, px + 2, doorTop, 4, doorBottom - doorTop, '#151e2e');
+  interiorWalls(c, loc);
+  videoWalls(c, loc);
   for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
+  roomLabels(c, loc);
+}
+
+/* ======================= shared: rooms and walls ======================= */
+
+/** One floor tile in a room's style. */
+function floorTile(c, kind, tx, ty, loc) {
+  const x = tx * TILE, y = ty * TILE;
+  if (kind === 'raised') { // raised datacentre floor, perforated on the cold aisles
+    R(c, x, y, 16, 16, '#111a27'); R(c, x, y, 16, 1, '#19253a'); R(c, x, y, 1, 16, '#19253a');
+    R(c, x + 15, y, 1, 16, '#070b12'); R(c, x, y + 15, 16, 1, '#070b12');
+    if ((loc.aisles || []).includes(ty)) for (let py = 3; py < 14; py += 3) for (let px = 3; px < 14; px += 3) R(c, x + px, y + py, 1, 1, '#1c3d4f');
+  } else if (kind === 'wood') {
+    R(c, x, y, 16, 16, (ty % 2) ? '#2b2018' : '#30241a');
+    for (const py of [3, 7, 11, 15]) R(c, x, y + py, 16, 1, '#1f1711');
+    R(c, x + ((tx * 5 + ty * 3) % 12) + 2, y + 1 + (ty % 3) * 4, 1, 2, '#1f1711');
+  } else if (kind === 'noc') {
+    R(c, x, y, 16, 16, (tx + ty) % 2 ? '#0b1224' : '#0d152a');
+    if (hash(tx, ty) > 0.6) R(c, x + Math.floor(hash(ty, tx) * 14), y + Math.floor(hash(tx + 3, ty) * 14), 1, 1, '#1b2a4a');
+  } else if (kind === 'concrete') {
+    R(c, x, y, 16, 16, '#1b1f26'); R(c, x, y, 16, 1, '#22272f'); R(c, x + 15, y, 1, 16, '#14171c');
+    for (let k = 0; k < 4; k++) R(c, x + Math.floor(hash(tx * 4 + k, ty) * 15), y + Math.floor(hash(ty, tx + k) * 15), 1, 1, '#2a2f38');
+  } else { // carpet
+    R(c, x, y, 16, 16, (tx + ty) % 2 ? '#0d1421' : '#0f1726');
+    for (let k = 0; k < 3; k++) R(c, x + Math.floor(hash(tx * 3 + k, ty) * 15), y + Math.floor(hash(ty, tx + k) * 15), 1, 1, '#15203a');
+  }
+}
+
+/** Floors for every room (layout.json "rooms"). Returns false when the place has no rooms. */
+function roomFloors(c, loc) {
+  if (!loc.rooms) return false;
+  // under walls and between rooms: the place's base floor
+  for (let ty = loc.wallRows; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) floorTile(c, loc.baseFloor || 'carpet', tx, ty, loc);
+  for (const r of loc.rooms) for (let ty = r.y; ty < r.y + r.h; ty++) for (let tx = r.x; tx < r.x + r.w; tx++) floorTile(c, r.floor, tx, ty, loc);
+  // doorways in interior walls get the floor of the room they open into
+  for (const w of loc.walls || []) for (const [dx, dy] of w.doors || []) {
+    const r = loc.rooms.find((q) => dx >= q.x - 1 && dx <= q.x + q.w && dy >= q.y - 1 && dy <= q.y + q.h && q.floor !== 'raised') || loc.rooms[0];
+    floorTile(c, r.floor, dx, dy, loc);
+  }
+  return true;
+}
+
+/** Interior walls: solid ones with a lit top edge, glass ones you can see through. */
+function interiorWalls(c, loc) {
+  for (const w of loc.walls || []) {
+    const doors = new Set((w.doors || []).map(([x, y]) => `${x},${y}`));
+    const vertical = w.h > w.w;
+    for (let i = 0; i < w.w; i++) for (let j = 0; j < w.h; j++) {
+      const tx = w.x + i, ty = w.y + j, x = tx * TILE, y = ty * TILE;
+      if (doors.has(`${tx},${ty}`)) { // a doorway: frame posts either side
+        if (vertical) { R(c, x + 4, y, 8, 1, '#2a3850'); R(c, x + 4, y + 15, 8, 1, '#2a3850'); }
+        else { R(c, x, y + 4, 1, 8, '#2a3850'); R(c, x + 15, y + 4, 1, 8, '#2a3850'); }
+        continue;
+      }
+      if (w.style === 'glass') {
+        if (vertical) {
+          R(c, x + 6, y, 4, 16, 'rgba(160,220,255,.16)'); R(c, x + 6, y, 1, 16, 'rgba(160,220,255,.35)');
+          if (j % 3 === 0) R(c, x + 5, y, 6, 2, '#2a3850');
+        } else {
+          R(c, x, y + 6, 16, 4, 'rgba(160,220,255,.16)'); R(c, x, y + 6, 16, 1, 'rgba(160,220,255,.35)');
+          if (i % 3 === 0) R(c, x, y + 5, 2, 6, '#2a3850');
+        }
+      } else if (vertical) {
+        R(c, x + 3, y, 10, 16, '#1a2436'); R(c, x + 3, y, 2, 16, '#2a3850'); R(c, x + 11, y, 2, 16, '#0a0f19');
+      } else {
+        R(c, x, y + 2, 16, 12, '#1a2436'); R(c, x, y + 2, 16, 2, '#2a3850'); R(c, x, y + 10, 16, 4, '#121a29');
+      }
+    }
+  }
+}
+
+/** A video wall on the wall above a room with "screens": maps, graphs and alerts. */
+function videoWalls(c, loc) {
+  for (const r of loc.rooms || []) {
+    if (!r.screens) continue;
+    const x0 = r.x * TILE + 3, w = r.w * TILE - 6, y0 = (r.y - 1) * TILE + 2;
+    const panels = Math.max(2, Math.round(w / 40)), pw = Math.floor((w - (panels - 1) * 2) / panels);
+    for (let i = 0; i < panels; i++) {
+      const px = x0 + i * (pw + 2);
+      R(c, px, y0, pw, 12, '#1a2436'); R(c, px + 1, y0 + 1, pw - 2, 10, '#04121a');
+      if (i % 3 === 1) { // a world map with links
+        for (let k = 0; k < 12; k++) R(c, px + 2 + Math.floor(hash(k, i) * (pw - 4)), y0 + 3 + Math.floor(hash(i, k) * 6), 2, 1, '#1d4a5a');
+        R(c, px + 3, y0 + 5, pw - 6, 1, 'rgba(43,227,255,.5)');
+      } else if (i % 3 === 2) { // alerts
+        for (let k = 0; k < 4; k++) R(c, px + 2, y0 + 2 + k * 2, Math.floor(hash(k, i + 7) * (pw - 4)) + 2, 1, k === 1 ? C.magenta : C.lime);
+      } else { // traffic graph
+        let gy = y0 + 7;
+        for (let k = 2; k < pw - 2; k++) { gy = Math.max(y0 + 2, Math.min(y0 + 9, gy + Math.round((hash(k, i + r.x) - 0.5) * 3))); R(c, px + k, gy, 1, 1, C.cyan); }
+      }
+    }
+  }
+}
+
+/** Room names, faint on the floor (each room's "label" tile, or its bottom-left corner). */
+function roomLabels(c, loc) {
+  c.font = 'bold 7px monospace';
+  c.textBaseline = 'alphabetic';
+  for (const r of loc.rooms || []) {
+    if (!r.name) continue;
+    const [lx, ly] = r.label || [r.x, r.y + r.h - 1];
+    const text = r.name.toUpperCase();
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillText(text, lx * TILE + 4, ly * TILE + 12);
+    c.fillStyle = 'rgba(201,228,242,.42)'; c.fillText(text, lx * TILE + 3, ly * TILE + 11);
+  }
 }
 
 /* ======================= shared ======================= */
@@ -488,7 +643,8 @@ function datacentre(c, loc) {
   for (let x = 0; x < W; x += 40) R(c, x, 2, 1, wallH - 4, '#060a12');
   R(c, 0, 0, W, 2, '#162033'); R(c, 0, wallH - 2, W, 2, '#04060b');
   R(c, 8, 6, W - 16, 1, C.cyan); R(c, 8, 5, W - 16, 1, 'rgba(43,227,255,.25)'); R(c, 8, 7, W - 16, 1, 'rgba(43,227,255,.25)');
-  const screens = W > 400 ? [[24, 96], [W / 2 - 48, 96], [W - 120, 96]] : [[24, 96], [200, 96]]; // one more on a wide wall
+  const hall = loc.rooms ? loc.rooms[0].w * TILE : W; // the data hall's share of the back wall
+  const screens = hall > 400 ? [[24, 96], [hall / 2 - 48, 96], [hall - 120, 96]] : [[24, 96], [hall - 120, 96]];
   for (const [sx, w] of screens) {
     R(c, sx, 10, w, 19, '#1a2436'); R(c, sx + 1, 11, w - 2, 17, '#04121a');
     let y = 24;
@@ -497,16 +653,17 @@ function datacentre(c, loc) {
       R(c, sx + 3 + i, y, 1, 1, sx < 100 ? C.cyan : sx > W - 200 ? C.amber : C.lime);
     }
   }
-  // raised floor, with perforated tiles on the cold aisles
-  for (let ty = loc.wallRows; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
-    const x = tx * TILE, y = ty * TILE;
-    R(c, x, y, 16, 16, '#111a27'); R(c, x, y, 16, 1, '#19253a'); R(c, x, y, 1, 16, '#19253a');
-    R(c, x + 15, y, 1, 16, '#070b12'); R(c, x, y + 15, 16, 1, '#070b12');
-    if ((loc.aisles || [5, 6]).includes(ty)) for (let py = 3; py < 14; py += 3) for (let px = 3; px < 14; px += 3) R(c, x + px, y + py, 1, 1, '#1c3d4f');
-  }
-  // yellow safety line along the walkway
-  for (let x = 0; x < W; x += 6) R(c, x, (loc.safetyRow ?? 9) * TILE + 1, 3, 1, '#6b5418');
+  // raised floor, with perforated tiles on the cold aisles (or each room's own floor)
+  if (!roomFloors(c, loc)) for (let ty = loc.wallRows; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) floorTile(c, 'raised', tx, ty, loc);
+  // yellow safety line along the walkway, in the data hall
+  for (let x = 0; x < hall; x += 6) R(c, x, (loc.safetyRow ?? 9) * TILE + 1, 3, 1, '#6b5418');
+  // the power room: a hazard stripe along the floor in front of the switchgear
+  const power = (loc.rooms || []).find((r) => r.floor === 'concrete');
+  if (power) for (let x = power.x * TILE; x < (power.x + power.w) * TILE; x += 8) { R(c, x, (power.y + 2) * TILE + 2, 4, 2, '#c9a02a'); R(c, x + 4, (power.y + 2) * TILE + 2, 4, 2, '#1a1a1a'); }
+  interiorWalls(c, loc);
+  videoWalls(c, loc);
   for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
+  roomLabels(c, loc);
 }
 
 const ROOMS = { garage, office, datacentre };

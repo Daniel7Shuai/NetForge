@@ -103,8 +103,8 @@ try {
     check('desk back in inventory', $qty('desk_kit'), 2);
     Db::exec('UPDATE users SET location = "office" WHERE id = ?', [$uid]);
     $give('server_rack');
-    Gear::placeFurniture($uid, 'server_rack', 13, 9);
-    check('bought rack adds a rack slot', Layout::slotAnchoredAt('office', ['rack'], 13, 9, $uid) !== null, true);
+    Gear::placeFurniture($uid, 'server_rack', 15, 13); // open floor in the corridor (13,9 is the NOC's glass wall now)
+    check('bought rack adds a rack slot', Layout::slotAnchoredAt('office', ['rack'], 15, 13, $uid) !== null, true);
 
     echo "GPU cards\n";
     $give('server');

@@ -28,6 +28,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_catalog.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_racks.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_power.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_maps.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -206,8 +207,13 @@ The database is pre-release: after pulling schema changes, drop `netforge` and r
   - The **electricity bill** takes a share of what each place earns: garage 10%, office 12%, datacentre 15%. The rate in the top bar is after the bill.
   - **Efficiency upgrades** are bought once for the place you're in, not carried: LED lighting, smart power strips, solar panels and 80 PLUS Platinum PSUs cut the bill (down to 2% at least). Better insulation, aisle containment and free-air cooling make cooling stronger, and the Platinum PSUs also make gear run cooler. Some only fit some places, and the shop says so.
   - Ada explains it the first time a place overheats, browns out or the bill shows up. They're all in the shop under **Power & cooling**.
-- Coming in a later phase: the new office and datacentre maps.
-- Tests: `php tests/StoryTest.php`, `php tests/RackTest.php`, `php tests/PowerTest.php`.
+- **Rooms in the office and datacentre** (`layout.json` `rooms` and `walls`, drawn in `game/art.js`):
+  - The **office** has an open-plan area with the four desks, a glass-walled **NOC** (a network operations centre with an operator console and a video wall), a **meeting room** behind a solid wall, a corridor, and the **server room** behind glass with its twelve rack spots.
+  - The **datacentre** has the **data hall** (the 48 rack spots in three rows, with CRAC units along the wall), a **power room** (switchgear, battery cabinets and a standby generator, with open floor for your own generators), an **operations centre** (video wall, two desks for PCs and a NOC console) and a **meeting room**.
+  - Each room has its own floor and a label. Interior walls block walking and placing, except at their doorways (`Layout::wallTiles`, `wallTiles()` in `layout.js`).
+  - The rack spots didn't move. The datacentre's two desk spots moved into the operations centre. The first time a student's game loads after the change, `src/MapMigration.php` moves gear on those desks along with them. Anything standing where a new wall or built-in furniture now is goes back to the inventory, with its cables, modules and GPU card, and the student is told. It runs once per student (`users.map_version`, from `schema_maps.sql`).
+  - The intro cutscene keeps its open-plan hall: Dad's datacentre isn't the player's.
+- Tests: `php tests/StoryTest.php`, `php tests/RackTest.php`, `php tests/PowerTest.php`, `php tests/MapTest.php` (every spot and room can be walked to from the entrance, and the migration).
 
 ## Tutorial, characters, movement and music
 
@@ -226,6 +232,6 @@ The database is pre-release: after pulling schema changes, drop `netforge` and r
 - **Random events**, once a student has leased the office, every 4-10 minutes of play (`event_min_minutes`, `event_max_minutes` in `game_config`; `src/Events.php`):
   - **Vex, the grey-market broker**, walks in, follows the student around for a couple of minutes and speaks up himself (like Ghost), asking if they want his help: **Take his help**, **Not now** (he keeps following; click him to ask again) or **Get lost**. Taking it usually (70%) gets 20-40% off every GPU for 10 minutes; otherwise he picks their pocket for 3-6% of their credits.
   - **Investors**: Mira from Lumen Capital texts an offer. The phone rings, a notification slides in, and a phone pops up on the map with her and the chat: **Accept**, **Ask for more** or **No thanks** (close it and the offer waits in the phone for 10 minutes). The offer is about 20 minutes of income or 8% of savings, whichever is more (a little more if the company is growing). Asking for more raises it 20-40% or she walks away: 15% for a small company, rising with income and savings to a cap of 80% once income reaches `investor_walk_income` (50k/s), plus 10 points per earlier ask. The button shows the chance. The phone also charts the company value (an hour of income, lifted by level and security rating, plus 5% of savings; a point every 10 minutes).
-- **Three maps, each bigger than the last**: the garage is 20x12 tiles, the office 28x16 (four desks with room for more, and a server room with 12 rack slots) and the datacentre 36x20 (three rack rows, 48 slots, plus open floor for bought racks). Each place sets its own `cols` and `rows` in `layout.json`, and the map scales to fit the screen. `schema_scale.sql` moved gear already placed in the old office and datacentre to the matching new spots, once (`game_config.layout_version`).
+- **Three maps, each bigger than the last**: the garage is 20x12 tiles, the office 28x16 (four desks with room for more, a NOC, a meeting room and a server room with 12 rack slots) and the datacentre 36x20 (a data hall with three rack rows, 48 slots, plus a power room, an operations centre and a meeting room). Each place sets its own `cols` and `rows` in `layout.json`, and the map scales to fit the screen. `schema_scale.sql` moved gear already placed in the old office and datacentre to the matching new spots, once (`game_config.layout_version`).
 - Hiring employees is planned; nothing for it exists yet.
 - Tests: `php tests/EventsTest.php` (77 checks: prices, stock, the broker's discount, furniture placement, GPU cards, both broker outcomes, investor offers and haggling, tips) and `php tests/IncomeTest.php` (network boosts, money format).

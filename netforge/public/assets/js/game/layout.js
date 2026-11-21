@@ -58,6 +58,19 @@ export function furnitureProblem(type, x, y, devices, player) {
   return null;
 }
 
+/** Interior walls between rooms, less their doorways. Mirrors Layout::wallTiles(). */
+export function wallTiles() {
+  const out = new Set();
+  for (const w of LOC.walls || []) {
+    const doors = new Set((w.doors || []).map(([x, y]) => key(x, y)));
+    for (let i = 0; i < w.w; i++) for (let j = 0; j < w.h; j++) {
+      const k = key(w.x + i, w.y + j);
+      if (!doors.has(k)) out.add(k);
+    }
+  }
+  return out;
+}
+
 /** Tiles the player cannot walk through, ignoring placed devices. */
 export function staticBlocked() {
   const b = new Set();
@@ -66,6 +79,7 @@ export function staticBlocked() {
   if (LOC.partition) {
     for (let y = LOC.wallRows; y < ROWS; y++) if (!LOC.partition.doorRows.includes(y)) b.add(key(LOC.partition.col, y));
   }
+  for (const t of wallTiles()) b.add(t);
   for (const f of LOC.furniture) {
     const [w, h] = FOOTPRINTS[f.type] || [1, 1];
     for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) b.add(key(f.x + i, f.y + j));

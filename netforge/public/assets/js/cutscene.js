@@ -182,7 +182,14 @@ function datacentreBackground() {
   const R = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x, y, w, h); };
   const was = LOC_CODE;
   setLocation('datacentre'); // the room art reads the size of the place being drawn
-  art.drawRoom(c, 'datacentre', LOCATIONS.datacentre);
+  // Dad's datacentre is one big open hall (not the player's, with its rooms): no interior walls,
+  // the cooling units down the right and the desks along the bottom
+  const hall = {
+    ...LOCATIONS.datacentre, rooms: undefined, walls: undefined,
+    furniture: [[33, 3], [33, 8], [33, 13]].map(([x, y]) => ({ type: 'cooling', x, y }))
+      .concat([[1, 16], [8, 16]].map(([x, y]) => ({ type: 'desk', x, y }))),
+  };
+  art.drawRoom(c, 'datacentre', hall);
   art.drawFurniture(c, 'desk', 15, 16);                    // a third desk for the night shift
   for (const [x, y] of [[0, 12], [19, 17], [31, 18]]) art.drawFurniture(c, 'plant', x, y);
   setLocation(was);

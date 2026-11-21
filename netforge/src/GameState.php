@@ -9,6 +9,7 @@ final class GameState
     public static function load(int $userId): array
     {
         // pay out passive income and award badges before reading the balance (FR-4.4, FR-4.5)
+        MapMigration::run($userId); // the redesigned office and datacentre: move gear off new walls, once
         Racks::adopt($userId); // rack gear from before racks had U-slots: mount it, with a PDU
         \NetForge\Progress\Income::accrue($userId);
         $newBadges = \NetForge\Progress\Badges::award($userId);

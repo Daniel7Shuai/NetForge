@@ -13,7 +13,12 @@
     "desk": [3, 3],
     "cooling": [2, 3],
     "plant": [1, 1],
-    "rack": [1, 2]
+    "rack": [1, 2],
+    "meeting": [5, 2],
+    "noc": [4, 2],
+    "switchgear": [3, 2],
+    "batteries": [2, 2],
+    "genset": [4, 3]
   },
   "locations": {
     "garage": {
@@ -43,15 +48,28 @@
       "tier": 2,
       "unlockLevel": 4,
       "leaseCost": 5000000,
-      "pitch": "Four desks with room for more, and a server room behind glass with twelve rack slots.",
-      "spawn": {"x": 14, "y": 7},
+      "pitch": "Open-plan desks, a network operations centre, a meeting room, and a server room behind glass with twelve rack slots.",
+      "spawn": {"x": 14, "y": 12},
       "wallRows": 2,
-      "partition": {"col": 17, "doorRows": [7, 8]},
+      "partition": {"col": 17, "doorRows": [11, 12]},
       "aisles": [5, 6, 11, 12],
+      "walls": [
+        {"x": 12, "y": 2, "w": 1, "h": 8, "doors": [[12, 6], [12, 7]], "style": "glass"},
+        {"x": 13, "y": 9, "w": 4, "h": 1, "style": "glass"},
+        {"x": 0, "y": 12, "w": 12, "h": 1, "doors": [[5, 12], [6, 12]], "style": "solid"}
+      ],
+      "rooms": [
+        {"name": "Open office", "x": 0, "y": 2, "w": 12, "h": 10, "floor": "carpet", "label": [4, 7]},
+        {"name": "NOC", "x": 13, "y": 2, "w": 4, "h": 7, "floor": "noc", "screens": true},
+        {"name": "Meeting room", "x": 0, "y": 13, "w": 12, "h": 3, "floor": "wood"},
+        {"name": "", "x": 12, "y": 10, "w": 5, "h": 6, "floor": "carpet"},
+        {"name": "Server room", "x": 18, "y": 2, "w": 10, "h": 14, "floor": "raised"}
+      ],
       "furniture": [
         {"type": "desk", "x": 1, "y": 3}, {"type": "desk", "x": 7, "y": 3}, {"type": "desk", "x": 1, "y": 9},
         {"type": "desk", "x": 7, "y": 9}, {"type": "cooling", "x": 26, "y": 3}, {"type": "cooling", "x": 26, "y": 10},
-        {"type": "plant", "x": 0, "y": 13}, {"type": "plant", "x": 16, "y": 3}
+        {"type": "noc", "x": 13, "y": 3}, {"type": "meeting", "x": 3, "y": 14},
+        {"type": "plant", "x": 0, "y": 13}, {"type": "plant", "x": 11, "y": 13}, {"type": "plant", "x": 16, "y": 15}
       ],
       "slots": [
         {"kind": "desk", "x": 4, "y": 3, "h": 1}, {"kind": "desk", "x": 10, "y": 3, "h": 1},
@@ -74,15 +92,30 @@
       "tier": 3,
       "unlockLevel": 7,
       "leaseCost": 500000000,
-      "pitch": "Three long rack rows on a raised floor, 48 slots, with fibre straight from the provider.",
-      "spawn": {"x": 22, "y": 17},
+      "pitch": "A data hall with three long rack rows (48 slots), a power room, an operations centre and a meeting room, with fibre straight from the provider.",
+      "spawn": {"x": 10, "y": 17},
       "wallRows": 2,
+      "baseFloor": "concrete",
+      "walls": [
+        {"x": 20, "y": 2, "w": 1, "h": 18, "doors": [[20, 5], [20, 11], [20, 17]], "style": "solid"},
+        {"x": 21, "y": 8, "w": 15, "h": 1, "style": "solid"},
+        {"x": 21, "y": 14, "w": 15, "h": 1, "style": "glass"}
+      ],
+      "rooms": [
+        {"name": "Data hall", "x": 0, "y": 2, "w": 20, "h": 18, "floor": "raised"},
+        {"name": "Power room", "x": 21, "y": 2, "w": 15, "h": 6, "floor": "concrete"},
+        {"name": "Operations centre", "x": 21, "y": 9, "w": 15, "h": 5, "floor": "noc", "screens": true},
+        {"name": "Meeting room", "x": 21, "y": 15, "w": 15, "h": 5, "floor": "wood"}
+      ],
       "furniture": [
-        {"type": "cooling", "x": 33, "y": 3}, {"type": "cooling", "x": 33, "y": 8},
-        {"type": "cooling", "x": 33, "y": 13}, {"type": "desk", "x": 1, "y": 16}, {"type": "desk", "x": 8, "y": 16}
+        {"type": "cooling", "x": 0, "y": 3}, {"type": "cooling", "x": 0, "y": 8}, {"type": "cooling", "x": 0, "y": 13},
+        {"type": "switchgear", "x": 22, "y": 2}, {"type": "batteries", "x": 26, "y": 2}, {"type": "batteries", "x": 28, "y": 2},
+        {"type": "genset", "x": 31, "y": 2},
+        {"type": "desk", "x": 22, "y": 10}, {"type": "desk", "x": 28, "y": 10}, {"type": "noc", "x": 32, "y": 11},
+        {"type": "meeting", "x": 25, "y": 16}, {"type": "plant", "x": 35, "y": 15}, {"type": "plant", "x": 35, "y": 19}
       ],
       "slots": [
-        {"kind": "desk", "x": 4, "y": 16, "h": 1}, {"kind": "desk", "x": 11, "y": 16, "h": 1},
+        {"kind": "desk", "x": 25, "y": 10, "h": 1}, {"kind": "desk", "x": 31, "y": 10, "h": 1},
         {"kind": "rack", "x": 3, "y": 3, "h": 2}, {"kind": "rack", "x": 4, "y": 3, "h": 2},
         {"kind": "rack", "x": 5, "y": 3, "h": 2}, {"kind": "rack", "x": 6, "y": 3, "h": 2},
         {"kind": "rack", "x": 7, "y": 3, "h": 2}, {"kind": "rack", "x": 8, "y": 3, "h": 2},

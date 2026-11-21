@@ -89,6 +89,24 @@ final class Layout
         return array_values(array_filter($slots, fn ($s) => in_array($s['kind'], $kinds, true)));
     }
 
+    /** Interior walls between rooms ("walls" in layout.json), less their doorways, as "x,y" => true. */
+    public static function wallTiles(string $location): array
+    {
+        $b = [];
+        foreach (self::location($location)['walls'] ?? [] as $w) {
+            $doors = array_map(fn ($d) => $d[0] . ',' . $d[1], $w['doors'] ?? []);
+            for ($i = 0; $i < $w['w']; $i++) {
+                for ($j = 0; $j < $w['h']; $j++) {
+                    $k = ($w['x'] + $i) . ',' . ($w['y'] + $j);
+                    if (!in_array($k, $doors, true)) {
+                        $b[$k] = true;
+                    }
+                }
+            }
+        }
+        return $b;
+    }
+
     /** Tiles that aren't open floor: walls, the partition, built-in furniture and fixtures. */
     public static function staticBlocked(string $location): array
     {
@@ -111,6 +129,7 @@ final class Layout
                 }
             }
         }
+        $b += self::wallTiles($location);
         foreach ($loc['furniture'] as $f) {
             [$w, $h] = $data['footprints'][$f['type']] ?? [1, 1];
             for ($i = 0; $i < $w; $i++) {
