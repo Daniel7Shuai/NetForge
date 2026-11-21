@@ -121,15 +121,29 @@ final class Racks
         });
     }
 
-    /** Racks in a place that have a PDU mounted, as "x,y" => true. */
+    /** A rack's key in powered(): "location:x,y". */
+    public static function key(string $location, int|string $x, int|string $y): string
+    {
+        return "$location:$x,$y";
+    }
+
+    /** Is this device row (location, tile_x, tile_y, rack_u) switched on? Rack gear needs a PDU in its rack. */
+    public static function runs(array $device, array $powered): bool
+    {
+        return $device['rack_u'] === null || isset($powered[self::key($device['location'], $device['tile_x'], $device['tile_y'])]);
+    }
+
+    /** Racks that have a PDU mounted, as key() => true (only those in $location, if given). */
     public static function powered(int $userId, ?string $location = null): array
     {
-        $out = [];
-        foreach (Db::all('SELECT location, tile_x, tile_y FROM devices WHERE user_id = ? AND item_code = ? AND rack_u IS NOT NULL' . ($location ? ' AND location = ?' : ''),
-            $location ? [$userId, self::PDU, $location] : [$userId, self::PDU]) as $r) {
-            $out[$r['location'] . ':' . $r['tile_x'] . ',' . $r['tile_y']] = true;
-        }
-        return $out;
+        $all = Db::gearMemo("powered:$userId", function () use ($userId): array {
+            $out = [];
+            foreach (Db::all('SELECT location, tile_x, tile_y FROM devices WHERE user_id = ? AND item_code = ? AND rack_u IS NOT NULL', [$userId, self::PDU]) as $r) {
+                $out[self::key($r['location'], $r['tile_x'], $r['tile_y'])] = true;
+            }
+            return $out;
+        });
+        return $location === null ? $all : array_filter($all, fn ($k) => str_starts_with($k, "$location:"), ARRAY_FILTER_USE_KEY);
     }
 
     /**
@@ -152,7 +166,7 @@ final class Racks
                 }
                 $u = self::freeU(self::contents($userId, $loc, $x, $y), (int) $d['size']) ?? 1;
                 Db::exec('UPDATE devices SET rack_u = ? WHERE id = ?', [$u, $d['id']]);
-                if (!isset(self::powered($userId, $loc)["$loc:$x,$y"])) {
+                if (!isset(self::powered($userId)[self::key($loc, $x, $y)])) {
                     $pu = self::freeU(self::contents($userId, $loc, $x, $y), 1) ?? self::SIZE;
                     Db::exec('INSERT INTO devices (user_id, item_code, label, location, tile_x, tile_y, rack_u) VALUES (?, ?, ?, ?, ?, ?, ?)',
                         [$userId, self::PDU, Rules::nextLabel($userId, 'PDU'), $loc, $x, $y, $pu]);
@@ -168,13 +182,17 @@ final class Racks
     {
         $ports = json_decode($portsJson, true) ?: [];
         foreach (self::moduleList($modulesJson) as $bay => $code) {
-            $m = self::module($code);
-            foreach ($m ? (json_decode((string) $m['module_ports'], true) ?: []) : [] as $p) {
-                $p['name'] = str_replace('{b}', (string) ($bay + 1), $p['name']);
-                $ports[] = $p;
-            }
+            array_push($ports, ...self::modulePorts($code, $bay));
         }
         return $ports;
+    }
+
+    /** The ports a module adds in a bay ({b} in a port name becomes the bay number, from 1). */
+    private static function modulePorts(?string $code, int $bay): array
+    {
+        $m = self::module($code);
+        return array_map(fn ($p) => ['name' => str_replace('{b}', (string) ($bay + 1), $p['name'])] + $p,
+            $m ? (json_decode((string) $m['module_ports'], true) ?: []) : []);
     }
 
     /** The radio a device's modules give it ('ap', 'client') or null. */
@@ -254,15 +272,14 @@ final class Racks
             if ($d === null || $code === null) {
                 throw new GameError('There’s no module in that bay.');
             }
-            foreach (json_decode((string) (self::module($code)['module_ports'] ?? '[]'), true) ?: [] as $p) {
-                $name = str_replace('{b}', (string) ($bay + 1), $p['name']);
+            foreach (array_column(self::modulePorts($code, $bay), 'name') as $name) {
                 if (Db::one('SELECT 1 FROM cables WHERE (a_device_id = ? AND a_port = ?) OR (b_device_id = ? AND b_port = ?)', [$deviceId, $name, $deviceId, $name])) {
                     throw new GameError(sprintf('Unplug %s %s first.', $d['label'], $name));
                 }
             }
             $list[$bay] = null;
             Db::exec('UPDATE devices SET modules = ? WHERE id = ?', [json_encode(array_values($list)), $deviceId]);
-            Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1', [$userId, $code]);
+            Rules::giveItem($userId, $code);
             Rules::log($userId, 'info', sprintf('Took the %s out of %s.', self::module($code)['name'], $d['label']));
         });
     }

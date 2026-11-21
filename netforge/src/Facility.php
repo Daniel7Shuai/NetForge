@@ -15,12 +15,11 @@ namespace NetForge;
  */
 final class Facility
 {
-    /** Each place's grid supply (W), built-in cooling (W), ambient temperature (°C) and bill (% of income). */
-    public const PLACES = [
-        'garage'     => ['grid' => 2500, 'cool' => 1200, 'ambient' => 24, 'bill' => 10],
-        'office'     => ['grid' => 15000, 'cool' => 6000, 'ambient' => 22, 'bill' => 12],
-        'datacentre' => ['grid' => 80000, 'cool' => 30000, 'ambient' => 18, 'bill' => 15],
-    ];
+    /** A place's grid supply (W), built-in cooling (W), ambient temperature (°C) and bill (% of income): its "power" in layout.json. */
+    public static function place(string $location): array
+    {
+        return Layout::location($location)['power'];
+    }
     public const HOT = 30;      // °C: income starts slowing above this
     public const MIN_BILL = 2;  // % of income: upgrades can't take the bill below this
     public const MIN_HEAT = 0.5;  // the slowest a hot place gets
@@ -33,12 +32,17 @@ final class Facility
      */
     public static function all(int $userId): array
     {
+        return Db::gearMemo("facility:$userId", fn () => self::build($userId));
+    }
+
+    private static function build(int $userId): array
+    {
         $powered = Racks::powered($userId);
         $load = $gen = $cool = [];
         foreach (Db::all('SELECT d.location, d.tile_x, d.tile_y, d.rack_u, t.power_w, t.gen_w, t.cool_w
                             FROM devices d JOIN item_types t ON t.code = d.item_code WHERE d.user_id = ?', [$userId]) as $d) {
             $loc = $d['location'];
-            if ($d['rack_u'] !== null && !isset($powered[$loc . ':' . $d['tile_x'] . ',' . $d['tile_y']])) {
+            if (!Racks::runs($d, $powered)) {
                 continue; // no PDU: it's off, so it draws nothing
             }
             $load[$loc] = ($load[$loc] ?? 0) + (int) $d['power_w'];
@@ -51,8 +55,8 @@ final class Facility
             $ups[$u['location']][] = $u;
         }
         $out = [];
-        foreach (self::PLACES as $loc => $place) {
-            $out[$loc] = self::compute($place, $load[$loc] ?? 0, $gen[$loc] ?? 0, $cool[$loc] ?? 0, $ups[$loc] ?? []);
+        foreach (array_keys(Layout::data()['locations']) as $loc) {
+            $out[$loc] = self::compute(self::place($loc), $load[$loc] ?? 0, $gen[$loc] ?? 0, $cool[$loc] ?? 0, $ups[$loc] ?? []);
         }
         return $out;
     }
@@ -82,7 +86,7 @@ final class Facility
     /** Places an upgrade can go in (all of them when facility_for is empty). */
     public static function placesFor(?string $facilityFor): array
     {
-        return $facilityFor ? array_map('trim', explode(',', $facilityFor)) : array_keys(self::PLACES);
+        return $facilityFor ? array_map('trim', explode(',', $facilityFor)) : array_keys(Layout::data()['locations']);
     }
 
     /**

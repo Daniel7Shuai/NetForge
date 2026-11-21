@@ -14,8 +14,11 @@ export const LOCATIONS = L.locations;
 /** The location currently on screen. */
 export let LOC = null;
 export let LOC_CODE = null;
+// staticBlocked() and openFloor() only change with the place or its furniture: worked out once, reset by setLocation/setFurniture
+let blockedCache = null, openCache = null;
 
 export function setLocation(code) {
+  blockedCache = openCache = null;
   LOC_CODE = LOCATIONS[code] ? code : 'garage';
   LOC = LOCATIONS[LOC_CODE];
   COLS = LOC.cols || L.cols;
@@ -26,7 +29,7 @@ const key = (x, y) => `${x},${y}`;
 
 /** Furniture the student bought and placed here: [{id, type, item, x, y}]. Set from the game state. */
 export let USER_FURNITURE = [];
-export function setFurniture(list) { USER_FURNITURE = list || []; }
+export function setFurniture(list) { USER_FURNITURE = list || []; blockedCache = openCache = null; }
 
 /** The spot a piece of bought furniture adds. Mirrors NetForge\Layout::furnitureSlot(). */
 export function furnitureSlot(type, x, y) {
@@ -73,6 +76,11 @@ export function wallTiles() {
 
 /** Tiles the player cannot walk through, ignoring placed devices. */
 export function staticBlocked() {
+  blockedCache ??= buildBlocked();
+  return new Set(blockedCache); // a copy: callers add their own tiles to it
+}
+
+function buildBlocked() {
   const b = new Set();
   for (let x = 0; x < COLS; x++) for (let y = 0; y < LOC.wallRows; y++) b.add(key(x, y));
   if (LOC.bottomWall) for (let x = 0; x < COLS; x++) b.add(key(x, ROWS - 1));
@@ -94,10 +102,12 @@ export function staticBlocked() {
 /** Is a tile open floor (not a wall, furniture, a built-in spot or bought furniture)? Mirrors Layout::openFloor(). */
 export function openFloor(x, y) {
   if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
-  const b = staticBlocked();
-  for (const s of LOC.slots) for (let j = 0; j < s.h; j++) b.add(key(s.x, s.y + j));
-  for (const f of USER_FURNITURE) for (const [tx, ty] of furnitureTiles(f.type, f.x, f.y)) b.add(key(tx, ty));
-  return !b.has(key(x, y));
+  if (!openCache) {
+    openCache = staticBlocked();
+    for (const s of LOC.slots) for (let j = 0; j < s.h; j++) openCache.add(key(s.x, s.y + j));
+    for (const f of USER_FURNITURE) for (const [tx, ty] of furnitureTiles(f.type, f.x, f.y)) openCache.add(key(tx, ty));
+  }
+  return !openCache.has(key(x, y));
 }
 
 /** Spots in this location that accept any of the given slot kinds. Mirrors NetForge\Layout::slotsFor(). */

@@ -4,14 +4,11 @@
 import { drawIcon } from './game/art.js';
 import { CABLE_FITS } from './rules.js';
 import { fmt, rate } from './money.js';
+import { $, esc } from './util.js';
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-
-/** Which face a sprite gets in the rack view. */
+/** Which face a sprite gets in the rack view (anything else: a server face at 2U and up, a switch face at 1U). */
 const FACE = {
-  rack2u: 'server', nas2u: 'storage', san3u: 'storage', gpurig: 'gpu',
-  switch1u: 'switch', patch1u: 'patch', kvm1u: 'kvm', lb1u: 'switch', ctl1u: 'switch', wlc1u: 'switch',
+  nas2u: 'storage', san3u: 'storage', gpurig: 'gpu', patch1u: 'patch', kvm1u: 'kvm',
   router1u: 'router', asa1u: 'router', pdu1u: 'pdu', ups3u: 'ups', blank1u: 'blank', cablemgmt1u: 'cablemgmt',
 };
 const faceOf = (d) => FACE[d.sprite] || (d.size >= 2 ? 'server' : 'switch');
@@ -27,13 +24,15 @@ function iconCanvas(item) {
 export function moduleSlot(s, dev) {
   if (!dev.bays) return '';
   const name = (code) => (s.shop.find((r) => r.code === code) || s.inventory.find((i) => i.code === code))?.name || code;
-  const fitted = dev.modules.map((m, bay) => `<div class="port up"><span class="led"></span><span class="pname">Bay ${bay}</span><span class="to">${esc(name(m))}</span>
-    <button class="mini-btn" data-unmodule="${bay}" data-dev="${dev.id}" data-tip="Take the module out. Unplug its cable first, if it has one.">Remove</button></div>`).join('');
+  // modules[] has one entry per bay, null when the bay is empty
+  const fitted = dev.modules.map((m, bay) => m && `<div class="port up"><span class="led"></span><span class="pname">Bay ${bay + 1}</span><span class="to">${esc(name(m))}</span>
+    <button class="mini-btn" data-unmodule="${bay}" data-dev="${dev.id}" data-tip="Take the module out. Unplug its cable first, if it has one.">Remove</button></div>`).filter(Boolean).join('');
+  const count = dev.modules.filter(Boolean).length;
   const fits = s.inventory.filter((i) => i.moduleFor && i.quantity > 0 && i.moduleFor.includes(dev.item_code));
-  const free = dev.bays - dev.modules.length;
+  const free = dev.bays - count;
   const btns = free > 0 ? fits.map((m) => `<button class="act up" data-module="${esc(m.code)}" data-dev="${dev.id}" data-tip="${esc(`Fit the ${m.name} in a free bay. ${m.description || ''}`)}"><i class="ti ti-plug-connected" aria-hidden="true"></i>${esc(m.name)}</button>`).join('') : '';
   const note = free <= 0 ? '' : fits.length ? '' : '<p class="note">No modules for it in your inventory. The shop sells them under Modules.</p>';
-  return `<div class="cardslot"><p class="tierline ${dev.modules.length ? 'on' : ''}"><span>Modules</span><span>${dev.modules.length} of ${dev.bays} bays</span></p>${fitted}${btns ? `<div class="actions">${btns}</div>` : ''}${note}</div>`;
+  return `<div class="cardslot"><p class="tierline ${count ? 'on' : ''}"><span>Modules</span><span>${count} of ${dev.bays} bays</span></p>${fitted}${btns ? `<div class="actions">${btns}</div>` : ''}${note}</div>`;
 }
 
 export function mountRackView(store) {
@@ -177,14 +176,16 @@ export function mountRackView(store) {
     const item = v.mount && (s.inventory.find((i) => i.code === v.mount) || (store.placingItem()?.code === v.mount ? store.placingItem() : null));
     const moving = store.placingItem()?.moveId;
     const size = item ? (item.rackU || s.devices.find((d) => d.id === moving)?.size || 1) : 1;
+    const free = new Set(store.rackFree(r));
+    const fits = (u, n) => { for (let k = u; k < u + n; k++) if (!free.has(k)) return false; return true; };
     const rows = [];
     // rails with U numbers
     for (let u = 1; u <= r.size; u++) rows.push(`<span class="rv-u" style="grid-row:${r.size - u + 1}">${u}</span>`);
     // empty slots: clickable when choosing where the item in hand goes
-    for (const u of store.rackFree(r)) {
+    for (const u of free) {
       const row = r.size - u + 1;
       if (item) {
-        const ok = store.rackFits(r, u, size);
+        const ok = fits(u, size);
         rows.push(`<button class="rv-empty ${ok ? 'fits' : ''}" style="grid-row:${row}" data-u="${u}" ${ok ? '' : 'aria-disabled="true"'}
           data-tip="${esc(ok ? `Mount the ${item.name} at U${u}${size > 1 ? ` to U${u + size - 1}` : ''}.` : `The ${item.name} is ${size}U: it needs U${u} to U${u + size - 1} free.`)}"></button>`);
       } else {

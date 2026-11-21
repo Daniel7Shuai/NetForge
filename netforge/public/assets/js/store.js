@@ -214,7 +214,7 @@ export function createStore() {
       const item = store.placingItem();
       if (!item || store.state.busy) return;
       // rack gear dropped on a rack: open the rack to pick its U
-      const rack = store.state.racks.find((r) => r.x === tile.x && (tile.y === r.y || tile.y === r.y + 1));
+      const rack = store.rackCovering(tile);
       if (rack && item.slotKinds?.includes('rack')) { store.openRack(rack, { mount: item.code }); return; }
       const { slot, problem } = store.placementCheck(item, tile);
       if (problem) { store.log('error', problem); return; }
@@ -349,7 +349,9 @@ export function createStore() {
     },
 
     /* ---- racks ---- */
-    rackAt(x, y) { return store.state.racks.find((r) => r.x === x && r.y === y) || null; },
+    rackAt(x, y) { return store.state.racks.find((r) => r.x === x && r.y === y) || null; }, // by its top tile
+    /** The rack standing on a tile, if any: racks are two tiles tall. */
+    rackCovering(tile) { return store.state.racks.find((r) => r.x === tile.x && (tile.y === r.y || tile.y === r.y + 1)) || null; },
     /** Devices mounted in a rack, bottom U first. */
     rackContents(rack) {
       return store.state.devices.filter((d) => d.rackU != null && d.tile_x === rack.x && d.tile_y === rack.y).sort((a, b) => a.rackU - b.rackU);
@@ -379,13 +381,12 @@ export function createStore() {
       const r = document.getElementById('map').getBoundingClientRect();
       store.set({ rackMenu: { rack, left: ev.clientX - r.left, top: ev.clientY - r.top }, picker: null });
     },
-    async rackCall(action, body, after) {
+    /** Runs a server call with the busy flag up; errors go to the console. Returns whether it worked. */
+    async busyCall(fn) {
       if (store.state.busy) return false;
       store.set({ busy: true });
       try {
-        const res = await api.rack(action, body);
-        store.applyServerState(res.state);
-        after?.(res);
+        await fn();
         return true;
       } catch (err) {
         store.log('error', err.message);
@@ -394,6 +395,13 @@ export function createStore() {
         store.set({ busy: false });
       }
     },
+    rackCall(action, body, after) {
+      return store.busyCall(async () => {
+        const res = await api.rack(action, body);
+        store.applyServerState(res.state);
+        after?.(res);
+      });
+    },
     /** Mounts the item in hand (or the device being moved) in the open rack at U u. */
     async mountAt(u) {
       const v = store.state.rackView;
@@ -401,18 +409,12 @@ export function createStore() {
       const item = store.placingItem();
       if (item?.moveId) {
         // from elsewhere into this rack: move it in, then slide it to the U picked
-        if (store.state.busy) return;
-        store.set({ busy: true });
-        try {
+        await store.busyCall(async () => {
           store.applyServerState((await api.move(item.moveId, { x: v.x, y: v.y })).state);
           const d = store.state.devices.find((x) => x.id === item.moveId);
           if (d && d.rackU !== u) store.applyServerState((await api.rack('shift', { device: d.id, u })).state);
           store.set({ moving: null, rackView: { ...v, mount: null, sel: item.moveId } });
-        } catch (err) {
-          store.log('error', err.message);
-        } finally {
-          store.set({ busy: false });
-        }
+        });
         return;
       }
       const code = v.mount;
@@ -435,7 +437,17 @@ export function createStore() {
     shift: (deviceId, u) => store.rackCall('shift', { device: deviceId, u }),
     installModule: (deviceId, code) => store.rackCall('module', { device: deviceId, item: code }, () => store.set({ lastEvent: { type: 'module', at: Date.now() } })),
     removeModule: (deviceId, bay) => store.rackCall('unmodule', { device: deviceId, bay }),
-    wish: (code, on) => store.rackCall('wish', { item: code, on }),
+    /** Stars (or unstars) a shop item: shows at once, and the server keeps the list. */
+    async wish(code, on) {
+      const before = store.state.wishlist;
+      store.set({ wishlist: on ? [...before.filter((c) => c !== code), code] : before.filter((c) => c !== code) });
+      try {
+        store.set({ wishlist: (await api.rack('wish', { item: code, on })).wishlist });
+      } catch (err) {
+        store.set({ wishlist: before });
+        store.log('error', err.message);
+      }
+    },
 
     setLearnOpen(open) { store.set({ learnOpen: open, uiFocus: open, selectedItem: open ? null : store.state.selectedItem }); },
 

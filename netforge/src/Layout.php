@@ -89,6 +89,18 @@ final class Layout
         return array_values(array_filter($slots, fn ($s) => in_array($s['kind'], $kinds, true)));
     }
 
+    /** Tiles under a place's built-in furniture, as "x,y" => true. */
+    public static function furnitureBlocked(string $location): array
+    {
+        $b = [];
+        foreach (self::location($location)['furniture'] as $f) {
+            foreach (self::furnitureTiles($f['type'], $f['x'], $f['y'], false) as [$tx, $ty]) {
+                $b["$tx,$ty"] = true;
+            }
+        }
+        return $b;
+    }
+
     /** Interior walls between rooms ("walls" in layout.json), less their doorways, as "x,y" => true. */
     public static function wallTiles(string $location): array
     {
@@ -130,14 +142,7 @@ final class Layout
             }
         }
         $b += self::wallTiles($location);
-        foreach ($loc['furniture'] as $f) {
-            [$w, $h] = $data['footprints'][$f['type']] ?? [1, 1];
-            for ($i = 0; $i < $w; $i++) {
-                for ($j = 0; $j < $h; $j++) {
-                    $b[($f['x'] + $i) . ',' . ($f['y'] + $j)] = true;
-                }
-            }
-        }
+        $b += self::furnitureBlocked($location);
         foreach ($loc['slots'] as $s) { // built-in spots stay clear for gear
             for ($j = 0; $j < $s['h']; $j++) {
                 $b[$s['x'] . ',' . ($s['y'] + $j)] = true;
@@ -160,6 +165,25 @@ final class Layout
         return null;
     }
 
+    /** Every tile a piece of furniture needs: its footprint, plus the spot it adds. Mirrors furnitureTiles() in layout.js. */
+    public static function furnitureTiles(string $type, int $x, int $y, bool $withSpot = true): array
+    {
+        [$w, $h] = self::data()['footprints'][$type] ?? [1, 1];
+        $tiles = [];
+        for ($i = 0; $i < $w; $i++) {
+            for ($j = 0; $j < $h; $j++) {
+                $tiles[] = [$x + $i, $y + $j];
+            }
+        }
+        $slot = $withSpot ? self::furnitureSlot($type, $x, $y) : null;
+        if ($slot && !in_array([$slot['x'], $slot['y']], $tiles, true)) {
+            for ($j = 0; $j < $slot['h']; $j++) {
+                $tiles[] = [$slot['x'], $slot['y'] + $j];
+            }
+        }
+        return $tiles;
+    }
+
     /**
      * Is (x, y) open floor: not a wall, furniture, a built-in spot or bought furniture with its spot?
      * (Devices standing there are checked by the caller.) Mirrors openFloor() in layout.js.
@@ -171,12 +195,7 @@ final class Layout
             return false;
         }
         foreach ($userId === null ? [] : self::userFurniture($userId, $location) as $f) {
-            [$w, $h] = self::data()['footprints'][$f['type']] ?? [1, 1];
-            if ($x >= $f['x'] && $x < $f['x'] + $w && $y >= $f['y'] && $y < $f['y'] + $h) {
-                return false;
-            }
-            $s = self::furnitureSlot($f['type'], $f['x'], $f['y']);
-            if ($s && $x === $s['x'] && $y >= $s['y'] && $y < $s['y'] + $s['h']) {
+            if (in_array([$x, $y], self::furnitureTiles($f['type'], $f['x'], $f['y']), true)) {
                 return false;
             }
         }

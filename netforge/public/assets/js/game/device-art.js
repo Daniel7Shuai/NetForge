@@ -141,7 +141,8 @@ const MISC = {
 };
 
 /* ---------- the rack cabinet on the map: 12U, each unit a band in its own colour ---------- */
-export const RACK_U = 12;
+/** Where a unit at U u, `size` U tall, sits in the 16x33 cabinet picture: 2 px per U, U1 at the bottom. */
+export const rackBand = (u, size) => ({ top: 29 - (u + size - 1) * 2, h: size * 2 });
 // what each kind of rack gear looks like from across the room: [body, highlight]
 const BAND = {
   switch1u: ['#1c3a48', '#2be3ff'], router1u: ['#3a2a14', '#ffb43d'], rack2u: ['#2a3446', '#7cff6b'], gpurig: ['#1d2a1c', '#7cff6b'],
@@ -150,14 +151,14 @@ const BAND = {
   san3u: ['#1b1f27', '#ffb43d'], wlc1u: ['#2a2244', '#9c8cff'], ctl1u: ['#14301f', '#7cff6b'], asa1u: ['#3a1626', '#ff3d9a'], firewall: ['#3a1626', '#ff3d9a'],
 };
 /** Draws a 16x33 rack cabinet. units: [{u, size, sprite}], powered: has a PDU. */
-export function rackCabinet(c, units, powered) {
+export function rackCabinet(c, units, powered, size = 12) {
   R(c, 0, 31, 16, 2, 'rgba(0,0,0,.5)');
   R(c, 0, 0, 16, 31, C.k); R(c, 1, 1, 14, 29, '#0b111b');
   R(c, 1, 1, 14, 2, '#2c3b56'); R(c, 1, 1, 1, 29, '#2c3b56'); R(c, 14, 1, 1, 29, '#2c3b56');
-  for (let u = 0; u < RACK_U; u++) R(c, 2, 28 - u * 2, 1, 1, '#1d2a3c'); // rail holes
+  for (let u = 0; u < size; u++) R(c, 2, 28 - u * 2, 1, 1, '#1d2a3c'); // rail holes
   for (const d of units) {
     const [body, hi] = BAND[d.sprite] || ['#2a3446', '#9fb3c8'];
-    const top = 29 - (d.u + d.size - 1) * 2, h = d.size * 2;
+    const { top, h } = rackBand(d.u, d.size);
     R(c, 3, top, 10, h, body); R(c, 3, top, 10, 1, hi);
     if (powered && d.sprite !== 'blank1u' && d.sprite !== 'cablemgmt1u') R(c, 11, top + h - 1, 1, 1, hi === '#22262e' ? body : '#7cff6b');
   }

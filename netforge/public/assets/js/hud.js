@@ -8,10 +8,9 @@ import { moduleSlot } from './rackview.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-import { fmt, rate } from './money.js';
+import { fmt, rate, kw } from './money.js';
 /** A control's explanation, whether it's still in title or already moved to data-tip by the tooltips. */
 const tipOf = (el) => el.dataset.tip || el.title || '';
-const kw = (w) => (w >= 1000 ? `${(w / 1000).toFixed(w >= 10000 ? 0 : 1)} kW` : `${w} W`);
 
 /** Shop and inventory categories, in Packet Tracer's order. */
 const GROUPS = [
@@ -308,7 +307,7 @@ export function mountHud(store) {
       : `Master Topic ${row.unlockWorld} in Learn to unlock the ${esc(row.name)}.`;
     const have = store.liveCredits ? store.liveCredits() : s.user.credits;
     const price = row.quote ? row.quote.price : row.price;
-    const net = ['network', 'wireless', 'security'].includes(row.group) && row.boost > 0;
+    const net = row.booster && row.boost > 0;
     const perk = row.earns ? `+${rate(row.earns)}` : net ? `boost +${row.boost}%` : row.boost ? `+${row.boost}%`
       : row.genW ? `+${kw(row.genW)} power` : row.coolW ? `${kw(row.coolW)} cooling` : '';
     const earns = row.earns ? ` Earns ${rate(row.earns)} once it’s online.`

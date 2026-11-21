@@ -18,11 +18,14 @@ final class MapMigration
     /** Old desk spot => new desk spot, in the datacentre. */
     public const DESK_MOVES = [[4, 16, 25, 10], [11, 16, 31, 10]];
 
-    public static function run(int $userId): void
+    /** $version: the student's users.map_version, when the caller already has it. */
+    public static function run(int $userId, ?int $version = null): void
     {
-        if ((int) (Db::one('SELECT map_version FROM users WHERE id = ?', [$userId])['map_version'] ?? self::VERSION) >= self::VERSION) {
+        $version ??= (int) (Db::one('SELECT map_version FROM users WHERE id = ?', [$userId])['map_version'] ?? self::VERSION);
+        if ($version >= self::VERSION) {
             return;
         }
+        Racks::adopt($userId); // rack gear from before racks had U-slots: mount it, with a PDU
         Db::transaction(function () use ($userId): void {
             foreach (self::DESK_MOVES as [$ox, $oy, $nx, $ny]) {
                 Db::exec('UPDATE devices SET tile_x = ?, tile_y = ? WHERE user_id = ? AND location = "datacentre" AND tile_x = ? AND tile_y = ? AND rack_u IS NULL',
@@ -31,20 +34,15 @@ final class MapMigration
             $returned = [];
             foreach (['office', 'datacentre'] as $loc) {
                 $solid = self::solid($loc);
-                $slotTiles = [];
                 $anchors = [];
                 foreach (Layout::location($loc)['slots'] as $s) {
                     $anchors[$s['x'] . ',' . $s['y']] = true;
-                    for ($j = 0; $j < $s['h']; $j++) {
-                        $slotTiles[$s['x'] . ',' . ($s['y'] + $j)] = true;
-                    }
                 }
-                // bought furniture in the way (and anything mounted in a bought rack there)
-                $footprints = Layout::data()['footprints'];
+                // bought furniture in the way of walls, built-in furniture or built-in spots (and anything mounted in a bought rack there)
+                $blocked = Layout::staticBlocked($loc);
                 foreach (Db::all('SELECT f.id, f.item_code, f.tile_x, f.tile_y, t.name, t.furniture_type FROM user_furniture f JOIN item_types t ON t.code = f.item_code
                                    WHERE f.user_id = ? AND f.location = ?', [$userId, $loc]) as $f) {
-                    [$w, $h] = $footprints[$f['furniture_type']] ?? [1, 1];
-                    if (!self::hits($solid + $slotTiles, (int) $f['tile_x'], (int) $f['tile_y'], $w, $h)) {
+                    if (!self::hits($blocked, Layout::furnitureTiles($f['furniture_type'], (int) $f['tile_x'], (int) $f['tile_y'], false))) {
                         continue;
                     }
                     foreach (Db::all('SELECT id FROM devices WHERE user_id = ? AND location = ? AND tile_x = ? AND tile_y = ? AND rack_u IS NOT NULL',
@@ -52,7 +50,7 @@ final class MapMigration
                         $returned[] = self::evictDevice($userId, (int) $d['id']);
                     }
                     Db::exec('DELETE FROM user_furniture WHERE id = ?', [$f['id']]);
-                    self::give($userId, $f['item_code']);
+                    Rules::giveItem($userId, $f['item_code']);
                     $returned[] = $f['name'];
                 }
                 // devices standing on a new wall or piece of furniture (gear on a built-in spot stays)
@@ -61,7 +59,7 @@ final class MapMigration
                     if (isset($anchors[$d['tile_x'] . ',' . $d['tile_y']])) {
                         continue;
                     }
-                    if (self::hits($solid, (int) $d['tile_x'], (int) $d['tile_y'], 1, max(1, (int) $d['height']))) {
+                    if (self::hits($solid, array_map(fn ($j) => [(int) $d['tile_x'], (int) $d['tile_y'] + $j], range(0, max(1, (int) $d['height']) - 1)))) {
                         $returned[] = self::evictDevice($userId, (int) $d['id']);
                     }
                 }
@@ -84,26 +82,15 @@ final class MapMigration
     /** Walls and built-in furniture in a place: where nothing can stand. */
     public static function solid(string $location): array
     {
-        $b = Layout::wallTiles($location);
-        $footprints = Layout::data()['footprints'];
-        foreach (Layout::location($location)['furniture'] as $f) {
-            [$w, $h] = $footprints[$f['type']] ?? [1, 1];
-            for ($i = 0; $i < $w; $i++) {
-                for ($j = 0; $j < $h; $j++) {
-                    $b[($f['x'] + $i) . ',' . ($f['y'] + $j)] = true;
-                }
-            }
-        }
-        return $b;
+        return Layout::wallTiles($location) + Layout::furnitureBlocked($location);
     }
 
-    private static function hits(array $tiles, int $x, int $y, int $w, int $h): bool
+    /** Does any of the [x, y] tiles fall in the "x,y" => true set? */
+    private static function hits(array $set, array $tiles): bool
     {
-        for ($i = 0; $i < $w; $i++) {
-            for ($j = 0; $j < $h; $j++) {
-                if (isset($tiles[($x + $i) . ',' . ($y + $j)])) {
-                    return true;
-                }
+        foreach ($tiles as [$x, $y]) {
+            if (isset($set["$x,$y"])) {
+                return true;
             }
         }
         return false;
@@ -118,21 +105,13 @@ final class MapMigration
         }
         foreach (Db::all('SELECT id, cable_code FROM cables WHERE a_device_id = ? OR b_device_id = ?', [$deviceId, $deviceId]) as $c) {
             Db::exec('DELETE FROM cables WHERE id = ?', [$c['id']]);
-            self::give($userId, $c['cable_code']);
+            Rules::giveItem($userId, $c['cable_code']);
         }
-        if ($d['gpu_card']) {
-            self::give($userId, $d['gpu_card']);
-        }
-        foreach (Racks::moduleList($d['modules']) as $m) {
-            self::give($userId, $m);
+        foreach (array_filter([$d['gpu_card'], ...Racks::moduleList($d['modules'])]) as $part) {
+            Rules::giveItem($userId, $part);
         }
         Db::exec('DELETE FROM devices WHERE id = ?', [$deviceId]);
-        self::give($userId, $d['item_code']);
+        Rules::giveItem($userId, $d['item_code']);
         return $d['label'];
-    }
-
-    private static function give(int $userId, string $code): void
-    {
-        Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1', [$userId, $code]);
     }
 }

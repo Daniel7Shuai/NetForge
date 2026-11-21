@@ -37,7 +37,7 @@ function err(callable $fn): string
 }
 
 echo "The model\n";
-$office = Facility::PLACES['office'];
+$office = Facility::place('office');
 $idle = Facility::compute($office, 0, 0, 0, []);
 check('nothing running: room temperature', $idle['temp'], 22.0);
 check('nothing running: full speed', $idle['factor'], 1.0);

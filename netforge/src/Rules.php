@@ -130,10 +130,7 @@ final class Rules
                 throw new GameError('That cable isn’t there any more.');
             }
             Db::exec('DELETE FROM cables WHERE id = ?', [$cableId]);
-            Db::exec(
-                'INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1',
-                [$userId, $c['cable_code']]
-            );
+            self::giveItem($userId, $c['cable_code']);
             self::log($userId, 'info', sprintf('Unplugged %s %s → %s %s.', $c['al'], $c['a_port'], $c['bl'], $c['b_port']));
         });
     }
@@ -153,12 +150,15 @@ final class Rules
                 throw new GameError('Unplug ' . $d['label'] . '’s cables first.');
             }
             Db::exec('DELETE FROM devices WHERE id = ?', [$deviceId]);
-            Db::exec(
-                'INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1',
-                [$userId, $d['item_code']]
-            );
+            self::giveItem($userId, $d['item_code']);
             self::log($userId, 'info', 'Picked up ' . $d['label'] . '.');
         });
+    }
+
+    /** Puts items back in a student's inventory. */
+    public static function giveItem(int $userId, string $itemCode, int $quantity = 1): void
+    {
+        Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)', [$userId, $itemCode, $quantity]);
     }
 
     public static function levelFor(int $xp): int
@@ -337,7 +337,14 @@ final class Rules
         if ($tier >= $maxTier) {
             return null;
         }
-        $shop = Db::one('SELECT price, unlock_level FROM shop_items WHERE item_code = ? ORDER BY quantity LIMIT 1', [$itemCode]);
+        static $prices = null; // every device's upgrade reads this: load the shop's prices once
+        if ($prices === null) {
+            $prices = [];
+            foreach (Db::all('SELECT item_code, price, unlock_level FROM shop_items WHERE seller IS NULL ORDER BY quantity DESC') as $r) {
+                $prices[$r['item_code']] = $r; // the smallest pack wins
+            }
+        }
+        $shop = $prices[$itemCode] ?? null;
         $price = $shop ? (int) $shop['price'] : 1000;  // the laptop isn't sold; price its upgrades like a 1,000-credit device
         $level = $shop ? (int) $shop['unlock_level'] : 1;
         return ['tier' => $tier + 1, 'cost' => (int) round($price * 0.6 * $tier), 'level' => $level + 2 * $tier];

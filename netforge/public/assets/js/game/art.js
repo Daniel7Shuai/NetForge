@@ -194,9 +194,7 @@ export function drawIcon(c, item) {
     c.save(); c.translate(Math.floor((16 - sp.w * k) / 2), Math.floor((16 - sp.h * k) / 2)); c.scale(k, k); sp.draw(c); c.restore();
     return;
   }
-  switch (item.sprite) {
-    default: c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore();
-  }
+  c.save(); c.scale(0.5, 0.5); rack(c, 0, 0); c.restore(); // nothing better: a rack unit
 }
 
 /* ======================= player ======================= */

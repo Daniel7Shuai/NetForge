@@ -9,8 +9,7 @@ final class GameState
     public static function load(int $userId): array
     {
         // pay out passive income and award badges before reading the balance (FR-4.4, FR-4.5)
-        MapMigration::run($userId); // the redesigned office and datacentre: move gear off new walls, once
-        Racks::adopt($userId); // rack gear from before racks had U-slots: mount it, with a PDU
+        MapMigration::run($userId); // older gear onto racks with U-slots and the redesigned office and datacentre, once
         \NetForge\Progress\Income::accrue($userId);
         $newBadges = \NetForge\Progress\Badges::award($userId);
 
@@ -35,8 +34,7 @@ final class GameState
             [$userId]
         ));
 
-        $facilityHere = Facility::all($userId)[$location] ?? null; // power, cooling and temperature where the student is
-        $facilityHere ??= Facility::compute(['grid' => 0, 'cool' => 1, 'ambient' => 20, 'bill' => 0], 0, 0, 0, []);
+        $facility = Facility::all($userId)[$location]; // power, cooling and temperature where the student is
         $mastered = \NetForge\Learning\Learning::masteredNumbers($userId);
         $topicsLeft = Ending::topicsLeft($userId);
         $shop = array_map(fn ($r) => ($r['seller'] ? ['seller' => $r['seller'], 'quote' => Market::quote($r, $userId)] : ['seller' => null, 'quote' => null]) + [
@@ -48,7 +46,8 @@ final class GameState
             'genW'        => (int) $r['gen_w'],
             'coolW'       => (int) $r['cool_w'],
             'facilityFor' => $r['category'] === 'upgrade' ? Facility::placesFor($r['facility_for']) : null,
-            'installed'   => $r['category'] === 'upgrade' && in_array($r['code'], $facilityHere['upgrades'], true), // already in this place
+            'installed'   => $r['category'] === 'upgrade' && in_array($r['code'], $facility['upgrades'], true), // already in this place
+            'booster'     => in_array($r['shop_group'], \NetForge\Progress\Income::BOOST_GROUPS, true), // boosts what's behind it rather than earning
             'sprite'      => $r['sprite'],
             'boost'       => (int) $r['boost_pct'],
             'furniture'   => $r['furniture_type'],
@@ -155,8 +154,7 @@ final class GameState
         $progress['upsHours'] = \NetForge\Progress\Income::upsHours($userId);
 
         // this place's bill in credits per second, from what its devices earn
-        $facilityHere['billPerSec'] = array_sum(array_map(fn ($d) => $d['earning'], $devices)) * $facilityHere['billPct'] / 100;
-        $facility = $facilityHere;
+        $facility['billPerSec'] = array_sum(array_column($devices, 'earning')) * $facility['billPct'] / 100;
 
         return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events', 'racks', 'wishlist', 'facility');
     }

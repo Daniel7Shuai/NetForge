@@ -8,25 +8,6 @@ use NetForge\Progress\Income;
 /** Furniture students buy and place (more spots for gear), and GPU cards that go in servers. */
 final class Gear
 {
-    /** Every tile a piece of furniture needs: its footprint, plus the spot it adds. */
-    private static function tilesFor(string $type, int $x, int $y): array
-    {
-        [$w, $h] = Layout::data()['footprints'][$type] ?? [1, 1];
-        $tiles = [];
-        for ($i = 0; $i < $w; $i++) {
-            for ($j = 0; $j < $h; $j++) {
-                $tiles[] = [$x + $i, $y + $j];
-            }
-        }
-        $slot = Layout::furnitureSlot($type, $x, $y);
-        if ($slot && !in_array([$slot['x'], $slot['y']], $tiles, true)) {
-            for ($j = 0; $j < $slot['h']; $j++) {
-                $tiles[] = [$slot['x'], $slot['y'] + $j];
-            }
-        }
-        return $tiles;
-    }
-
     /** Puts a piece of furniture from the inventory on open floor at (x, y). */
     public static function placeFurniture(int $userId, string $itemCode, int $x, int $y): string
     {
@@ -44,7 +25,7 @@ final class Gear
             $blocked = Layout::staticBlocked($location);
             // other furniture (with its spot) and placed devices are in the way too
             foreach (Layout::userFurniture($userId, $location) as $f) {
-                foreach (self::tilesFor($f['type'], $f['x'], $f['y']) as [$tx, $ty]) {
+                foreach (Layout::furnitureTiles($f['type'], $f['x'], $f['y']) as [$tx, $ty]) {
                     $blocked["$tx,$ty"] = true;
                 }
             }
@@ -53,7 +34,7 @@ final class Gear
                     $blocked[$d['tile_x'] . ',' . ((int) $d['tile_y'] + $j)] = true;
                 }
             }
-            foreach (self::tilesFor($item['furniture_type'], $x, $y) as [$tx, $ty]) {
+            foreach (Layout::furnitureTiles($item['furniture_type'], $x, $y) as [$tx, $ty]) {
                 if ($tx < 0 || $ty < 0 || $tx >= $cols || $ty >= $rows || isset($blocked["$tx,$ty"])) {
                     throw new GameError(sprintf('There isn’t enough open floor there for the %s. Pick an empty area.', strtolower($item['name'])));
                 }
@@ -82,7 +63,7 @@ final class Gear
                 throw new GameError(sprintf('Pick up the device on the %s first.', strtolower($f['name'])));
             }
             Db::exec('DELETE FROM user_furniture WHERE id = ?', [$id]);
-            Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1', [$userId, $f['item_code']]);
+            Rules::giveItem($userId, $f['item_code']);
             Rules::log($userId, 'info', sprintf('Picked up the %s.', strtolower($f['name'])));
         });
     }
@@ -108,7 +89,7 @@ final class Gear
                 throw new GameError(sprintf('%s already has that card.', $d['label']));
             }
             if ($d['gpu_card'] !== null) {
-                Db::exec('INSERT INTO inventory (user_id, item_code, quantity) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE quantity = quantity + 1', [$userId, $d['gpu_card']]);
+                Rules::giveItem($userId, $d['gpu_card']);
             }
             Db::exec('UPDATE inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_code = ?', [$userId, $cardCode]);
             Db::exec('UPDATE devices SET gpu_card = ? WHERE id = ?', [$cardCode, $deviceId]);

@@ -1,11 +1,8 @@
 // The temperature meter in the top bar, and the power panel it opens: how hot this place is,
 // its power load against its supply, the cooling, the electricity bill and the upgrades here.
 // When it's too hot the meter sweats; when it's far too hot it shakes as well.
-import { fmt, rate } from './money.js';
-
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const kw = (w) => (w >= 1000 ? `${(w / 1000).toFixed(w >= 10000 ? 0 : 1)} kW` : `${w} W`);
+import { rate, kw } from './money.js';
+import { esc } from './util.js';
 
 /** cool, warm, hot (sweating, income slowing) or critical (sweating and shaking). */
 export function band(f) {
@@ -33,6 +30,7 @@ export function mountFacility(store) {
   panel.setAttribute('aria-label', 'Power and cooling');
   right.appendChild(panel);
 
+  let drawn = null; // the facility numbers (and panel state) last drawn: most store changes are about something else
   const close = () => { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -53,6 +51,8 @@ export function mountFacility(store) {
   function render(s) {
     const f = s.facility;
     if (!f) { btn.hidden = true; return; }
+    if (drawn && drawn.f === f && drawn.open === !panel.hidden) return;
+    drawn = { f, open: !panel.hidden };
     btn.hidden = false;
     const b = band(f);
     // the fill: 15°C empty, 45°C full

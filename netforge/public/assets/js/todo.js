@@ -2,8 +2,7 @@
 // and the items the student starred in the shop, with how close they are to affording each.
 // It tells players what to save for, instead of handing them money.
 import { fmt } from './money.js';
-
-const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+import { esc } from './util.js';
 const KEY = 'nf.todo.open';
 
 /** The rack set-up steps, in order. Each says how to do it and checks itself off. */
@@ -32,6 +31,7 @@ export function mountTodo(store) {
   el.setAttribute('aria-label', 'To-do list');
   map.appendChild(el);
   let open = map.clientWidth >= 480; // on a phone the map is small: start folded
+  let lastHtml = null; // the last render, so a repaint with nothing new keeps the buttons (and hover)
   try { const saved = localStorage.getItem(KEY); if (saved !== null) open = saved === '1'; } catch { /* no storage: use the default */ }
 
   el.addEventListener('click', (e) => {
@@ -48,7 +48,7 @@ export function mountTodo(store) {
   });
 
   // credits tick up between server states: refresh the bars every second
-  setInterval(() => { if (open && store.state.wishlist.length) render(store.state); }, 1000);
+  setInterval(() => { if (open && !document.hidden && store.state.wishlist.length) render(store.state); }, 1000);
   store.subscribe(render);
   render(store.state);
 
@@ -58,16 +58,17 @@ export function mountTodo(store) {
     const stepsLeft = steps.filter((x) => !x.done && !x.optional).length;
     const showSteps = steps.length && stepsLeft > 0;
     const wishes = s.wishlist.map((code) => s.shop.find((r) => r.code === code && !r.seller)).filter(Boolean);
-    if (!showSteps && !wishes.length) { el.hidden = true; return; }
+    if (!showSteps && !wishes.length) { el.hidden = true; lastHtml = null; return; }
     el.hidden = false;
     const count = stepsLeft + wishes.length;
     let body = '';
     if (open) {
       if (showSteps) {
-        const next = steps.findIndex((x) => !x.done && !x.optional);
-        body += `<h4>Set up a server rack <span>${steps.filter((x) => x.done).length}/${steps.length}</span></h4><ol class="tsteps">${steps.map((x, i) => x.done ? '' : `
-          <li class="${x.done ? 'done' : i === next ? 'next' : ''}"><i class="ti ${x.done ? 'ti-circle-check-filled' : 'ti-circle'}" aria-hidden="true"></i>
-          <span>${esc(x.text)}${x.optional ? ' <small>(optional)</small>' : ''}${i === next ? `<small class="how">${esc(x.how)}</small>` : ''}</span></li>`).join('')}</ol>`;
+        const left = steps.filter((x) => !x.done); // finished steps drop off the list; the count shows them
+        const next = left.find((x) => !x.optional);
+        body += `<h4>Set up a server rack <span>${steps.length - left.length}/${steps.length}</span></h4><ol class="tsteps">${left.map((x) => `
+          <li class="${x === next ? 'next' : ''}"><i class="ti ti-circle" aria-hidden="true"></i>
+          <span>${esc(x.text)}${x.optional ? ' <small>(optional)</small>' : ''}${x === next ? `<small class="how">${esc(x.how)}</small>` : ''}</span></li>`).join('')}</ol>`;
       }
       if (wishes.length) {
         const have = store.liveCredits ? store.liveCredits() : s.user.credits;
@@ -82,6 +83,7 @@ export function mountTodo(store) {
         }).join('')}</ul>`;
       }
     }
-    el.innerHTML = `<button class="todo-head" data-todo-toggle aria-expanded="${open}"><i class="ti ti-list-check" aria-hidden="true"></i>To-do <b>${count}</b><i class="ti ${open ? 'ti-chevron-up' : 'ti-chevron-down'} chev" aria-hidden="true"></i></button>${body ? `<div class="todo-body">${body}</div>` : ''}`;
+    const html = `<button class="todo-head" data-todo-toggle aria-expanded="${open}"><i class="ti ti-list-check" aria-hidden="true"></i>To-do <b>${count}</b><i class="ti ${open ? 'ti-chevron-up' : 'ti-chevron-down'} chev" aria-hidden="true"></i></button>${body ? `<div class="todo-body">${body}</div>` : ''}`;
+    if (html !== lastHtml) { lastHtml = html; el.innerHTML = html; } // keep the buttons (and hover) when nothing changed
   }
 }

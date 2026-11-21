@@ -11,8 +11,8 @@ use NetForge\Racks;
 // POST {action: "mount", item, x, y, u} -> mounts rack gear in the rack at (x, y), at U u
 // POST {action: "shift", device, u}     -> slides a mounted device to another U in its rack
 // POST {action: "module", device, item} -> fits an interface module;  {action: "unmodule", device, bay}
-// POST {action: "wish", item, on}       -> adds or removes a shop item from the wishlist
-// All reply {state}.
+// POST {action: "wish", item, on}       -> adds or removes a shop item from the wishlist; replies {wishlist} only
+// The others reply {state}.
 $uid = Api::begin('POST');
 Api::run(function () use ($uid): void {
     $in = Api::body();
@@ -42,7 +42,8 @@ Api::run(function () use ($uid): void {
             ($in['on'] ?? false)
                 ? Db::exec('INSERT IGNORE INTO user_wishlist (user_id, item_code) VALUES (?, ?)', [$uid, $str('item')])
                 : Db::exec('DELETE FROM user_wishlist WHERE user_id = ? AND item_code = ?', [$uid, $str('item')]);
-            break;
+            Api::ok(['wishlist' => array_column(Db::all('SELECT item_code FROM user_wishlist WHERE user_id = ? ORDER BY added_at', [$uid]), 'item_code')]);
+            return; // a star changes nothing else: no need for the whole game state
         default:
             throw new GameError('Unknown rack action.');
     }

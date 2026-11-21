@@ -18,9 +18,16 @@ final class Income
 {
     /** The building's internet connections: income flows out from these. */
     public const ISP = ['isp_box', 'isp_fiber'];
+    /** Shop groups whose devices boost the end devices behind them (GameState sends a per-item flag to the client). */
+    public const BOOST_GROUPS = ['network', 'wireless', 'security', 'misc'];
 
     /** Devices reachable from an ISP box over up links (the ISP box itself excluded). */
     public static function online(int $userId): array
+    {
+        return Db::gearMemo("online:$userId", fn () => self::findOnline($userId));
+    }
+
+    private static function findOnline(int $userId): array
     {
         $devices = [];
         foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, d.location, d.tile_x, d.tile_y, d.rack_u, d.modules, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct, t.radio, t.site_boost, t.rack_boost,
@@ -31,7 +38,7 @@ final class Income
         // rack gear only runs in a rack with a PDU; a module can give a device Wi-Fi (or make it an AP)
         $powered = \NetForge\Racks::powered($userId);
         foreach ($devices as $id => $d) {
-            if ($d['rack_u'] !== null && !isset($powered[$d['location'] . ':' . $d['tile_x'] . ',' . $d['tile_y']])) {
+            if (!\NetForge\Racks::runs($d, $powered)) {
                 unset($devices[$id]);
                 continue;
             }
@@ -96,12 +103,12 @@ final class Income
         $rackBoost = [];
         foreach ($devices as $d) {
             if ($d['rack_u'] !== null && (int) $d['rack_boost'] > 0) {
-                $k = $d['location'] . ':' . $d['tile_x'] . ',' . $d['tile_y'];
+                $k = \NetForge\Racks::key($d['location'], $d['tile_x'], $d['tile_y']);
                 $rackBoost[$k] = ($rackBoost[$k] ?? 0) + (int) $d['rack_boost'];
             }
         }
         foreach ($out as $id => $d) {
-            $k = $d['location'] . ':' . $d['tile_x'] . ',' . $d['tile_y'];
+            $k = \NetForge\Racks::key($d['location'], $d['tile_x'], $d['tile_y']);
             if ($d['rack_u'] !== null && isset($rackBoost[$k])) {
                 $out[$id]['path_boost'] *= 1 + $rackBoost[$k] / 100;
             }
@@ -121,7 +128,7 @@ final class Income
     /** How much a network device boosts the end devices behind it, in percent: boost_pct, x1.5 at tier 2, x2 at tier 3. */
     public static function networkBoost(array $d): float
     {
-        if (!in_array($d['shop_group'] ?? '', ['network', 'wireless', 'security', 'misc'], true)) {
+        if (!in_array($d['shop_group'] ?? '', self::BOOST_GROUPS, true)) {
             return 0.0; // routers, switches, hubs, access points and modems boost; end devices and GPUs don't
         }
         return (int) $d['boost_pct'] * Rules::tierIncome((int) $d['tier']);
@@ -155,7 +162,7 @@ final class Income
         $powered = \NetForge\Racks::powered($userId);
         $n = 0;
         foreach (Db::all('SELECT location, tile_x, tile_y FROM devices WHERE user_id = ? AND item_code = "ups" AND rack_u IS NOT NULL', [$userId]) as $u) {
-            $n += isset($powered[$u['location'] . ':' . $u['tile_x'] . ',' . $u['tile_y']]) ? 1 : 0;
+            $n += isset($powered[\NetForge\Racks::key($u['location'], $u['tile_x'], $u['tile_y'])]) ? 1 : 0;
         }
         return min(8, 2 * $n);
     }

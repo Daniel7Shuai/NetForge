@@ -36,3 +36,6 @@ export function rate(perSec) {
   if (v >= 1000) return `${fmt(v)}/s`;
   return `${v >= 100 ? Math.round(v) : Math.round(v * 10) / 10}/s`;
 }
+
+/** Watts as people say them: 450 W, 2.5 kW, 25 kW. */
+export const kw = (w) => (w >= 1000 ? `${(w / 1000).toFixed(w >= 10000 ? 0 : 1)} kW` : `${w} W`);
