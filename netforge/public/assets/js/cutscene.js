@@ -377,7 +377,8 @@ export function endCard(player) {
       <div class="end-actions"><button type="button" class="btn primary" data-end="rewind">Go back and keep playing</button>
       <button type="button" class="btn" data-end="stay">Stay at the ending</button></div></div>`;
     document.body.append(el);
-    el.querySelector('[data-end="rewind"]').focus();
+    el.tabIndex = -1;
+    el.focus(); // not a button: an Enter still held from the cutscene mustn't choose for them
     el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-end]');
       if (!b) return;

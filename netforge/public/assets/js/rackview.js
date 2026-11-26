@@ -334,7 +334,7 @@ export function mountRackView(store) {
       const list = gear.map((i) => `<button class="rv-item" data-mount-item="${esc(i.code)}" data-tip="${esc(`Mount the ${i.name} in this rack (${i.rackU || 1}U).`)}"><span data-icon="${esc(i.code)}"></span>${esc(i.name)}<small>${i.rackU || 1}U · ×${i.quantity}</small></button>`).join('');
       parts.push(`<section class="rv-sec"><h4>Mount from your inventory</h4>${list || '<p class="rv-note">Nothing for a rack in your inventory. Rack gear is in the shop: Misc has PDUs, patch panels and more.</p>'}</section>`);
     }
-    if (s.guideTask) parts.unshift(`<section class="rv-sec guide"><h4><i class="ti ti-school" aria-hidden="true"></i> Ada</h4><p class="rv-note on">${esc(s.guideTask)}</p></section>`);
+    if (s.guideTask) parts.unshift(`<section class="rv-sec guide"><h4><i class="ti ti-school" aria-hidden="true"></i> Ada</h4><p class="rv-note">${esc(s.guideTask.say)}</p><p class="rv-note on">${esc(s.guideTask.task)}</p></section>`);
     if (!r.powered) parts.unshift(`<section class="rv-sec warn"><h4><i class="ti ti-bolt-off" aria-hidden="true"></i> No power</h4><p class="rv-note">Nothing in this rack runs until a PDU is mounted. ${s.inventory.some((i) => i.code === 'pdu' && i.quantity > 0) ? 'You have one: mount it from your inventory below.' : 'Buy one under Misc in the shop, then mount it here.'}</p></section>`);
     return parts.join('');
   }

@@ -101,7 +101,10 @@ export function mountHud(store) {
   /* drawer clicks (delegated, since panes re-render) */
   $('pane-inv').addEventListener('click', (e) => {
     const slot = e.target.closest('[data-item]');
-    if (slot) store.selectItem(slot.dataset.item);
+    if (!slot) return;
+    store.selectItem(slot.dataset.item);
+    const map = $('map').getBoundingClientRect();
+    if (store.placingItem() && (map.bottom < 60 || map.top > innerHeight - 60)) $('map').scrollIntoView({ block: 'center', behavior: 'smooth' });
   });
   $('pane-shop').addEventListener('click', (e) => {
     const chip = e.target.closest('[data-shop-group]');
@@ -163,6 +166,7 @@ export function mountHud(store) {
   });
 
   let lastLog = null;
+  const drawnFrom = {}; // what each pane was last drawn from (see changed())
   let lastEventAt = 0;
   store.subscribe(render);
   render(store.state);
@@ -227,13 +231,43 @@ export function mountHud(store) {
       b.classList.toggle('none', n === 0);
     });
 
-    renderInventory(s);
-    renderShop(s);
-    renderTags(s);
+    if (changed('inv', [s.inventory, s.selectedItem])) renderInventory(s);
+    if (changed('shop', [s.shop, s.shopGroup, s.wishlist, s.user, s.facility, s.events, s.locations])) renderShop(s);
+    if (changed('tags', [s.devices, s.cables, s.moving])) renderTags(s);
     renderPicker(s);
     renderPlaces(s);
     const logSig = s.log.map((l) => l.time + l.message).join('\n');
-    if (logSig !== lastLog) { renderConsole(s); lastLog = logSig; }
+    if (logSig !== lastLog) {
+      renderConsole(s);
+      // a new problem (a cable that won't link, no cables left...) also shows on the map: the console can be off-screen
+      const last = s.log[s.log.length - 1];
+      if (lastLog !== null && last && (last.kind === 'error' || last.kind === 'warn')) flashNote(last.message);
+      lastLog = logSig;
+    }
+  }
+
+  /** Has any of these changed (by identity) since last time? Remembers them for next time. */
+  function changed(key, deps) {
+    const prev = drawnFrom[key];
+    drawnFrom[key] = deps;
+    return !prev || prev.length !== deps.length || prev.some((d, i) => d !== deps[i]);
+  }
+
+  /** A short message across the bottom of the map for a few seconds. */
+  function flashNote(text) {
+    let note = $('mapnote');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'mapnote';
+      note.className = 'mapnote';
+      note.setAttribute('role', 'status');
+      $('map').append(note);
+    }
+    note.textContent = text;
+    note.classList.remove('out');
+    note.hidden = false;
+    clearTimeout(flashNote.timer);
+    flashNote.timer = setTimeout(() => { note.classList.add('out'); setTimeout(() => { note.hidden = true; }, 300); }, 5000);
   }
 
   function renderInventory(s) {
@@ -396,7 +430,7 @@ export function mountHud(store) {
       if (d.rackU != null) continue; // mounted gear: its rack shows it
       const px = devicePixel(d);
       const linked = s.cables.filter((c) => c.a_device_id === d.id || c.b_device_id === d.id);
-      const cls = linked.some((c) => c.status === 'down') ? 'down' : linked.some((c) => c.status === 'up') ? 'up' : '';
+      const cls = linked.some((c) => c.status === 'down') ? 'down' : linked.some((c) => c.status === 'up') || d.earning > 0 ? 'up' : '';
       const tag = document.createElement('div');
       tag.className = 'tag ' + cls;
       tag.style.left = `${((px.x + px.w / 2) / (COLS * TILE)) * 100}%`;

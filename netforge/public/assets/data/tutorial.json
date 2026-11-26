@@ -176,13 +176,13 @@
       ["teacher", "Click where you are, top left, to lease it. Your garage stays yours: you can travel back any time."]
     ],
     "arrive:office": [
-      ["teacher", "Welcome to the office! Desks for PCs out front, and a server room behind the glass with six rack slots."],
+      ["teacher", "Welcome to the office! Desks for PCs out front, a NOC and a meeting room, and a server room behind the glass with twelve rack slots."],
       ["teacher", "Run the new ISP box to a router or switch, then plug your gear into that."],
       ["teacher", "One more thing. Word gets around when a business grows. Investors will text you offers, and a broker called {broker} likes to hang around new offices."],
       ["teacher", "His deals are often good. Often. Keep an eye on your wallet."]
     ],
     "arrive:datacentre": [
-      ["teacher", "The datacentre! Two long rack rows and fiber straight from the provider."],
+      ["teacher", "The datacentre! A data hall with three long rack rows, a power room for your generators, an operations centre, and fiber straight from the provider."],
       ["teacher", "The ISP panel here is fiber only, so you’ll need fiber cables and gear with Gi ports."]
     ],
     "gpu": [

@@ -5,7 +5,7 @@
 // Ada offers it once, the first time the student is somewhere with racks; the to-do list's
 // "Guide me" button starts it any time. The lines live in data/tutorial.json, "rackGuide".
 import { api } from './api.js';
-import { loadStory } from './story.js';
+import { loadStory, fill } from './story.js';
 
 export async function mountRackGuide(store) {
   const story = await loadStory();
@@ -102,7 +102,8 @@ export async function mountRackGuide(store) {
     said = idx;
     const step = G.steps[idx], at = idx;
     talking = waiting = true;
-    store.set({ guideTask: step.task }); // the rack view shows it while the rack is open
+    const said = fill(story, lines(step.say).at(-1)[1], store.state.user?.name || 'you');
+    store.set({ guideTask: { say: said, task: step.task } }); // the rack view shows both while the rack is open
     const res = await store.talk(lines(step.say), {}, {
       skipLabel: 'Stop the guide', task: step.task, waitUntil: () => stepDone(at, target() || r),
     });

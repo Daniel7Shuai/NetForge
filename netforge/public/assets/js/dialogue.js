@@ -86,6 +86,7 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip',
       const last = i === lines.length - 1 && choices?.length;
       nextBtn.hidden = !!last;
       root.querySelector('.dlg-choices')?.remove();
+      root.querySelector('.dlg-skip').hidden = !!last; // the answers include a "not now": no second skip button
       if (last) {
         const row = document.createElement('div');
         row.className = 'dlg-choices';
@@ -159,5 +160,8 @@ export function playDialogue(story, lines, { player = 'you', skipLabel = 'Skip',
     root.querySelector('.dlg-skip').addEventListener('click', () => close('skipped'));
     show(0);
     nextBtn.focus({ preventScroll: true });
+    // on a small screen the map (and so this box) can be scrolled away: bring it into view
+    const at = box.getBoundingClientRect();
+    if (at.top < 0 || at.bottom > innerHeight) box.scrollIntoView({ block: 'center' });
   });
 }

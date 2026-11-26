@@ -69,7 +69,7 @@ final class Rules
             $ends = [];
             foreach ([[$aId, $aPort], [$bId, $bPort]] as [$id, $portName]) {
                 $dev = Db::one(
-                    'SELECT d.id, d.label, d.location, d.modules, t.ports FROM devices d JOIN item_types t ON t.code = d.item_code
+                    'SELECT d.id, d.label, d.item_code, d.location, d.modules, t.ports FROM devices d JOIN item_types t ON t.code = d.item_code
                       WHERE d.id = ? AND d.user_id = ? FOR UPDATE',
                     [$id, $userId]
                 );
@@ -95,13 +95,20 @@ final class Rules
                 if ($busy !== null) {
                     throw new GameError(sprintf('%s %s already has a cable in it.', $dev['label'], $portName));
                 }
-                $ends[] = ['dev' => $dev, 'port' => $port];
+                $ends[] = ['dev' => $dev, 'port' => $port, 'ports' => array_column(Racks::ports((string) $dev['ports'], $dev['modules']), 'name')];
             }
             if ($ends[0]['dev']['location'] !== $ends[1]['dev']['location']) {
                 throw new GameError('Those devices are in different places.');
             }
 
             $problem = self::linkProblem($cable['cable_kind'], $ends[0]['port'], $ends[1]['port']);
+            // the ISP box goes into a router's WAN port, its internet side: point there rather than at a crossover
+            foreach ([[0, 1], [1, 0]] as [$i, $j]) {
+                if ($problem !== null && in_array($ends[$i]['dev']['item_code'], \NetForge\Progress\Income::ISP, true)
+                    && in_array('WAN', $ends[$j]['ports'], true) && $ends[$j]['port']['name'] !== 'WAN') {
+                    $problem = sprintf('the ISP box goes into %s’s WAN port (its internet side), not a LAN port', $ends[$j]['dev']['label']);
+                }
+            }
             $status = $problem === null ? 'up' : 'down';
             Db::exec(
                 'INSERT INTO cables (user_id, cable_code, a_device_id, a_port, b_device_id, b_port, status) VALUES (?, ?, ?, ?, ?, ?, ?)',

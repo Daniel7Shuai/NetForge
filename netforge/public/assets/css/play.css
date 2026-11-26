@@ -137,7 +137,7 @@ body.busy #game canvas { cursor: progress; }
 .cablebar button.none { opacity: .5; }
 .tag.act b { background: var(--cyan); }
 
-.cablebar { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 4px; padding: 4px; background: rgba(13, 21, 34, .94); border: 1px solid var(--line); border-radius: var(--r); font-size: 13px; }
+.cablebar { position: absolute; z-index: 5; left: 12px; top: 12px; display: flex; gap: 4px; padding: 4px; background: rgba(13, 21, 34, .94); border: 1px solid var(--line); border-radius: var(--r); font-size: 13px; }
 .cablebar[hidden] { display: none; }
 .cablebar button { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: var(--r-sm); color: var(--ink-dim); }
 .cablebar button:hover { color: var(--ink); }
@@ -554,7 +554,8 @@ button.objective:hover { border-color: var(--ink-dim); }
   .drawer { grid-column: 1 / -1; grid-row: 2; border-left: 0; border-top: 1px solid var(--grid); }
   .stage { padding: 8px; }
   .map { width: 100%; }
-  .cablebar { display: none; }
+  .cablebar { left: 6px; top: 6px; gap: 2px; padding: 3px; font-size: 11px; } /* small, but there: crossover and fibre are picked here */
+  .cablebar button { padding: 3px 5px; gap: 4px; }
   .console { height: auto; }
 }
 
@@ -659,7 +660,7 @@ button.objective:hover { border-color: var(--ink-dim); }
 .picker .cardslot .note { margin: 0; padding: 0 10px 8px; font-size: 12px; color: var(--ink-dim); }
 
 /* dialogue answers (the broker's offer) */
-.dlg-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-right: auto; }
+.dlg-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .dlg-choice { padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); font-size: 13px; }
 .dlg-choice:hover { border-color: var(--ink-dim); }
 .dlg-choice.primary { border-color: var(--amber); color: var(--amber); }
@@ -1019,7 +1020,7 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 .dlg.waiting .dlg-name { left: 132px; }
 .dlg-task { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 8px; padding: 6px 10px; font-size: 14px; color: var(--cyan); background: rgba(43, 227, 255, .07); border-radius: var(--r-sm); }
 .dlg-task i { margin-top: 2px; }
-.dlg-wait { margin-right: auto; align-self: center; font-size: 12px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; }
+.dlg-wait { align-self: center; font-size: 12px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; }
 .dlg-wait::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); animation: tut-pulse 1.4s ease-in-out infinite; }
 .dlg-wait.ok { color: var(--lime); }
 .dlg-wait.ok::before { background: var(--lime); animation: none; }
@@ -1034,3 +1035,14 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 .rv-wires path { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .rv-wires path.under { stroke: rgba(0, 0, 0, .7); stroke-width: 3.4; }
 .rv-wires text { font: 600 8px var(--mono); paint-order: stroke; stroke: #05080d; stroke-width: 2px; }
+
+/* the dialogue's buttons sit clear of the speaker's portrait; a waiting box sits under the port picker */
+.dlg-box.has-left .dlg-actions { padding-left: 172px; flex-wrap: wrap; }
+.dlg.waiting .dlg-box.has-left .dlg-actions { padding-left: 116px; }
+.dlg.waiting { z-index: 4; }
+@media (max-width: 640px) { .dlg-box.has-left .dlg-actions, .dlg.waiting .dlg-box.has-left .dlg-actions { padding-left: 0; } }
+
+/* a problem flashed across the bottom of the map (hud.js flashNote) */
+.mapnote { position: absolute; left: 50%; bottom: 10px; z-index: 6; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 7px 12px; font-size: 13px; color: var(--ink); background: rgba(40, 10, 24, .95); border: 1px solid var(--magenta); border-radius: var(--r-sm); box-shadow: 0 8px 24px rgba(0, 0, 0, .5); transition: opacity .3s; }
+.mapnote[hidden] { display: none; }
+.mapnote.out { opacity: 0; }

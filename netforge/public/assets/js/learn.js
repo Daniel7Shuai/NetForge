@@ -51,6 +51,11 @@ export function mountLearn(store) {
   const panel = $('learn');
   const list = $('learn-worlds');
   const view = $('learn-view');
+  // on a small screen the view sits below the long topic list: when it changes, bring it into view
+  new MutationObserver(() => {
+    const r = view.getBoundingClientRect();
+    if (r.top > innerHeight * 0.6 || r.top < -40) view.scrollIntoView({ block: 'start' });
+  }).observe(view, { childList: true });
   let worlds = [];
   let audit = { due: 0, total: 0, stages: {}, upcoming: [], topics: [] };
   let mock = { worlds: [], lengths: [10, 20, 30], secondsPerQuestion: 60, readyPct: 70, history: [] };
