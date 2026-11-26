@@ -30,7 +30,7 @@ final class Income
     private static function findOnline(int $userId): array
     {
         $devices = [];
-        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, d.location, d.tile_x, d.tile_y, d.rack_u, d.modules, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct, t.radio, t.site_boost, t.rack_boost,
+        foreach (Db::all('SELECT d.id, d.label, d.item_code, d.tier, d.location, d.tile_x, d.tile_y, d.rack_u, d.modules, d.config, t.sprite, t.ports, t.income_per_sec, t.shield_pct, t.shop_group, t.boost_pct, t.radio, t.site_boost, t.rack_boost,
                                  COALESCE(g.boost_pct, 0) gpu_boost
                             FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ?', [$userId]) as $d) {
             $devices[(int) $d['id']] = $d;
@@ -131,7 +131,12 @@ final class Income
         if (!in_array($d['shop_group'] ?? '', self::BOOST_GROUPS, true)) {
             return 0.0; // routers, switches, hubs, access points and modems boost; end devices and GPUs don't
         }
-        return (int) $d['boost_pct'] * Rules::tierIncome((int) $d['tier']);
+        $boost = (int) $d['boost_pct'] * Rules::tierIncome((int) $d['tier']);
+        // a router or switch given the CCNA basic setup from a Work Laptop boosts 25% more
+        if (isset($d['config'], $d['sprite']) && \NetForge\Cli::supports($d) && \NetForge\Cli::configured($d['config'], $d)) {
+            $boost *= 1 + \NetForge\Cli::BONUS / 100;
+        }
+        return $boost;
     }
 
     /** Enough credits for a pack of copper, so the laptop can be linked straight to the ISP box. */
@@ -171,7 +176,7 @@ final class Income
     public static function shield(int $userId): int
     {
         $pct = array_sum(array_map(fn ($d) => (int) $d['shield_pct'] * (int) $d['tier'], self::online($userId)));
-        return min(75, $pct);
+        return min(75, $pct + \NetForge\Staff::shieldPct($userId)); // firewalls plus security analysts
     }
 
     /** What one device earns per second on its own: its rate, its tier bonus and any GPU card (before network boosts). */
@@ -190,18 +195,49 @@ final class Income
     {
         $online = self::online($userId);
         $facility = \NetForge\Facility::all($userId);
+        $desks = \NetForge\Staff::desks($userId);
+        $admins = \NetForge\Staff::admins($userId);
         $by = [];
+        $byPlace = [];
         $bill = 0.0;
+        $pay = []; // staff id => credits per second
         foreach ($online as $d) {
+            $id = (int) $d['id'];
             $place = $facility[$d['location']] ?? null;
             $r = self::deviceRate($d) * $d['path_boost'] * ($place['factor'] ?? 1);
-            if ($r > 0) {
-                $by[(int) $d['id']] = $r;
-                $bill += $r * ($place['billPct'] ?? 0) / 100;
+            if ($d['item_code'] === 'pc') { // a desktop earns only with someone at it
+                $desk = $desks[$id] ?? null;
+                $r = $desk === null ? 0.0 : $r * $desk['mult'];
+                if ($desk !== null && $desk['staff'] !== null) {
+                    $pay[$desk['staff']] = ($pay[$desk['staff']] ?? 0) + $r * $desk['pct'] / 100;
+                }
             }
+            if ($r <= 0) {
+                continue;
+            }
+            // network admins lift everything in their place; each takes a share of what they add
+            $boost = 0;
+            foreach ($admins[$d['location']] ?? [] as $a) {
+                $boost += $a['boost'];
+                $pay[$a['id']] = ($pay[$a['id']] ?? 0) + $r * $a['boost'] / 100 * $a['pct'] / 100;
+            }
+            $r *= 1 + $boost / 100;
+            $by[$id] = $r;
+            $byPlace[$d['location']] = ($byPlace[$d['location']] ?? 0) + $r;
+            $bill += $r * ($place['billPct'] ?? 0) / 100;
         }
         $gross = array_sum($by);
-        return ['perSec' => $gross - $bill, 'gross' => $gross, 'bill' => $bill, 'devices' => array_column($online, 'label'), 'byDevice' => $by];
+        // technicians take a share of their place's income, security analysts of all of it
+        foreach (\NetForge\Staff::team($userId) as $s) {
+            if ($s['role'] === 'technician') {
+                $pay[(int) $s['id']] = ($byPlace[$s['location']] ?? 0) * (int) $s['salary_pct'] / 100;
+            } elseif ($s['role'] === 'security') {
+                $pay[(int) $s['id']] = $gross * (int) $s['salary_pct'] / 100;
+            }
+        }
+        $salaries = array_sum($pay);
+        return ['perSec' => max(0.0, $gross - $bill - $salaries), 'gross' => $gross, 'bill' => $bill, 'salaries' => $salaries, 'pay' => $pay,
+            'devices' => array_column($online, 'label'), 'byDevice' => $by];
     }
 
     /**

@@ -38,7 +38,7 @@ export function mountEvents(store) {
   }
 
   /* ---------- the investor: a phone that pops up like a character ---------- */
-  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.attackOpen || store.state.cutsceneOpen || document.querySelector('.dlg');
+  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.termOpen || store.state.attackOpen || store.state.cutsceneOpen || document.querySelector('.dlg');
 
   async function openCall() {
     if (offerId === null) return;
@@ -150,7 +150,7 @@ export function mountEvents(store) {
   async function poll() {
     if (document.hidden) return;
     const s = store.state;
-    const mayStart = !!store.tutorialDone && !s.learnOpen && !s.attackOpen && !s.socialOpen && !s.cutsceneOpen;
+    const mayStart = !!store.tutorialDone && !s.learnOpen && !s.attackOpen && !s.socialOpen && !s.termOpen && !s.cutsceneOpen;
     try { apply(await api.events(mayStart)); } catch { /* offline for a moment */ }
   }
 

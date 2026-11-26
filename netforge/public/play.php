@@ -77,6 +77,7 @@ require __DIR__ . '/../src/views/head.php';
     <button class="tool" data-tool="remove" aria-label="Remove (Del)" data-tip="Remove (Del): click a device to unplug its cables (they go back to your inventory) or pick it up."><i class="ti ti-trash"></i></button>
     <span class="sep"></span>
     <button class="tool learn-tool" data-open-learn aria-label="Learn (L)" data-tip="Learn (L): lessons, challenges and exams. Correct answers earn XP, and your level unlocks new gear."><i class="ti ti-book-2"></i><kbd>L</kbd></button>
+    <button class="tool staff-tool" data-open-staff aria-label="Staff (H)" data-tip="Staff (H): read resumes and hire people for the office and the datacentre. Desktops there need someone at them to earn."><i class="ti ti-id-badge-2"></i><kbd>H</kbd></button>
     <button class="tool social-tool" data-open-social aria-label="Guild and friends (G)" data-tip="Social (G): your guild and its weekly raid, leaderboards, friends and badges."><i class="ti ti-users-group"></i><kbd>G</kbd></button>
     <button class="tool on" data-tab="inv" aria-label="Inventory (I)" data-tip="Inventory (I): the gear you own. Click a device, or drag it onto a glowing spot on the map."><i class="ti ti-backpack"></i><kbd>I</kbd></button>
     <button class="tool" data-tab="shop" aria-label="Shop (B)" data-tip="Shop (B): spend credits on gear. Your level decides what’s for sale."><i class="ti ti-building-store"></i><kbd>B</kbd></button>
@@ -133,6 +134,36 @@ require __DIR__ . '/../src/views/head.php';
       </div>
     </nav>
     <div class="learn-view" id="social-view"></div>
+  </section>
+
+  <section class="learn staffp" id="staff" hidden aria-label="Staff">
+    <nav class="learn-nav" aria-label="Staff">
+      <div class="learn-top">
+        <h2><i class="ti ti-id-badge-2" aria-hidden="true"></i>Staff</h2>
+        <button class="iconbtn" id="staff-close" aria-label="Back to the map (Esc)"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="worlds" id="staff-tabs">
+        <button class="world" data-tab-staff="resumes"><i class="ti ti-file-cv wnum" aria-hidden="true"></i><span class="wtitle">Resumes<small>Hire or reject</small></span></button>
+        <button class="world" data-tab-staff="team"><i class="ti ti-users wnum" aria-hidden="true"></i><span class="wtitle">Your team<small>What they do, what they cost</small></span></button>
+      </div>
+    </nav>
+    <div class="learn-view" id="staff-view"></div>
+  </section>
+
+  <section class="term" id="terminal" role="dialog" aria-modal="true" aria-labelledby="term-title" hidden>
+    <div class="term-win">
+      <header class="term-top">
+        <h2 id="term-title"><i class="ti ti-terminal-2" aria-hidden="true"></i><span></span></h2>
+        <button class="iconbtn" id="term-close" aria-label="Close the terminal (Esc)"><i class="ti ti-x"></i></button>
+      </header>
+      <div class="term-body">
+        <div class="term-screen mono" id="term-screen" tabindex="-1">
+          <pre id="term-out"></pre>
+          <form class="term-line" id="term-form" autocomplete="off"><label for="term-in" id="term-prompt"></label><input id="term-in" spellcheck="false" autocapitalize="off" maxlength="200" aria-label="Command"></form>
+        </div>
+        <aside class="term-side" id="term-side"></aside>
+      </div>
+    </div>
   </section>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

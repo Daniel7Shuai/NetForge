@@ -72,6 +72,7 @@ final class GameState
         ));
 
         $income = \NetForge\Progress\Income::summary($userId);
+        $desks = Staff::desks($userId);
         $devices = array_map(fn ($r) => [
             'id'        => (int) $r['id'],
             'item_code' => $r['item_code'],
@@ -103,8 +104,11 @@ final class GameState
             'powerW'    => (int) $r['power_w'],
             'genW'      => (int) $r['gen_w'],
             'coolW'     => (int) $r['cool_w'],
+            'cli'       => Cli::supports($r),                                   // has an IOS console a Work Laptop can open
+            'configured' => Cli::supports($r) && Cli::configured($r['config'], $r),
+            'worker'    => $r['item_code'] === 'pc' ? ($desks[(int) $r['id']]['name'] ?? null) : null, // who works this desktop (null: no one)
         ], Db::all(
-            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, d.rack_u, d.modules, t.rack_u size, t.bays, t.rack_boost, COALESCE(g.boost_pct, 0) gpu_boost,
+            'SELECT d.id, d.item_code, d.label, d.tile_x, d.tile_y, d.fixed, d.tier, d.gpu_card, d.rack_u, d.modules, d.config, t.rack_u size, t.bays, t.rack_boost, COALESCE(g.boost_pct, 0) gpu_boost,
                     t.name, t.power_w, t.gen_w, t.cool_w, t.max_tier, t.shield_pct, t.income_per_sec, t.slot_kinds, t.sprite, t.height, t.ports, t.shop_group, t.boost_pct, t.radio, t.site_boost
                FROM devices d JOIN item_types t ON t.code = d.item_code LEFT JOIN item_types g ON g.code = d.gpu_card WHERE d.user_id = ? AND d.location = ?',
             [$userId, $location]
@@ -137,7 +141,7 @@ final class GameState
         }
 
         $progress = [
-            'income' => ['perSec' => $income['perSec'], 'gross' => $income['gross'], 'bill' => $income['bill'], 'devices' => $income['devices']],
+            'income' => ['perSec' => $income['perSec'], 'gross' => $income['gross'], 'bill' => $income['bill'], 'salaries' => $income['salaries'], 'devices' => $income['devices']],
             'shield' => \NetForge\Progress\Income::shield($userId),
             'streak' => \NetForge\Progress\Badges::streak($userId),
             'badges' => (int) Db::one('SELECT COUNT(*) n FROM user_badges WHERE user_id = ?', [$userId])['n'],
@@ -156,6 +160,14 @@ final class GameState
         // this place's bill in credits per second, from what its devices earn
         $facility['billPerSec'] = array_sum(array_column($devices, 'earning')) * $facility['billPct'] / 100;
 
-        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events', 'racks', 'wishlist', 'facility');
+        // staff: who works for you (and what each costs right now), the resumes waiting, and whether you can hire here
+        $staff = [
+            'team' => array_map(fn ($s) => Staff::row($s) + ['paySec' => $income['pay'][(int) $s['id']] ?? 0], Staff::team($userId)),
+            'candidates' => Staff::candidates($userId),
+            'canHire' => isset(Staff::PLACES[$location]),
+            'max' => Staff::PLACES[$location] ?? 0,
+        ];
+
+        return compact('user', 'inventory', 'shop', 'devices', 'cables', 'log', 'objective', 'progress', 'locations', 'furniture', 'events', 'racks', 'wishlist', 'facility', 'staff');
     }
 }

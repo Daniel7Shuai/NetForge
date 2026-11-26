@@ -63,6 +63,7 @@ export function mountSocial(store) {
   $('social-close').addEventListener('click', close);
   document.querySelectorAll('[data-open-social]').forEach((b) => b.addEventListener('click', () => (panel.hidden ? open() : close())));
   window.addEventListener('nf:open-learn', () => { if (!panel.hidden) close(); });
+  window.addEventListener('nf:open-staff', () => { if (!panel.hidden) close(); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) { e.preventDefault(); close(); } });
   tabs.addEventListener('click', (e) => {
     const b = e.target.closest('[data-tab-social]');

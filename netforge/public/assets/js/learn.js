@@ -66,7 +66,7 @@ export function mountLearn(store) {
 
   /* ---------- open / close ---------- */
 
-  window.addEventListener('nf:open-social', () => { if (!panel.hidden && !run) { stopTimer(); panel.hidden = true; store.setLearnOpen(false); } });
+  ['nf:open-social', 'nf:open-staff'].forEach((ev) => window.addEventListener(ev, () => { if (!panel.hidden && !run) { stopTimer(); panel.hidden = true; store.setLearnOpen(false); } }));
 
   async function open(focusWorld) {
     window.dispatchEvent(new CustomEvent('nf:open-learn'));

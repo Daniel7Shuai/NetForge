@@ -11,7 +11,7 @@ final class Db
     /** Bumped by every write to the tables that decide power and income, and by every rollback. */
     private static int $gearVersion = 0;
     private static array $memo = [];
-    private const GEAR_TABLES = '/\b(devices|cables|user_furniture|user_facility|item_types)\b/i';
+    private const GEAR_TABLES = '/\b(devices|cables|user_furniture|user_facility|item_types|staff)\b/i';
 
     public static function pdo(): PDO
     {

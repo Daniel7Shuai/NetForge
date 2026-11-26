@@ -88,10 +88,11 @@ export function mountHud(store) {
   /* keyboard shortcuts (ignored while typing in a field) */
   addEventListener('keydown', (e) => {
     if ((e.target instanceof Element && e.target.closest('input, textarea, select')) || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (store.state.learnOpen || store.state.socialOpen || store.state.attackOpen) return; // panels handle their own keys
+    if (store.state.learnOpen || store.state.socialOpen || store.state.staffOpen || store.state.termOpen || store.state.attackOpen) return; // panels handle their own keys
     const k = e.key.toLowerCase();
     const map = { l: () => document.querySelector('[data-open-learn]').click(),
       g: () => document.querySelector('[data-open-social]').click(),
+      h: () => document.querySelector('[data-open-staff]').click(),
       v: () => store.setTool('select'), c: () => store.setTool('cable'), x: () => store.setTool('inspect'),
       delete: () => store.setTool('remove'), i: () => store.setTab('inv'), b: () => store.setTab('shop'),
       escape: () => { closeMenu(); closePlaces(); store.cancel(); } };
@@ -134,6 +135,8 @@ export function mountHud(store) {
       if (b.getAttribute('aria-disabled') === 'true') { store.log('warn', tipOf(b)); return; }
       store.upgrade(Number(b.dataset.upgrade));
     }
+    else if (b.dataset.term) store.openTerminal(Number(b.dataset.term));
+    else if (b.dataset.openStaff !== undefined) store.openStaff?.('resumes');
     else if (b.dataset.closePicker) store.set({ picker: null });
   });
 
@@ -515,7 +518,7 @@ export function mountHud(store) {
         return `<div class="port ${c ? c.status : 'free'}"><span class="led"></span><span class="pname">${esc(p.name)}</span><span class="to">${esc(what)}</span></div>`;
       }).join('');
       foot = 'C to cable, Del to unplug';
-      if (!dev.fixed) rows = tierLine(dev) + rows + deviceActions(s, dev);
+      if (!dev.fixed) rows = tierLine(dev) + workerLine(s, dev) + rows + deviceActions(s, dev);
     }
     el.innerHTML = `<h3>${esc(dev.label)} <span>${sub}</span>
       <button class="x" data-close-picker="1" aria-label="Close"><i class="ti ti-x"></i></button></h3>${rows}<p class="foot">${foot}</p>`;
@@ -534,7 +537,7 @@ export function mountHud(store) {
       perk = `boosts +${dev.netBoost}%`;
       tip = `${dev.label} earns nothing itself, but every device connected to the internet through it earns ${dev.netBoost}% more. Routers and switches in a row multiply. Upgrades raise the boost: x1.5 at tier 2, x2 at tier 3.`;
     } else if (dev.rate > 0) {
-      perk = dev.earning > 0 ? `earning ${rate(dev.earning)}` : `${rate(dev.rate)} when online`;
+      perk = dev.earning > 0 ? `earning ${rate(dev.earning)}` : dev.item_code === 'pc' && !dev.worker ? `${rate(dev.rate)} with a worker` : `${rate(dev.rate)} when online`;
       tip = dev.earning > 0
         ? `${dev.label} is online and earns ${rate(dev.earning)}. Upgrades raise that: x1.5 at tier 2, x2 at tier 3.`
         : dev.radio === 'client' ? `${dev.label} earns ${rate(dev.rate)} once it’s on Wi-Fi: it needs an access point or wireless router online in this room.`
@@ -571,7 +574,25 @@ export function mountHud(store) {
         ? `<button class="act" data-upgrade="${dev.id}" aria-disabled="true" data-tip="${esc(why)}"><i class="ti ti-lock" aria-hidden="true"></i>${s.user.level < up.level ? `Lv ${up.level}` : fmt(up.cost)}</button>`
         : `<button class="act up" data-upgrade="${dev.id}" aria-label="Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits" data-tip="${esc(`Upgrade to tier ${up.tier} for ${fmt(up.cost)} credits: ${gain}.`)}"><i class="ti ti-arrow-big-up-lines" aria-hidden="true"></i>T${up.tier}, ${fmt(up.cost)}</button>`;
     }
-    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>${cardSlot(s, dev)}${moduleSlot(s, dev)}`;
+    return `<div class="actions">${upBtn}<button class="act" data-move="${dev.id}" data-tip="Move it to another free spot. Its cables stay plugged in."><i class="ti ti-arrows-move" aria-hidden="true"></i>Move</button></div>${termButton(s, dev)}${cardSlot(s, dev)}${moduleSlot(s, dev)}`;
+  }
+
+  /** Who works a desktop: you (the garage's first), an earner, or no one. */
+  function workerLine(s, dev) {
+    if (dev.item_code !== 'pc') return '';
+    if (dev.worker) return `<p class="tierline on" data-tip="${esc(`${dev.worker} works this desktop. Staff (H) shows what they do and what they cost.`)}"><span>Worked by</span><span>${esc(dev.worker)}</span></p>`;
+    const hire = s.staff?.canHire;
+    return `<p class="tierline warn" data-tip="${esc(hire ? 'A desktop needs someone at it to earn. Hire an earner from the resumes in Staff (H).' : 'In the garage you work one desktop yourself. More desktops need staff, and you can only hire in the office or the datacentre.')}"><span>Worked by</span><span>no one</span></p>${hire ? '<button class="wide" data-open-staff><i class="ti ti-id-badge-2" aria-hidden="true"></i>Hire an earner</button>' : ''}`;
+  }
+
+  /** Work Laptops and consoled Cisco routers and switches open a terminal. */
+  function termButton(s, dev) {
+    if (dev.item_code !== 'work_laptop' && !dev.cli) return '';
+    const linked = s.cables.some((c) => c.kind === 'console' && (c.a_device_id === dev.id || c.b_device_id === dev.id));
+    const tip = dev.item_code === 'work_laptop'
+      ? (linked ? 'Open a console session on the router or switch at the other end of the console cable.' : 'Plug a console cable from this laptop’s Console port into a Cisco router’s or switch’s Con0, then open the terminal.')
+      : dev.configured ? `${dev.label} is configured and saved: it boosts 25% more. Open the terminal to change it.` : `Configure ${dev.label} from a Work Laptop: run a console cable from the laptop’s Console port to Con0, then open the terminal. Configured and saved, it boosts 25% more.`;
+    return `<button class="wide term-btn${dev.configured ? ' done' : ''}" data-term="${dev.id}" data-tip="${esc(tip)}"><i class="ti ti-terminal-2" aria-hidden="true"></i>${dev.configured ? 'Configured: open terminal' : 'Open terminal'}</button>`;
   }
 
   /** Servers take a GPU card: which one is fitted, and the cards in the inventory that could go in. */

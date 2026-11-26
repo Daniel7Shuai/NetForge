@@ -15,6 +15,8 @@ import { mountRackView } from './rackview.js';
 import { mountTodo } from './todo.js';
 import { mountFacility } from './facility.js';
 import { mountRackGuide } from './racktutorial.js';
+import { mountStaff } from './staff.js';
+import { mountTerminal } from './terminal.js';
 import './game/story-art.js'; // the story's characters and their portraits
 import './game/device-art.js'; // sprites for the Packet Tracer device catalogue
 import { MapScene } from './game/MapScene.js';
@@ -40,6 +42,8 @@ mountDefence(store);
 mountRackView(store);
 mountTodo(store);
 mountFacility(store);
+mountStaff(store);
+mountTerminal(store);
 
 new Phaser.Game({
   type: Phaser.CANVAS,

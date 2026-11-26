@@ -64,7 +64,7 @@ export function mountRackView(store) {
 
   /* clicks */
   el.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-act], [data-u], [data-dev-sel], [data-rport], [data-mount-item], [data-module], [data-unmodule], [data-unplug], [data-cable-kind], [data-upgrade]');
+    const b = e.target.closest('[data-act], [data-u], [data-dev-sel], [data-rport], [data-mount-item], [data-module], [data-unmodule], [data-unplug], [data-cable-kind], [data-upgrade], [data-term]');
     if (!b || b.disabled) return;
     if (b.getAttribute('aria-disabled') === 'true') { if (b.dataset.tip) store.log('warn', b.dataset.tip); return; }
     const s = store.state, v = view(), r = rack();
@@ -87,6 +87,7 @@ export function mountRackView(store) {
     if (b.dataset.unmodule) { store.removeModule(Number(b.dataset.dev), Number(b.dataset.unmodule)); return; }
     if (b.dataset.unplug) { store.unplug(Number(b.dataset.unplug)); return; }
     if (b.dataset.upgrade) { store.upgrade(Number(b.dataset.upgrade)); return; }
+    if (b.dataset.term) { store.closeRack(); store.openTerminal(Number(b.dataset.term)); return; }
     if (b.dataset.cableKind) { store.setCable(b.dataset.cableKind); return; }
     if (b.dataset.rport) {
       const devId = Number(b.dataset.rdev);
@@ -366,6 +367,7 @@ export function mountRackView(store) {
         <button class="rv-btn" data-act="up" ${canUp ? '' : 'aria-disabled="true"'} data-tip="${canUp ? 'Slide it up one U.' : 'No room above it.'}" aria-label="Slide up"><i class="ti ti-arrow-up"></i></button>
         <button class="rv-btn" data-act="down" ${canDown ? '' : 'aria-disabled="true"'} data-tip="${canDown ? 'Slide it down one U.' : 'No room below it.'}" aria-label="Slide down"><i class="ti ti-arrow-down"></i></button>
         ${upBtn}
+        ${d.cli ? `<button class="rv-btn${d.configured ? ' up' : ''}" data-term="${d.id}" data-tip="${d.configured ? 'Configured and saved: it boosts 25% more. Open the terminal to change it.' : 'Configure it from a Work Laptop: a console cable from the laptop’s Console port to Con0, then open the terminal. Configured and saved, it boosts 25% more.'}"><i class="ti ti-terminal-2" aria-hidden="true"></i>Terminal</button>` : ''}
         <button class="rv-btn" data-act="move" data-tip="Move it to another rack or spot. Its cables come along.">Move</button>
         <button class="rv-btn" data-act="takeout" ${used.size ? 'aria-disabled="true" data-tip="Unplug its cables first."' : 'data-tip="Take it out and put it back in your inventory."'}>Take out</button>
       </div>

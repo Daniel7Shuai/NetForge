@@ -42,8 +42,8 @@ export function mountEconomy(store) {
     rateEl.classList.toggle('idle', perSec <= 0);
     const online = s.progress?.income?.devices || [];
     wallet.dataset.tip = perSec > 0
-      ? `Your credits. Your network earns ${rate(perSec)} from ${online.length} device${online.length === 1 ? '' : 's'} online: ${online.join(', ')}. Spend credits in the shop (B).`
-      : 'Your credits. Nothing is earning yet: link a device to the ISP box with a cable and it starts earning every second.';
+      ? `Your credits. Your network earns ${rate(perSec)} from ${online.length} device${online.length === 1 ? '' : 's'} online: ${online.join(', ')}.${s.progress.income.salaries > 0 ? ` That’s after ${rate(s.progress.income.salaries)} in salaries (staff, H).` : ''} Spend credits in the shop (B).`
+      : s.progress?.income?.salaries > 0 ? `Your credits. Your staff’s salaries (${rate(s.progress.income.salaries)}) and the bill take everything your network makes. See your team (H).` : 'Your credits. Nothing is earning yet: link a device to the ISP box with a cable and it starts earning every second.';
   }
 
   /** Current balance, counting up since the server's last word. */
@@ -63,7 +63,7 @@ export function mountEconomy(store) {
   /* ---- coins popping out of earning devices ---- */
   const lastPop = new Map(); // device id -> time of its last coin
   setInterval(() => {
-    if (document.hidden || store.state.learnOpen || store.state.socialOpen) return;
+    if (document.hidden || store.state.learnOpen || store.state.socialOpen || store.state.staffOpen) return;
     const now = performance.now();
     for (const d of store.state.devices || []) {
       if (!(d.earning > 0)) continue;

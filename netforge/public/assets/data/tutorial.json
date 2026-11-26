@@ -189,6 +189,16 @@
       ["teacher", "GPUs are in the shop now. Rigs go in a rack and earn on their own; cards go inside a server and boost what it earns."],
       ["teacher", "Three sellers: ByteBay is cheap but slower, Apex is the fastest and priciest. Their prices move and stock refills every 20 minutes, so shop around."]
     ],
+    "staff": [
+      ["teacher", "Out here, a desktop doesn't run itself. In the garage you sat at one yourself, but these need staff."],
+      ["teacher", "Press H for Staff. Read the resumes and hire an earner for each desktop. Admins, technicians and security analysts help in other ways."],
+      ["teacher", "Everyone takes a cut of your income, and the good ones take a big one. Hire people who add more than they cost."]
+    ],
+    "worklaptop": [
+      ["teacher", "A work laptop! That's how real network engineers set up routers and switches."],
+      ["teacher", "Put it down, pick the console cable, and run it from the laptop's Console port to a Cisco router's or switch's Con0."],
+      ["teacher", "Then click the router and choose Open terminal. Give it a hostname, a secret, an IP address, and save it. A configured device boosts 25% more."]
+    ],
     "furniture": [
       ["teacher", "Running out of spots? Buy furniture in the shop. A desk adds a spot for a PC, a server rack adds a slot for rack gear."],
       ["teacher", "Click it in your inventory, then an open bit of floor. Use the remove tool to pick it up again."]

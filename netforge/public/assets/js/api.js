@@ -37,6 +37,8 @@ export const api = {
   upgrade: (deviceId) => call('upgrade.php', { method: 'POST', body: JSON.stringify({ device: deviceId }) }),
   travel: (code) => call('travel.php', { method: 'POST', body: JSON.stringify({ location: code }) }),
   rack: (action, body) => call('rack.php', { method: 'POST', body: JSON.stringify({ action, ...body }) }),
+  staff: (action, id) => call('staff.php', { method: 'POST', body: JSON.stringify({ action, id }) }),
+  cli: (body) => call('cli.php', { method: 'POST', body: JSON.stringify(body) }),
   buy: (shopId) => call('buy.php', { method: 'POST', body: JSON.stringify({ id: shopId }) }),
   learn: {
     roadmap: () => call('learn/roadmap.php'),

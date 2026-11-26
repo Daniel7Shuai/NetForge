@@ -122,6 +122,7 @@ try {
     $ap = Rules::place($uid, 'ap_pt', 11, 7);
     $link($isp, 'LAN2', $id($ap), 'Port0');
     $pcRate = (int) Db::one('SELECT income_per_sec r FROM item_types WHERE code = "pc"')['r'];
+    Db::exec('INSERT INTO staff (user_id, name, role, level, salary_pct, location, resume) VALUES (?, "Test Earner", "earner", 1, 50, "office", "{}")', [$uid]); // desktops need someone at them
     $before = $rate();
     Racks::installModule($uid, $pc, 'wmp300n');
     check('a PC with a WMP300N joins the Wi-Fi', round($rate() - $before, 2), round($pcRate * 1.15, 2));

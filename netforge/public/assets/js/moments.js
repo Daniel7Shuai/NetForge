@@ -22,7 +22,7 @@ export async function mountMoments(store) {
   const player = () => store.state.user?.name || store.state.user?.username || 'you';
   const blocked = () => {
     const s = store.state;
-    return s.learnOpen || s.socialOpen || s.attackOpen || s.phoneOpen || s.cutsceneOpen || document.querySelector('.dlg') || document.hidden;
+    return s.learnOpen || s.socialOpen || s.staffOpen || s.termOpen || s.attackOpen || s.phoneOpen || s.cutsceneOpen || document.querySelector('.dlg') || document.hidden;
   };
   const until = (ok) => new Promise((resolve) => {
     const t = setInterval(() => { if (ok()) { clearInterval(t); resolve(); } }, 400);
@@ -111,6 +111,11 @@ export async function mountMoments(store) {
     const open = (g) => s.shop.some((r) => r.group === g && !r.locked);
     if (open('gpu') && !seen.has('gpu')) return tip('gpu', 'gpu', {}, () => showShop('gpu'));
     if (open('furniture') && !seen.has('furniture')) return tip('furniture');
+
+    // desktops that need staff, and the Work Laptop's terminal, explained the first time
+    if (s.staff?.canHire && s.devices.some((d) => d.item_code === 'pc' && !d.worker) && !seen.has('staff')) return tip('staff');
+    const ownLaptop = s.inventory.some((i) => i.code === 'work_laptop' && i.quantity > 0) || s.devices.some((d) => d.item_code === 'work_laptop');
+    if (ownLaptop && !seen.has('worklaptop')) return tip('worklaptop');
 
     // Wi-Fi devices and lightweight APs, explained the first time one is bought
     const radioOf = (code) => s.shop.find((r) => r.code === code)?.radio;

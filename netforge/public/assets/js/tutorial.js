@@ -27,7 +27,7 @@ export async function mountTutorial(store) {
   let { step, done } = story.tutorial;
   let busy = false;
   const player = () => store.state.user?.name || store.state.user?.username || 'you';
-  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.attackOpen || store.state.cutsceneOpen || document.querySelector('.dlg');
+  const blocked = () => store.state.learnOpen || store.state.socialOpen || store.state.staffOpen || store.state.termOpen || store.state.attackOpen || store.state.cutsceneOpen || document.querySelector('.dlg');
 
   // "Replay tutorial" in the menu
   document.getElementById('tutorial-replay')?.addEventListener('click', async () => {

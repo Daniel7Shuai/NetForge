@@ -54,18 +54,19 @@ final class Facility
                             FROM user_facility f JOIN item_types t ON t.code = f.item_code WHERE f.user_id = ?', [$userId]) as $u) {
             $ups[$u['location']][] = $u;
         }
+        $techs = Staff::heatCut($userId); // technicians make their place's gear run cooler
         $out = [];
         foreach (array_keys(Layout::data()['locations']) as $loc) {
-            $out[$loc] = self::compute(self::place($loc), $load[$loc] ?? 0, $gen[$loc] ?? 0, $cool[$loc] ?? 0, $ups[$loc] ?? []);
+            $out[$loc] = self::compute(self::place($loc), $load[$loc] ?? 0, $gen[$loc] ?? 0, $cool[$loc] ?? 0, $ups[$loc] ?? [], $techs[$loc] ?? 0);
         }
         return $out;
     }
 
     /** One place's numbers, from its load, generators, cooling units and upgrades. */
-    public static function compute(array $place, int $load, int $gen, int $coolUnits, array $upgrades): array
+    public static function compute(array $place, int $load, int $gen, int $coolUnits, array $upgrades, int $staffCut = 0): array
     {
         $billCut = array_sum(array_column($upgrades, 'bill_cut'));
-        $heatCut = min(50, array_sum(array_column($upgrades, 'heat_cut')));
+        $heatCut = min(60, array_sum(array_column($upgrades, 'heat_cut')) + $staffCut);
         $coolBoost = array_sum(array_column($upgrades, 'cool_boost'));
         $supply = $place['grid'] + $gen;
         $heat = (int) round($load * (1 - $heatCut / 100));

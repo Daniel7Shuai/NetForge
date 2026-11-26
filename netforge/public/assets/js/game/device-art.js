@@ -243,3 +243,16 @@ Object.assign(SPRITES, {
   genturbine: one(16, 15, (c) => generator(c, '#5d6c7e', '#8a9bb0', true), [[3, 11]]),
   upgrade:    one(16, 16, upgradeIcon),
 });
+
+/** The Work Laptop: a matte black business laptop with a terminal on screen and a blue console cable port. */
+function workLaptop(c) {
+  R(c, 1, 10, 13, 2, 'rgba(0,0,0,.45)');
+  R(c, 0, 0, 14, 7, C.k); R(c, 1, 1, 12, 5, '#050a08');            // lid, dark screen
+  R(c, 2, 2, 1, 1, C.lime); R(c, 4, 2, 5, 1, '#3f8f4e');           // R1# prompt and a command
+  R(c, 2, 4, 1, 1, C.lime); R(c, 4, 4, 2, 1, C.lime);              // the cursor line
+  R(c, 0, 7, 14, 4, C.k); R(c, 1, 7, 12, 3, '#1a1d24');             // base
+  for (let i = 0; i < 5; i++) R(c, 2 + i * 2, 8, 1, 1, '#363b47');
+  R(c, 6, 9, 2, 1, '#c8341f');                                     // the red pointing stick
+  R(c, 13, 8, 1, 2, '#4f7fd8');                                    // console port
+}
+SPRITES.worklaptop = { ...SPRITES.laptop, draw: workLaptop };

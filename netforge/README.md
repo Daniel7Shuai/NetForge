@@ -29,6 +29,7 @@ Top-down network-building game. PHP 8 + MySQL/MariaDB backend, Phaser 3 map, no 
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_racks.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_power.sql
    C:\xampp\mysql\bin\mysql.exe -u root < database/schema_maps.sql
+   C:\xampp\mysql\bin\mysql.exe -u root < database/schema_staff.sql
    C:\xampp\php\php.exe tools/seed-content.php
    ```
    Set `app.timezone` in `config/config.php` to your local zone. PHP and MySQL are kept in step from it; if they disagree, attacks never arrive and weekly raids roll over at the wrong hour.
@@ -99,6 +100,19 @@ Upgrades (FR-4.3): select a device to see its tier and an **Upgrade** button.
 - The **firewall** (shop, level 4, 500 credits; fits a shelf or rack): while online it blocks 25% of every breach penalty per tier, at most 75% (`item_types.shield_pct`, `Income::shield`, applied in `Defence::charge`).
 - **Move** (same popover): click a free spot to move the device there. Its cables stay plugged in and re-route. `Rules::move`, `api/move.php`.
 - Tests: `php tests/UpgradeTest.php`.
+
+Work Laptop and the console terminal: the shop sells a **Work laptop** (level 2, 15k credits), separate from the ordinary laptop.
+- Run a **console** cable from its Console port to a Cisco router's or Catalyst switch's Con0, then click either end and choose **Open terminal** (the rack view has a **Terminal** button too). The ASA, the wireless controller and home routers have no IOS console.
+- The terminal is a small Cisco IOS: `enable`, `configure terminal`, `hostname`, `enable secret`, `interface` (abbreviations like `int g0/0` and `int vlan 1`), `ip address`, `shutdown` / `no shutdown`, `description`, `show running-config`, `show startup-config`, `show ip interface brief`, `show version`, `copy running-config startup-config` / `write memory`, `do`, `end`, `exit` and `?` help. Mistakes get the real IOS replies (`% Invalid input detected at '^' marker.`, `% Ambiguous command`, `% Bad mask`). A switch takes its IP on `interface Vlan1`, not on a port.
+- A checklist beside the terminal: a new hostname, an enable secret, an IP on an interface that's up, and the config saved. A device whose **saved** config passes all four boosts the devices behind it 25% more. It's a bonus only, so an unconfigured network loses nothing.
+- The config is kept per device in `devices.config` (running and startup). `src/Cli.php`, `api/cli.php`, `public/assets/js/terminal.js`. Tests: `php tests/CliTest.php`.
+
+Staff: **Staff (H)** in the left rail, hiring in the office and the datacentre only (8 and 16 places).
+- Desktops need someone at them to earn. In the garage you work the first desktop yourself; any more, and every desktop in the office and datacentre, earn nothing until an **earner** is hired for that place. Earners take the desktops in their place, most senior first.
+- Three resumes wait on your desk (name, seniority from Junior to Principal, years, last job, certifications, skills, what they do and what they want). **Hire** or **Reject**, and a new one arrives; there's always at least one earner among them.
+- Roles, by seniority level 1 to 5: **Earners** make their desktop earn x1 to x2 and take about half of it (40 to 62%). **Network admins** lift everything in their place 3% per level and take about half of what they add. **Technicians** run the place 6% cooler per level for 1 to 6% of its income. **Security analysts** block 5% more of each attack per level (the shield is still capped at 75%) for 1 to 6% of all your income.
+- Salaries come off income every second (`Income::summary`: `salaries`, and `pay` per person); the wallet tooltip and **Your team** show what each costs right now. Let someone go from Your team.
+- `src/Staff.php`, `api/staff.php`, `public/assets/js/staff.js`, tables `staff` and `staff_candidates`. Tests: `php tests/StaffTest.php`.
 
 Placing devices done: select a device in the inventory (or drag it) and click a glowing spot. The server re-checks everything (`Rules::place`), names devices (Laptop-1, PC-1…) and completes objectives.
 
