@@ -1059,7 +1059,7 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 .s-lead.warn { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid rgba(255, 180, 61, .4); border-radius: var(--r); color: var(--amber); }
 .s-foot { margin: 18px 0 0; font-size: 13px; color: var(--ink-dim); }
 .cv-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.cv { display: flex; flex-direction: column; padding: 16px; border: 1px solid var(--line); border-top: 3px solid var(--rc, var(--cyan)); border-radius: var(--r); background: var(--void); }
+.cv { display: flex; flex-direction: column; padding: 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--void); }
 .role-earner { --rc: var(--amber); }
 .role-admin { --rc: var(--cyan); }
 .role-technician { --rc: var(--lime); }
@@ -1088,7 +1088,7 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 .s-place { margin: 22px 0 8px; font-size: 15px; font-weight: 600; display: flex; gap: 8px; }
 .s-place span { color: var(--ink-dim); font-weight: 400; }
 .team { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.team li { align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--rc); border-radius: var(--r-sm); background: var(--void); }
+.team li { align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--void); }
 .team li > i { font-size: 20px; color: var(--rc); }
 .team .who, .team .what { display: flex; flex-direction: column; min-width: 0; }
 .team .who { width: 190px; }
