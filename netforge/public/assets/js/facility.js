@@ -62,7 +62,7 @@ export function mountFacility(store) {
     btn.dataset.tip = b === 'cool' ? `${f.temp}°C here. Cool and running at full speed. Click for power and cooling.`
       : b === 'warm' ? `${f.temp}°C here. Getting warm: above ${f.hot}°C everything here earns less. Click for power and cooling.`
       : `${f.temp}°C here: too hot! Everything here earns ${Math.round((1 - f.heatFactor) * 100)}% less until it cools down. Click for power and cooling.`;
-    btn.innerHTML = `<span class="tube" aria-hidden="true"><i style="height:${pct}%"></i></span><span class="bulb" aria-hidden="true"></span>
+    btn.innerHTML = `<span class="gauge" aria-hidden="true"><span class="tube"><i style="height:${pct}%"></i></span><span class="bulb"></span></span>
       <span class="deg mono">${Math.round(f.temp)}°</span>${f.powerFactor < 1 ? '<i class="ti ti-bolt-off brown" aria-hidden="true"></i>' : ''}
       <span class="drops" aria-hidden="true"><i></i><i></i><i></i></span>`;
     if (!panel.hidden) panel.innerHTML = body(s, f, b);

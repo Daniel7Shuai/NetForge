@@ -67,8 +67,9 @@ export class MapScene extends Phaser.Scene {
   create() {
     this.makeTextures();
     this.roomImg = this.add.image(0, 0, 'room').setOrigin(0).setDepth(-1000);
-    this.slotsG = this.add.graphics().setDepth(0);
-    this.cablesG = this.add.graphics().setDepth(1);
+    this.cablesG = this.add.graphics().setDepth(1);  // cables run along the floor...
+    this.furnImg = this.add.image(0, 0, 'furniture').setOrigin(0).setDepth(2); // ...under desks, tables and benches
+    this.slotsG = this.add.graphics().setDepth(3);
     this.ledsG = this.add.graphics().setDepth(5000);
     this.linksG = this.add.graphics().setDepth(5100);
     this.ghost = this.add.image(0, 0, 'tower').setOrigin(0).setDepth(5500).setVisible(false);
@@ -107,7 +108,8 @@ export class MapScene extends Phaser.Scene {
       draw(t.getContext());
       t.refresh();
     };
-    tex('room', mapW(), mapH(), (c) => art.drawRoom(c, layout.LOC_CODE, layout.LOC));
+    tex('room', mapW(), mapH(), (c) => art.drawRoom(c, layout.LOC_CODE, layout.LOC, false));
+    tex('furniture', mapW(), mapH(), (c) => art.drawRoomFurniture(c, layout.LOC));
     tex('vignette', mapW(), mapH(), art.vignette);
     for (const pose of art.PLAYER_FRAMES) {
       tex(`player-${pose}`, art.PLAYER_SIZE.w, art.PLAYER_SIZE.h, (c) => art.playerFrame(c, this.store.state.user?.avatar, pose));
@@ -186,9 +188,9 @@ export class MapScene extends Phaser.Scene {
   rackAt(tile) { return this.store.rackCovering(tile); }
 
   redrawRoom(devices) {
-    const t = this.textures.get('room');
+    const t = this.textures.get('furniture');
     const c = t.getContext();
-    art.drawRoom(c, layout.LOC_CODE, layout.LOC);
+    art.drawRoomFurniture(c, layout.LOC);
     for (const f of layout.USER_FURNITURE) art.drawFurniture(c, f.type, f.x, f.y); // what the student bought and placed
     // office desks light up their monitor when a PC sits beside them
     for (const d of layout.furnitureOf('desk')) {
@@ -203,6 +205,7 @@ export class MapScene extends Phaser.Scene {
     return this.store.state.cables.map((cab, lane) => {
       const da = byId.get(cab.a_device_id), db = byId.get(cab.b_device_id);
       if (!da || !db) return null;
+      if (da.rackU != null && db.rackU != null && da.tile_x === db.tile_x && da.tile_y === db.tile_y) return null;
       const a = portAnchor(da, cab.a_port), b = portAnchor(db, cab.b_port);
       return { cab, a, b, pts: cableRoute(a, b, da, db, lane) };
     }).filter(Boolean);

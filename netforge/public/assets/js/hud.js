@@ -628,5 +628,11 @@ export function mountHud(store) {
     const cls = { ok: 'ok', warn: 'warn', error: 'err', you: 'you' };
     el.innerHTML = s.log.map((l) => `<div><span class="t">${esc(l.time)}</span><span class="${cls[l.kind] || ''}">${esc(l.message)}</span></div>`).join('');
     el.scrollTop = el.scrollHeight;
+    if (!el.dataset.pinned) { // the layout settles after the first fill (the map loads, the console shrinks): stay on the newest line
+      el.dataset.pinned = '1';
+      let atEnd = true;
+      el.addEventListener('scroll', () => { atEnd = el.scrollHeight - el.clientHeight - el.scrollTop < 4; });
+      new ResizeObserver(() => { if (atEnd) el.scrollTop = el.scrollHeight; }).observe(el);
+    }
   }
 }

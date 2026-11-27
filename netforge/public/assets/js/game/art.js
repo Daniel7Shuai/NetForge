@@ -330,7 +330,7 @@ function garage(c, loc) {
   R(c, 20, 50, 56, 12, '#0d1118');
   for (let x = 22; x < 74; x += 4) R(c, x, 52, 2, 8, '#111720');
 
-  for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
+  if (withFurniture) for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
 }
 
 const FURNITURE = {
@@ -523,7 +523,7 @@ function office(c, loc) {
   R(c, px + 2, doorTop, 4, doorBottom - doorTop, '#151e2e');
   interiorWalls(c, loc);
   videoWalls(c, loc);
-  for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
+  if (withFurniture) for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
   roomLabels(c, loc);
 }
 
@@ -660,7 +660,7 @@ function datacentre(c, loc) {
   if (power) for (let x = power.x * TILE; x < (power.x + power.w) * TILE; x += 8) { R(c, x, (power.y + 2) * TILE + 2, 4, 2, '#c9a02a'); R(c, x + 4, (power.y + 2) * TILE + 2, 4, 2, '#1a1a1a'); }
   interiorWalls(c, loc);
   videoWalls(c, loc);
-  for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
+  if (withFurniture) for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
   roomLabels(c, loc);
 }
 
@@ -673,9 +673,19 @@ export function drawFurniture(c, type, tx, ty) {
 /** Pixel size of a piece of furniture's picture (for the placing ghost). */
 export const FURNITURE_PX = { desk: [48, 40], rack: [16, 33] };
 
-export function drawRoom(c, code, loc) {
+let withFurniture = true; // drawRoom's second pass skips it: the map draws furniture on its own layer
+
+/** The room: walls, floor and (unless withFurn is false) its built-in furniture. */
+export function drawRoom(c, code, loc, withFurn = true) {
   c.clearRect(0, 0, COLS * TILE, ROWS * TILE);
-  (ROOMS[code] || garage)(c, loc);
+  withFurniture = withFurn;
+  try { (ROOMS[code] || garage)(c, loc); } finally { withFurniture = true; }
+}
+
+/** Just the place's built-in furniture, for the layer that sits above the cables. */
+export function drawRoomFurniture(c, loc) {
+  c.clearRect(0, 0, COLS * TILE, ROWS * TILE);
+  for (const f of loc.furniture) FURNITURE[f.type]?.(c, f.x * TILE, f.y * TILE);
 }
 
 /** Fan hubs to animate in this location. */

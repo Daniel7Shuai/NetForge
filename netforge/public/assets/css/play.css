@@ -950,13 +950,14 @@ button.rv-empty.fits:hover, button.rv-empty.ghost { border-color: var(--cyan); b
 
 /* ---- temperature meter and power panel (facility.js) ---- */
 .top-right { position: relative; }
-.thermo { position: relative; display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px 0 8px; border: 1px solid var(--line); border-radius: var(--r); color: var(--ink); }
+.thermo { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r); color: var(--ink); }
 .thermo:hover, .thermo[aria-expanded="true"] { background: var(--panel-2); }
 .thermo[hidden] { display: none; }
-.thermo .tube { position: relative; width: 6px; height: 18px; border: 1px solid var(--ink-dim); border-bottom: 0; border-radius: 3px 3px 0 0; overflow: hidden; margin-bottom: 4px; }
+.thermo .gauge { position: relative; width: 10px; height: 24px; flex: none; }
+.thermo .tube { position: absolute; left: 2px; top: 0; width: 6px; height: 18px; border: 1px solid var(--ink-dim); border-bottom: 0; border-radius: 3px 3px 0 0; overflow: hidden; }
 .thermo .tube i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--t, var(--cyan)); transition: height .6s; }
-.thermo .bulb { position: absolute; left: 7px; bottom: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--t, var(--cyan)); border: 1px solid var(--ink-dim); }
-.thermo .deg { font-size: 13px; margin-left: 6px; color: var(--t, var(--ink)); }
+.thermo .bulb { position: absolute; left: 0; bottom: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--t, var(--cyan)); border: 1px solid var(--ink-dim); }
+.thermo .deg { font-size: 13px; color: var(--t, var(--ink)); }
 .thermo .brown { color: var(--magenta); font-size: 15px; }
 .thermo.cool { --t: var(--cyan); }
 .thermo.warm { --t: var(--amber); }
