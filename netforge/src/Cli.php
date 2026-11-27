@@ -279,7 +279,7 @@ final class CliRun
         foreach (array_slice(preg_split('/\s+/', $line), 0, $at) as $w) {
             $pos += strlen($w) + 1;
         }
-        return str_repeat(' ', $pos + strlen(Cli::prompt($this->cfg, $this->mode, $this->iface)) + 1) . "^\n% Invalid input detected at '^' marker.";
+        return str_repeat(' ', $pos + strlen(Cli::prompt($this->cfg, $this->mode, $this->iface))) . "^\n% Invalid input detected at '^' marker.";
     }
 
     private function bad(?string $w, string $line, int $at): string

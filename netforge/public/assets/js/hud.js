@@ -580,7 +580,7 @@ export function mountHud(store) {
   /** Who works a desktop: you (the garage's first), an earner, or no one. */
   function workerLine(s, dev) {
     if (dev.item_code !== 'pc') return '';
-    if (dev.worker) return `<p class="tierline on" data-tip="${esc(`${dev.worker} works this desktop. Staff (H) shows what they do and what they cost.`)}"><span>Worked by</span><span>${esc(dev.worker)}</span></p>`;
+    if (dev.worker) return `<p class="tierline on" data-tip="${esc(dev.worker === 'you' ? 'You work this desktop yourself, for free. Any more desktops need staff, and you can only hire in the office or the datacentre.' : `${dev.worker} works this desktop. Staff (H) shows what they do and what they cost.`)}"><span>Worked by</span><span>${esc(dev.worker)}</span></p>`;
     const hire = s.staff?.canHire;
     return `<p class="tierline warn" data-tip="${esc(hire ? 'A desktop needs someone at it to earn. Hire an earner from the resumes in Staff (H).' : 'In the garage you work one desktop yourself. More desktops need staff, and you can only hire in the office or the datacentre.')}"><span>Worked by</span><span>no one</span></p>${hire ? '<button class="wide" data-open-staff><i class="ti ti-id-badge-2" aria-hidden="true"></i>Hire an earner</button>' : ''}`;
   }

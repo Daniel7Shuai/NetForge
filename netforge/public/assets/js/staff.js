@@ -79,7 +79,9 @@ export function mountStaff(store) {
     const st = s.staff;
     const here = st.team.filter((m) => m.location === s.user.location).length;
     const why = !st.canHire
-      ? 'You can only hire in the office or the datacentre. Lease one from the place menu at the top, then go there.'
+      ? ((s.locations || []).some((l) => l.leased && PLACE[l.code])
+        ? 'You can only hire in the office or the datacentre. Go there from the place menu at the top.'
+        : 'You can only hire in the office or the datacentre. Lease one from the place menu at the top, then go there.')
       : here >= st.max ? `This place is full: ${st.max} staff at most. Let someone go in Your team first.` : '';
     const head = st.canHire
       ? `<p class="s-lead">Hiring for the <b>${esc(PLACE[s.user.location])}</b>: ${here} of ${st.max} places taken. Read each resume, then hire or reject. A new one arrives either way.</p>`

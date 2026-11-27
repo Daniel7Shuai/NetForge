@@ -72,6 +72,7 @@ try {
     check('hostname changes the prompt', $prompt, 'R1(config)#');
     $type('enable secret class');
     check('a typo is shown with a caret', str_contains($type('hostnmae R2'), "Invalid input detected at '^' marker"), true);
+    check('the caret sits under the first wrong letter', strpos($type('hostnmae R2'), '^'), strlen('R1(config)#'));
     check('so is a word too many', [str_contains($type('hostname R2 extra'), "Invalid input"), $prompt], [true, 'R1(config)#']);
     $type('int g0/0');
     check('int g0/0 finds GigabitEthernet0/0', [$prompt, $iface], ['R1(config-if)#', 'Gi0/0']);

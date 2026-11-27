@@ -133,6 +133,7 @@ final class GameState
             'kind'    => $r['kind'],
             'message' => $r['message'],
             'time'    => date('H:i:s', strtotime($r['created_at'])),
+            'at'      => strtotime($r['created_at']) * 1000, // for ordering: the time of day alone sorts yesterday after today
         ], Db::all('SELECT kind, message, created_at FROM event_log WHERE user_id = ? ORDER BY id DESC LIMIT 20', [$userId])));
 
         $objective = Rules::currentObjective($userId);

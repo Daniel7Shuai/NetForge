@@ -60,12 +60,20 @@ export function mountTerminal(store) {
     store.set({ termOpen: false, uiFocus: !!(store.state.learnOpen || store.state.socialOpen || store.state.staffOpen) });
   }
 
+  /** An interface this device really has, for the note: int vlan 1 on a switch, its first port on a router. */
+  function shortIface() {
+    if (session?.device.switch) return 'vlan 1';
+    const dev = store.state.devices.find((d) => d.id === session?.device.id);
+    const port = dev?.ports.find((p) => /^(Fa|Gi|Se)/.test(p.name))?.name || 'Gi0/0';
+    return port.replace(/^Fa/, 'fa').replace(/^Gi/, 'g').replace(/^Se/, 's');
+  }
+
   function checklist(list) {
     side.innerHTML = `<h3>Set it up</h3><ol class="term-check">${list.map((c) => `<li class="${c.done ? 'done' : ''}">
       <i class="ti ${c.done ? 'ti-circle-check' : 'ti-circle'}" aria-hidden="true"></i><span>${esc(c.label).replace(/\(([^)]*)\)/g, '<code>$1</code>')}</span></li>`).join('')}</ol>
       <p class="term-note">${list.every((c) => c.done)
         ? 'Configured. It boosts the devices behind it 25% more.'
-        : 'Do all four and it boosts the devices behind it 25% more. Short forms work: <code>en</code>, <code>conf t</code>, <code>int g0/0</code>, <code>no shut</code>.'}</p>`;
+        : 'Do all four and it boosts the devices behind it 25% more. Short forms work: <code>en</code>, <code>conf t</code>, <code>int ${esc(shortIface())}</code>, <code>no shut</code>.'}</p>`;
   }
 
   async function send(line) {

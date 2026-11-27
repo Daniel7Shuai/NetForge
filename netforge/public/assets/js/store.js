@@ -46,13 +46,13 @@ export function createStore() {
     mergedLog() {
       return [...store.serverLog, ...store.localLog]
         .map((l, i) => ({ ...l, i }))
-        .sort((a, b) => (a.time === b.time ? a.i - b.i : a.time < b.time ? -1 : 1))
+        .sort((a, b) => (a.at ?? 0) - (b.at ?? 0) || a.i - b.i)
         .slice(-50);
     },
 
     log(kind, message) {
       const time = new Date().toTimeString().slice(0, 8);
-      store.localLog = [...store.localLog, { kind, message, time }].slice(-30);
+      store.localLog = [...store.localLog, { kind, message, time, at: Date.now() }].slice(-30);
       store.set({ log: store.mergedLog() });
     },
 

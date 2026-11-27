@@ -31,7 +31,7 @@ export function mountDefence(store) {
   function setOpen(open) {
     box.hidden = !open;
     map.classList.toggle('under-attack', open && !!current);
-    store.set({ attackOpen: open, uiFocus: open || !!store.state.learnOpen || !!store.state.socialOpen });
+    store.set({ attackOpen: open, uiFocus: open || !!store.state.learnOpen || !!store.state.socialOpen || !!store.state.staffOpen || !!store.state.termOpen });
   }
 
   function showSecurity(sec) {
